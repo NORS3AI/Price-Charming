@@ -13,6 +13,25 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.0.2-alpha",
+    date: "2026-04-08",
+    title: "Playable Game Mockup",
+    changes: [
+      "Playable browser-based game prototype on GitHub Pages.",
+      "Shopping phase: buy hirelings and spells from Fairy Godmother's shop, refresh for new cards, sell hirelings back.",
+      "Battle phase: hirelings auto-cast on timers, competing against opponent to satisfy customers.",
+      "Customer system: fairy-tale customers with satisfaction thresholds, gold rewards, and reputation stakes.",
+      "Reputation system with -30/+30 bar and crunch mechanic in rounds 13-15.",
+      "3 new tier-1 hirelings: Little Piggy, Teacups, Pumpkin Mouse.",
+      "3 spells: Wishing Star (transform), Potency Boost (+1 potency), Quick Brew (-1s cast time).",
+      "Opponent AI generates random boards scaled to the current round.",
+      "Round progression up to 15 rounds with tier scaling (T1 rounds 1-3, T2 4-6, T3 7+).",
+      "Win/lose conditions: max reputation to win, bottom out to lose.",
+      "Battle log showing real-time potion sales and customer outcomes.",
+      "10 fairy-tale customers: Gretel, Jack, Red Riding Hood, Goldilocks, Rapunzel, Hansel, Cinderella, The Baker, Pied Piper, Old King Cole.",
+    ],
+  },
+  {
     version: "V0.0.1-alpha",
     date: "2026-04-08",
     title: "Foundation & Wishing Star Spell",
