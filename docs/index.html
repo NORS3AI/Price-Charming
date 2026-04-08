@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Price Charming</title>
+  <style>
+    :root {
+      --gold: #d4a843;
+      --gold-dim: #a67c2e;
+      --purple: #4a2060;
+      --purple-deep: #2a0e3a;
+      --purple-light: #6b3a8a;
+      --parchment: #f5e6c8;
+      --parchment-dark: #e8d4a8;
+      --ink: #2c1810;
+      --ink-light: #5a3d2e;
+      --green: #3a7a3a;
+      --red: #8a2a2a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: var(--purple-deep);
+      color: var(--parchment);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(180deg, var(--purple) 0%, var(--purple-deep) 100%);
+      border-bottom: 3px solid var(--gold);
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+    }
+
+    header h1 {
+      font-size: 3rem;
+      color: var(--gold);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      letter-spacing: 0.05em;
+    }
+
+    header .subtitle {
+      color: var(--parchment-dark);
+      font-style: italic;
+      font-size: 1.15rem;
+      margin-top: 0.5rem;
+    }
+
+    header .version-badge {
+      display: inline-block;
+      margin-top: 1rem;
+      background: var(--gold-dim);
+      color: var(--purple-deep);
+      padding: 0.25rem 1rem;
+      border-radius: 1rem;
+      font-size: 0.85rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+
+    nav {
+      background: var(--purple);
+      border-bottom: 2px solid var(--gold-dim);
+      text-align: center;
+      padding: 0.75rem 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    nav a {
+      color: var(--gold);
+      text-decoration: none;
+      margin: 0 1.25rem;
+      font-size: 1rem;
+      transition: color 0.2s;
+    }
+
+    nav a:hover { color: var(--parchment); }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    section { margin-bottom: 3rem; }
+
+    h2 {
+      color: var(--gold);
+      font-size: 1.75rem;
+      border-bottom: 2px solid var(--gold-dim);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h3 {
+      color: var(--gold);
+      font-size: 1.2rem;
+      margin-top: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      line-height: 1.7;
+      margin-bottom: 0.75rem;
+      color: var(--parchment-dark);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .card {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--purple-light) 100%);
+      border: 2px solid var(--gold-dim);
+      border-radius: 8px;
+      padding: 1.25rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: var(--gold);
+    }
+
+    .card .card-name {
+      color: var(--gold);
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    .card .card-type {
+      font-size: 0.8rem;
+      color: var(--purple-light);
+      background: var(--gold-dim);
+      display: inline-block;
+      padding: 0.1rem 0.5rem;
+      border-radius: 0.75rem;
+      margin: 0.35rem 0;
+      color: var(--purple-deep);
+      font-weight: bold;
+    }
+
+    .card .card-desc {
+      font-size: 0.9rem;
+      color: var(--parchment-dark);
+      font-style: italic;
+    }
+
+    .transform-arrow {
+      text-align: center;
+      color: var(--gold);
+      font-size: 1.5rem;
+      padding: 0.5rem 0;
+    }
+
+    .transform-group {
+      background: rgba(74, 32, 96, 0.4);
+      border: 1px solid var(--purple-light);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .transform-group .source {
+      color: var(--parchment);
+      font-weight: bold;
+      font-size: 1.05rem;
+    }
+
+    .transform-options {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .transform-option {
+      flex: 1;
+      min-width: 180px;
+      background: var(--purple);
+      border: 1px solid var(--gold-dim);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+
+    .transform-option .opt-name {
+      color: var(--gold);
+      font-weight: bold;
+    }
+
+    .transform-option .opt-tribe {
+      font-size: 0.8rem;
+      color: var(--parchment-dark);
+    }
+
+    /* Patch Notes */
+    .patch {
+      background: rgba(74, 32, 96, 0.3);
+      border-left: 4px solid var(--gold);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .patch-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .patch-version {
+      color: var(--gold);
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .patch-date {
+      color: var(--ink-light);
+      font-size: 0.85rem;
+      background: var(--parchment-dark);
+      padding: 0.15rem 0.6rem;
+      border-radius: 0.75rem;
+    }
+
+    .patch-title {
+      color: var(--parchment);
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .patch ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .patch li {
+      padding: 0.3rem 0;
+      padding-left: 1.25rem;
+      position: relative;
+      color: var(--parchment-dark);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .patch li::before {
+      content: "\2726";
+      position: absolute;
+      left: 0;
+      color: var(--gold-dim);
+    }
+
+    .status-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 0.75rem;
+      font-weight: bold;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+
+    .status-implemented {
+      background: var(--green);
+      color: var(--parchment);
+    }
+
+    .status-designed {
+      background: var(--gold-dim);
+      color: var(--purple-deep);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      border-top: 2px solid var(--gold-dim);
+      color: var(--ink-light);
+      font-size: 0.85rem;
+      background: var(--purple-deep);
+    }
+
+    footer a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 2rem; }
+      nav a { margin: 0 0.5rem; font-size: 0.9rem; }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Price Charming</h1>
+  <div class="subtitle">A fairy-tale auto-battler card game</div>
+  <div class="version-badge">V0.0.1-alpha</div>
+</header>
+
+<nav>
+  <a href="#about">About</a>
+  <a href="#cards">Cards</a>
+  <a href="#wishing-star">Wishing Star</a>
+  <a href="#features">Features</a>
+  <a href="#patch-notes">Patch Notes</a>
+</nav>
+
+<main>
+
+  <section id="about">
+    <h2>About the Game</h2>
+    <p>
+      Welcome to the enchanted marketplace! You are a potion shop owner travelling through fairy-tale
+      lands. Hire magical creatures, brew powerful potions, and charm every customer that walks through
+      your door.
+    </p>
+    <p>
+      Each game lasts up to <strong>15 rounds</strong>. Pick a Caravan, hire from the Fairy Godmother's
+      shop, and battle snapshot opponents based on real players' builds. Max out your reputation to win
+      &mdash; or lose it all trying.
+    </p>
+  </section>
+
+  <section id="cards">
+    <h2>Cards</h2>
+
+    <h3>Transformable Hirelings</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-name">Hag</div>
+        <div class="card-type">Tier 1 &middot; Mischief</div>
+        <div class="card-desc">A crooked old hag with dubious potions.</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Frog</div>
+        <div class="card-type">Tier 1 &middot; Woodland</div>
+        <div class="card-desc">A small frog hoping for a kiss.</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Hidden Princess</div>
+        <div class="card-type">Tier 1 &middot; Royalty</div>
+        <div class="card-desc">A princess in disguise, waiting to be revealed.</div>
+      </div>
+    </div>
+
+    <h3>Transformation Results</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-name">Evil Royal</div>
+        <div class="card-type">Tier 2 &middot; Royalty</div>
+        <div class="card-desc">A royal with a wicked streak and potent poisons.</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Poison Queen</div>
+        <div class="card-type">Tier 2 &middot; Mischief</div>
+        <div class="card-desc">She brews the deadliest draughts in the realm.</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Royal Fly Catch</div>
+        <div class="card-type">Tier 2 &middot; Woodland</div>
+        <div class="card-desc">A regal amphibian with a lightning-fast tongue.</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Wart Covered Prince</div>
+        <div class="card-type">Tier 2 &middot; Royalty</div>
+        <div class="card-desc">A prince cursed with warts but blessed with charm.</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Snow White</div>
+        <div class="card-type">Tier 2 &middot; Royalty</div>
+        <div class="card-desc">Fairest of them all, her potions enchant every customer.</div>
+      </div>
+      <div class="card">
+        <div class="card-name">Master Pie Maker</div>
+        <div class="card-type">Tier 2 &middot; Culinary</div>
+        <div class="card-desc">Bakes potions into irresistible pies.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="wishing-star">
+    <h2>Wishing Star Spell</h2>
+    <p>
+      Cast Wishing Star on a transformable hireling to choose between two powerful upgraded forms.
+      A mediocre card can turn into something new and better.
+    </p>
+
+    <div class="transform-group">
+      <div class="source">Hag</div>
+      <div class="transform-arrow">&darr;</div>
+      <div class="transform-options">
+        <div class="transform-option">
+          <div class="opt-name">Evil Royal</div>
+          <div class="opt-tribe">Royalty &middot; Tier 2</div>
+        </div>
+        <div class="transform-option">
+          <div class="opt-name">Poison Queen</div>
+          <div class="opt-tribe">Mischief &middot; Tier 2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="transform-group">
+      <div class="source">Frog</div>
+      <div class="transform-arrow">&darr;</div>
+      <div class="transform-options">
+        <div class="transform-option">
+          <div class="opt-name">Royal Fly Catch</div>
+          <div class="opt-tribe">Woodland &middot; Tier 2</div>
+        </div>
+        <div class="transform-option">
+          <div class="opt-name">Wart Covered Prince</div>
+          <div class="opt-tribe">Royalty &middot; Tier 2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="transform-group">
+      <div class="source">Hidden Princess</div>
+      <div class="transform-arrow">&darr;</div>
+      <div class="transform-options">
+        <div class="transform-option">
+          <div class="opt-name">Snow White</div>
+          <div class="opt-tribe">Royalty &middot; Tier 2</div>
+        </div>
+        <div class="transform-option">
+          <div class="opt-name">Master Pie Maker</div>
+          <div class="opt-tribe">Culinary &middot; Tier 2</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <h2>Features</h2>
+
+    <h3>Wishing Star Spell <span class="status-tag status-implemented">Implemented</span></h3>
+    <p>Transforms transformable hirelings into one of two upgraded forms chosen by the player.</p>
+
+    <h3>Transformation System <span class="status-tag status-implemented">Implemented</span></h3>
+    <p>Registry-based mapping of source hirelings to two possible outcomes. Extensible for future cards.</p>
+
+    <h3>Card Type System <span class="status-tag status-implemented">Implemented</span></h3>
+    <p>Hirelings, Assistants, and Spells with tiers, tribes, potion slots, and cast timers.</p>
+
+    <h3>Upgrade System <span class="status-tag status-designed">Designed</span></h3>
+    <p>3 identical cards automatically merge into one stronger card (e.g. Little Piggy x3 = Big Bad Wolf).</p>
+
+    <h3>Potion Stock &amp; Potency <span class="status-tag status-designed">Designed</span></h3>
+    <p>Each potion has independent stock and potency values, upgradable via spells and assistants.</p>
+
+    <h3>Reputation System <span class="status-tag status-designed">Designed</span></h3>
+    <p>Win by maxing reputation. The bar crunches in rounds 13-15 for dramatic finishes.</p>
+
+    <h3>Caravans / Hero Powers <span class="status-tag status-designed">Designed</span></h3>
+    <p>Choose a travelling shopfront with a unique passive ability at the start of each level.</p>
+
+    <h3>Champion Snapshots <span class="status-tag status-designed">Designed</span></h3>
+    <p>Pin round 15 builds to the weekly Champion Board. Challengers get 3 attempts to beat them.</p>
+
+    <h3>Events &amp; Weather <span class="status-tag status-designed">Designed</span></h3>
+    <p>Transition-round events (Loan Shark, GambleBees) and dynamic weather (Frog Fog, Spell-made Lightning).</p>
+
+    <h3>Cosmetics <span class="status-tag status-designed">Designed</span></h3>
+    <p>Titles, profile characters with upgradeable animations, and 8 character options.</p>
+  </section>
+
+  <section id="patch-notes">
+    <h2>Patch Notes</h2>
+
+    <div class="patch">
+      <div class="patch-header">
+        <span class="patch-version">V0.0.1-alpha</span>
+        <span class="patch-date">2026-04-08</span>
+      </div>
+      <div class="patch-title">Foundation &amp; Wishing Star Spell</div>
+      <ul>
+        <li>Project initialized with TypeScript, Jest, and GitHub Pages.</li>
+        <li>Card type system: HirelingCard, SpellCard, AssistantCard with tiers and tribes.</li>
+        <li>Added 3 transformable tier-1 hirelings: Hag, Frog, Hidden Princess.</li>
+        <li>Added 6 tier-2 transformation results: Evil Royal, Poison Queen, Royal Fly Catch, Wart Covered Prince, Snow White, Master Pie Maker.</li>
+        <li>Implemented Wishing Star spell &mdash; transforms a transformable hireling into one of two player-chosen upgraded forms.</li>
+        <li>Transformation registry with extensible registration for future cards.</li>
+        <li>Deep copy system ensures transformed cards don't share mutable state.</li>
+        <li>17 unit tests covering all transformation paths and edge cases.</li>
+        <li>Created CLAUDE.md, README.md, FEATURES.md, and patch notes system.</li>
+        <li>GitHub Pages site with game info and patch notes viewer.</li>
+      </ul>
+    </div>
+
+  </section>
+
+</main>
+
+<footer>
+  <p>Price Charming &copy; 2026 &middot; <a href="https://github.com/NORS3AI/Price-Charming">GitHub Repository</a></p>
+</footer>
+
+</body>
+</html>
