@@ -240,7 +240,28 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 
 @keyframes sellPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes fadeUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-30px)}}
+@keyframes countZoom{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}20%{transform:translate(-50%,-50%) scale(1.2);opacity:1}40%{transform:translate(-50%,-50%) scale(1);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
 .float-text{position:absolute;pointer-events:none;font-weight:bold;font-size:.9rem;animation:fadeUp .8s forwards;z-index:500}
+
+/* ROUND TIMER */
+#round-timer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;align-items:center;justify-content:center}
+#round-timer-num{position:absolute;top:50%;left:50%;font-size:8rem;font-weight:bold;color:var(--gold);text-shadow:0 0 40px rgba(212,168,67,.6),0 0 80px rgba(212,168,67,.3);animation:countZoom 1s forwards;pointer-events:none}
+
+/* TUTORIAL BOX */
+#tut-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:900;align-items:center;justify-content:center}
+#tut-box{background:linear-gradient(145deg,#2a1040,#4a2060);border:3px solid;border-image:linear-gradient(135deg,var(--gold),#c04040,var(--blue),var(--gold)) 1;border-radius:0;position:relative;max-width:480px;width:90%;padding:0;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+#tut-box-inner{border:2px solid var(--gold-dim);border-radius:14px;margin:3px;padding:1.5rem;overflow:hidden}
+#tut-icon{text-align:center;font-size:2rem;margin-bottom:.5rem}
+#tut-title{color:var(--gold);font-size:1.2rem;font-weight:bold;text-align:center;margin-bottom:.75rem;text-shadow:0 0 10px rgba(212,168,67,.3)}
+#tut-body{color:var(--parch-d);font-size:.85rem;line-height:1.6;margin-bottom:1rem}
+#tut-body strong{color:var(--parch)}
+#tut-body .tut-highlight{display:inline-block;background:rgba(212,168,67,.15);border:1px solid var(--gold-dim);border-radius:4px;padding:1px 6px;color:var(--gold);font-weight:bold}
+#tut-body .tut-blue{color:#7ac}
+#tut-body .tut-green{color:#8c8}
+#tut-body .tut-red{color:#c66}
+#tut-step{text-align:center;color:var(--gold-dim);font-size:.7rem;margin-bottom:.5rem}
+#tut-btn{display:block;margin:0 auto;background:linear-gradient(180deg,var(--gold),var(--gold-dim));color:var(--deep);border:none;padding:.6rem 2rem;font-family:inherit;font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;transition:transform .15s,box-shadow .15s}
+#tut-btn:hover{transform:translateY(-2px);box-shadow:0 4px 15px rgba(212,168,67,.4)}
 @media(max-width:600px){.diff-grid{grid-template-columns:1fr}.card{width:120px;min-height:100px}.tooltip{width:220px}}
 </style>
 </head>
@@ -251,7 +272,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <img id="title-logo" src="assets/logo.jpeg" alt="Price Charming" onerror="this.style.display='none';document.getElementById('title-fallback').style.display='block'">
   <h1 id="title-fallback" style="display:none">Price Charming</h1>
   <div class="sub">A fairy-tale auto-battler card game</div>
-  <div class="ver">V0.0.7-alpha</div>
+  <div class="ver">V0.0.8-alpha</div>
   <div class="menu-btns">
     <button class="btn" onclick="showScreen('diff-screen')">Play</button>
     <button class="btn btn-purple" onclick="showScreen('leader-screen')">Leaderboard</button>
@@ -259,16 +280,14 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <button class="btn btn-ghost" onclick="showScreen('settings-screen')">Settings</button>
   </div>
   <div id="title-patch">
-    <div class="tp-header"><span class="tp-ver">V0.0.7-alpha</span><span class="tp-date">2026-04-09</span></div>
-    <div class="tp-title">Menus, Difficulty, Leaderboard, Settings, Sandbox</div>
+    <div class="tp-header"><span class="tp-ver">V0.0.8-alpha</span><span class="tp-date">2026-04-09</span></div>
+    <div class="tp-title">Round Timer, Tutorial Mode</div>
     <ul>
-      <li>Main menu with Play, Leaderboard, Sandbox, Settings.</li>
-      <li>Difficulty selection: Easy (2 gold), Normal, Hard, Insane (0 gold).</li>
-      <li>Renamed coins to gold everywhere.</li>
-      <li>Rich colorful tooltips with pros/cons. Mobile long-press support.</li>
-      <li>Leaderboard with top 15 players/NPCs.</li>
-      <li>Settings: sound toggle, game saves (3 slots).</li>
-      <li>Sandbox deck builder mode.</li>
+      <li>Round transition timer: Easy 10s, Normal 5s, Hard 2s, Insane instant.</li>
+      <li>Big countdown numbers zoom in and fade each second.</li>
+      <li>Tutorial mode: guided 5-round experience teaching every mechanic.</li>
+      <li>Royal-themed info boxes with step-by-step explanations.</li>
+      <li>Tutorial has weighted randomness for replayability.</li>
     </ul>
   </div>
 </div>
@@ -304,7 +323,10 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
         <div class="df-gold">Start with 0 gold</div>
       </div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="showScreen('title-screen')">Back</button>
+    <div style="margin-top:.5rem;display:flex;gap:.75rem;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="showScreen('title-screen')">Back</button>
+      <button class="btn btn-sm btn-purple" onclick="startTutorial()">Tutorial</button>
+    </div>
   </div>
 </div>
 
@@ -387,6 +409,21 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 </div>
 
 <div id="cust-sidebar"></div>
+
+<!-- ROUND TIMER -->
+<div id="round-timer-overlay"><div id="round-timer-num"></div></div>
+
+<!-- TUTORIAL BOX -->
+<div id="tut-overlay">
+  <div id="tut-box"><div id="tut-box-inner">
+    <div id="tut-icon"></div>
+    <div id="tut-title"></div>
+    <div id="tut-step"></div>
+    <div id="tut-body"></div>
+    <button id="tut-btn" onclick="tutNext()">Next</button>
+  </div></div>
+</div>
+
 <div class="tooltip" id="tooltip"></div>
 <div class="modal-overlay" id="report-overlay" onclick="closeReport()"><div class="modal-box" onclick="event.stopPropagation()"><h2>Last Round Report</h2><div id="report-content"></div><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div></div></div>
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="closeModal()">Cancel</button></div></div>
@@ -431,7 +468,7 @@ function resetState(){G={phase:'title',round:1,gold:0,reputation:0,repMax:30,dif
 resetState();
 function getTier(r){return r<=3?1:r<=6?2:3}
 function deepCopyCard(c){return{...c,potions:c.potions.map(p=>({...p}))}}
-function diffMultiplier(){return{easy:0.7,normal:1,hard:1.3,insane:1.7}[G.difficulty]||1}
+function diffMultiplier(){if(G.difficulty==='tutorial')return TUT.forceWin===false?1.8:0.5;return{easy:0.7,normal:1,hard:1.3,insane:1.7}[G.difficulty]||1}
 
 // ============================================================
 // SCREENS
@@ -497,7 +534,33 @@ function isExhausted(h){return!h.potions.some(p=>p.stock>0)}
 function allExhausted(b){return b.every(isExhausted)}
 function customerDone(w,cust){clearInterval(G.battleTimer);const res=document.getElementById('customer-result');let ge=0;if(w==='player'){const ap=G.board.length>0?G.board.reduce((s,h)=>s+h.potions.reduce((ps,p)=>ps+(p.price||1),0),0)/G.board.reduce((s,h)=>s+h.potions.length,0):1;ge=Math.round(cust.gold*Math.min(1.5,ap));G.roundGold+=ge;G.roundRep+=cust.rep;G.custWins++;G.gold+=ge;res.innerHTML=`<span style="color:var(--green)">You won ${cust.name}! +${ge}g, +${cust.rep} rep</span>`;addLog(`<span class="log-gold">Won ${cust.name}: +${ge}g, +${cust.rep} rep</span>`);playCustomerWin()}else{G.roundRep-=Math.ceil(cust.rep/2);G.custLosses++;res.innerHTML=`<span style="color:var(--red)">Opponent won ${cust.name}! -${Math.ceil(cust.rep/2)} rep</span>`;addLog(`<span class="log-opp">Lost ${cust.name}: -${Math.ceil(cust.rep/2)} rep</span>`);playCustomerLose()}G.custResults.push({customer:{...cust},winner:w,playerSat:G.playerSat,oppSat:G.oppSat,goldEarned:ge,repChange:w==='player'?cust.rep:-Math.ceil(cust.rep/2)});renderCustSidebar();updateTopBar();setTimeout(()=>{G.custIdx++;if(G.custIdx<G.customers.length)loadNextCustomer();else endBattle()},1500)}
 function endBattle(){clearInterval(G.battleTimer);G.phase='round_end';G.reputation+=G.roundRep;G.lastReport={round:G.round,custResults:[...G.custResults],custWins:G.custWins,custLosses:G.custLosses,roundGold:G.roundGold,roundRep:G.roundRep,board:G.board.map(h=>({name:h.name,emoji:h.emoji,tribe:h.tribe,tier:h.tier,potions:h.potions.map(p=>({...p})),castTime:h.castTime})),oppBoard:G.opp.board.map(h=>({name:h.name,emoji:h.emoji,tribe:h.tribe,tier:h.tier,potions:h.potions.map(p=>({...p})),castTime:h.castTime}))};G.board.forEach(h=>h.potions.forEach(p=>{const o=HIRELINGS_ALL.find(x=>x.id===h.id);if(o){const op=o.potions.find(x=>x.name===p.name);if(op)p.stock=op.stock}else p.stock=Math.max(p.stock,2)}));updateTopBar();renderAll();autoSave()}
-function nextRound(){if(G.reputation>=G.repMax){gameOver(true);return}if(G.reputation<=-G.repMax){gameOver(false);return}G.round++;if(G.round>15){gameOver(G.reputation>0);return}if(G.round===13)G.repMax=25;if(G.round===14)G.repMax=20;if(G.round===15)G.repMax=15;if(G.reputation<-G.repMax)G.reputation=-G.repMax;if(G.reputation>G.repMax)G.reputation=G.repMax;enterShopping()}
+function nextRound(){
+  if(G.reputation>=G.repMax){gameOver(true);return}
+  if(G.reputation<=-G.repMax){gameOver(false);return}
+  G.round++;if(G.round>15){gameOver(G.reputation>0);return}
+  if(G.round===13)G.repMax=25;if(G.round===14)G.repMax=20;if(G.round===15)G.repMax=15;
+  if(G.reputation<-G.repMax)G.reputation=-G.repMax;
+  if(G.reputation>G.repMax)G.reputation=G.repMax;
+  const timerSecs={easy:10,normal:5,hard:2,insane:0,tutorial:5}[G.difficulty]||5;
+  if(timerSecs>0){showRoundTimer(timerSecs,()=>enterShopping())}else{enterShopping()}
+}
+
+// ============================================================
+// ROUND TRANSITION TIMER
+// ============================================================
+function showRoundTimer(secs,callback){
+  const ov=document.getElementById('round-timer-overlay');
+  const num=document.getElementById('round-timer-num');
+  ov.style.display='flex';let remaining=secs;
+  function tick(){
+    num.textContent=remaining;num.style.animation='none';
+    void num.offsetWidth;num.style.animation='countZoom 1s forwards';
+    if(soundEnabled){sfx('triangle',300+remaining*50,.15,.1)}
+    if(remaining<=0){ov.style.display='none';callback();return}
+    remaining--;setTimeout(tick,1000);
+  }
+  tick();
+}
 function gameOver(won){G.phase='gameover';renderAll();const t=document.getElementById('go-title'),s=document.getElementById('go-sub');if(won){t.style.color='var(--gold)';t.textContent='Victory!';s.textContent='Round '+G.round+', Rep: '+G.reputation+', Difficulty: '+G.difficulty;updateLeaderboard(G.reputation,G.round)}else{t.style.color='var(--red)';t.textContent='Defeat';s.textContent='Round '+G.round+', Rep: '+G.reputation}}
 
 // ============================================================
@@ -577,6 +640,179 @@ function closeReport(){document.getElementById('report-overlay').style.display='
 function handleDrop(e){try{const d=JSON.parse(e.dataTransfer.getData('text/plain'));if(d.source==='shop')buyCard(d.idx)}catch(ex){}}
 document.addEventListener('dragover',e=>e.preventDefault());
 document.addEventListener('drop',e=>{try{const d=JSON.parse(e.dataTransfer.getData('text/plain'));if(d.source==='board'){const b=document.getElementById('player-board').getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)sellCard(d.idx)}}catch(ex){}});
+
+// ============================================================
+// TUTORIAL MODE
+// ============================================================
+let TUT={step:0,queue:[],round:0,forcedShop:null,forcedOpp:null,forceWin:null};
+
+const TUT_POOL={
+  welcome:[
+    {icon:'👑',title:'Welcome to Price Charming!',body:'You are a <strong>potion shop owner</strong> in a fairy-tale marketplace. Your goal: brew potions, sell them to customers, and build your <strong>reputation</strong> to win!<br><br>This tutorial will guide you through your first 5 rounds. Each time you play this tutorial, the experience will be a little different!'},
+    {icon:'🏰',title:'Welcome, Apprentice Brewer!',body:'The enchanted marketplace awaits! You run a travelling potion shop, competing against rival shopkeepers.<br><br><strong>Hire magical creatures</strong> to brew potions, <strong>sell to customers</strong> to earn gold and reputation. Max out your reputation bar to win!'},
+    {icon:'✨',title:'Your Journey Begins!',body:'In Price Charming, you build a team of <strong>hirelings</strong> — magical creatures who brew and sell potions automatically during battle.<br><br>Think of it like assembling a dream team of fairy-tale baristas. Let\'s learn how!'},
+  ],
+  goldExplain:[
+    {icon:'💰',title:'Gold — Your Currency',body:'You earn <strong class="tut-highlight">gold</strong> each round and from winning customers.<br><br>Spend gold to:<br>• <strong>Buy hirelings</strong> from the shop (they join your board)<br>• <strong>Buy spells</strong> (they go to your hand for later use)<br>• <strong>Refresh the shop</strong> (1 gold for new cards)<br><br>You currently have <strong class="tut-green">3 gold</strong>. Spend wisely!'},
+    {icon:'💰',title:'Managing Your Gold',body:'Gold is everything! You get <strong>more gold each round</strong> (round number = bonus gold).<br><br><span class="tut-highlight">Buy cards</span> from the Fairy Godmother\'s Shop below. Hirelings cost 2-3 gold. Spells cost 1-2 gold.<br><br>You can also <strong>sell hirelings</strong> back for 1 gold each.'},
+  ],
+  shopExplain:[
+    {icon:'🧚',title:'The Fairy Godmother\'s Shop',body:'The shop shows <strong>4 cards</strong> each round — a mix of hirelings and spells.<br><br><strong>Hirelings</strong> (the ones with tribes like "mischief" or "woodland") go on your board and sell potions during battle.<br><br><strong>Spells</strong> (purple cards) go to your hand. Play them anytime during the shop phase!<br><br><strong>Drag a card</strong> to your board, or <strong>click it</strong> to buy.'},
+    {icon:'🧚',title:'Shopping Phase',body:'Each round starts with shopping. The shop offers <strong>4 random cards</strong>.<br><br>• <strong class="tut-green">Hirelings</strong> — your potion sellers (max 5 on board)<br>• <strong class="tut-blue">Spells</strong> — instant effects or saved for later<br><br>Don\'t like what you see? <strong>Refresh</strong> for 1 gold to get new options!<br><br>Try buying a hireling now.'},
+  ],
+  hirelingExplain:[
+    {icon:'🧙‍♀️',title:'Understanding Hirelings',body:'Each hireling card shows:<br><br>• <strong class="tut-blue">Potency (✦)</strong> — how many satisfaction points per sale<br>• <strong class="tut-green">Stock (x)</strong> — how many times they can sell per battle<br>• <strong>Cast Time</strong> — seconds between each sale<br>• <strong class="tut-highlight">Price</strong> — what you charge per potion<br><br>Higher potency = stronger sales. Higher stock = more sales. Lower cast time = faster selling.<br><br><strong>Hover any card</strong> (or long-press on mobile) to see full details!'},
+    {icon:'🐸',title:'Your Hirelings',body:'Hirelings are your workers. During battle, they <strong>automatically sell potions</strong> on a timer.<br><br>Key stats on each card:<br>• <span class="tut-blue">✦ Potency</span> — satisfaction per sale (higher = better)<br>• <span class="tut-green">x Stock</span> — total sales before exhausted<br>• <strong>Cast Time</strong> — how fast they sell<br><br>A hireling with 2✦ potency and x3 stock can contribute <strong>6 total satisfaction</strong> points.'},
+  ],
+  potionPrice:[
+    {icon:'💎',title:'Potion Pricing Strategy',body:'In the <strong>Potion Panel</strong> below your board, you can adjust each potion\'s price from 0-5 gold.<br><br>Each customer has a <strong>budget</strong> — the max price they\'re comfortable paying.<br><br>• <span class="tut-green">Price ≤ budget</span> — full potency, normal gold<br>• <span class="tut-red">Price > budget</span> — reduced effectiveness! But more gold if you win<br><br>Start with low prices and raise them once you\'re winning consistently.'},
+  ],
+  battleExplain:[
+    {icon:'⚔️',title:'Battle Phase — How It Works',body:'When you click <strong>"Start Battle"</strong>, your hirelings face off against an opponent\'s team to win <strong>customers</strong>.<br><br>Each customer has a <span class="tut-highlight">satisfaction threshold</span>. Your hirelings sell potions automatically, filling the satisfaction bar. <strong>First side to fill it wins the customer!</strong><br><br>Win customers → earn gold + reputation<br>Lose customers → lose reputation<br><br>Ready? Let\'s battle!'},
+    {icon:'⚔️',title:'Time to Battle!',body:'The battle phase is <strong>automatic</strong> — just watch your hirelings work!<br><br>• Each hireling counts down their cast timer<br>• When it hits 0, they sell a potion<br>• Potency points fill the customer\'s satisfaction bar<br>• <span class="tut-green">You</span> vs <span class="tut-red">Opponent</span> — first to fill the bar wins!<br><br>Watch the <strong>sidebar icons</strong> on the right to track customer results.'},
+  ],
+  customerExplain:[
+    {icon:'👧',title:'Customers',body:'Customers are fairy-tale characters who visit your shop each battle round.<br><br>Each customer has:<br>• <strong>Threshold</strong> — satisfaction points needed to win them<br>• <strong>Gold reward</strong> — gold you earn if you win<br>• <strong>Rep reward</strong> — reputation gained (or lost!)<br>• <strong>Budget</strong> — max potion price they\'ll pay happily<br><br>3-6 customers visit per round. Win more than you lose!'},
+  ],
+  repExplain:[
+    {icon:'📊',title:'Reputation — Your Score',body:'The <strong>reputation bar</strong> at the top tracks your progress.<br><br>• Starts at <strong>0</strong>, range is <strong>-30 to 30</strong><br>• <span class="tut-green">Win customers → gain rep</span><br>• <span class="tut-red">Lose customers → lose rep</span><br>• <strong>Max out reputation (30) = YOU WIN!</strong><br>• <strong>Hit -30 = Game Over</strong><br><br>In rounds 13-15, the bar <strong>crunches</strong> (shrinks), making every sale count more!'},
+  ],
+  round1Win:[
+    {icon:'🎉',title:'Round 1 — Victory!',body:'Great job! You won your first round!<br><br>Check the <strong>Last Round</strong> button in the shop to review what happened — which customers you won or lost, and why.<br><br>Now let\'s make your team stronger for Round 2!'},
+    {icon:'🌟',title:'Excellent Start!',body:'You\'ve won Round 1! Your reputation is climbing.<br><br>Tips for next round:<br>• You\'ll have <strong>more gold</strong> — buy another hireling or a spell<br>• Consider <strong>Potency Boost</strong> spell to power up a hireling<br>• Or <strong>Quick Brew</strong> to make one sell faster<br><br>Let\'s keep going!'},
+  ],
+  spellExplain:[
+    {icon:'⭐',title:'Spells — Powerful Upgrades',body:'There are 3 spells in the shop:<br><br>• <span class="tut-highlight">⭐ Wishing Star</span> — transforms a hireling into a tier-2 powerhouse! (Choose from 2 options)<br>• <span class="tut-highlight">💪 Potency Boost</span> — +1 potency on ALL potions of a hireling<br>• <span class="tut-highlight">⚡ Quick Brew</span> — reduces cast time by 1s (min 1s)<br><br>Spells go to your <strong>hand</strong> (max 5) and can be played anytime during shopping. Look for a Wishing Star if you have a Hag, Frog, or Hidden Princess!'},
+  ],
+  upgradeExplain:[
+    {icon:'🐺',title:'Upgrades — Triple Power!',body:'If you buy <strong>3 of the same hireling</strong>, they automatically <strong>merge into a powerful upgrade</strong>!<br><br>• <strong>Little Piggy x3</strong> → 🐺 Big Bad Wolf<br>• <strong>Teacups x3</strong> → 🫖 Madame Teapot<br><br>These upgraded cards are <strong>tier 2</strong> with much better stats. Keep an eye out for triples!'},
+  ],
+  round2Win:[
+    {icon:'💪',title:'Round 2 Complete!',body:'Two rounds down! Your board is getting stronger.<br><br>Notice how you get more gold each round — <strong>round number = bonus gold</strong>. Use this to build up your team before harder customers arrive!'},
+  ],
+  round3Win:[
+    {icon:'🏆',title:'Round 3 — Tier Change Coming!',body:'After Round 3, the shop will start offering <strong>Tier 2 hirelings</strong> — these have better stats but cost more.<br><br>Your current hirelings will still work, but consider upgrading via <strong>spells</strong> or <strong>triple merges</strong> to keep up!'},
+  ],
+  round4Lose:[
+    {icon:'😰',title:'Round 4 — A Tough Loss',body:'That round was rough! The opponent had <strong>stronger hirelings</strong> and you lost reputation.<br><br>Here\'s what went wrong:<br>• The opponent may have had <strong>higher potency</strong> — they filled customer needs faster<br>• Your hirelings might have <strong>run out of stock</strong> before winning enough customers<br><br>Don\'t worry — this is how the game teaches you to <strong>adapt and improve</strong> your strategy!'},
+    {icon:'📉',title:'A Setback!',body:'You lost Round 4. It happens to every brewer!<br><br>Common reasons for losing:<br>• <span class="tut-red">Not enough hirelings</span> — more sellers = more potions<br>• <span class="tut-red">Low potency</span> — use Potency Boost spells<br>• <span class="tut-red">Slow cast times</span> — Quick Brew helps<br>• <span class="tut-red">Overpriced potions</span> — customers won\'t pay above budget<br><br>Let\'s bounce back in Round 5!'},
+  ],
+  round5Win:[
+    {icon:'🎊',title:'Victory! Tutorial Complete!',body:'<strong>Congratulations!</strong> You\'ve completed the tutorial!<br><br>You\'ve learned:<br>• ✅ How to buy hirelings and spells<br>• ✅ How battles and customers work<br>• ✅ Reputation and winning<br>• ✅ Potion pricing strategy<br>• ✅ Spells, upgrades, and transformations<br><br>Now try <strong>Easy mode</strong> for a gentle challenge, or jump into <strong>Normal</strong> if you\'re feeling bold!'},
+    {icon:'👑',title:'The Apprentice Graduates!',body:'You did it! Tutorial complete!<br><br>Key takeaways:<br>• <strong>More hirelings = more potions</strong><br>• <strong>Spells make the difference</strong> in later rounds<br>• <strong>Watch customer budgets</strong> when setting prices<br>• <strong>Triple merges</strong> create powerful upgrades<br><br>The enchanted marketplace awaits. Go forth and charm those prices!'},
+  ],
+};
+
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
+
+function startTutorial(){
+  resetState();G.difficulty='tutorial';G.gold=3;
+  TUT={step:0,queue:[],round:0};
+  // Build tutorial script — pick random variants for replayability
+  TUT.queue=[
+    pick(TUT_POOL.welcome),
+    pick(TUT_POOL.goldExplain),
+    pick(TUT_POOL.shopExplain),
+    {action:'enterRound',round:1},
+    pick(TUT_POOL.hirelingExplain),
+    pick(TUT_POOL.potionPrice),
+    {action:'waitForBuy'},
+    pick(TUT_POOL.battleExplain),
+    pick(TUT_POOL.customerExplain),
+    {action:'waitForBattle',forceWin:true},
+    pick(TUT_POOL.round1Win),
+    pick(TUT_POOL.repExplain),
+    {action:'enterRound',round:2},
+    pick(TUT_POOL.spellExplain),
+    {action:'waitForBuy'},
+    {action:'waitForBattle',forceWin:true},
+    pick(TUT_POOL.round2Win),
+    {action:'enterRound',round:3},
+    pick(TUT_POOL.upgradeExplain),
+    {action:'waitForBuy'},
+    {action:'waitForBattle',forceWin:true},
+    pick(TUT_POOL.round3Win),
+    {action:'enterRound',round:4},
+    {action:'waitForBuy'},
+    {action:'waitForBattle',forceWin:false},
+    pick(TUT_POOL.round4Lose),
+    {action:'enterRound',round:5},
+    {action:'waitForBuy'},
+    {action:'waitForBattle',forceWin:true},
+    pick(TUT_POOL.round5Win),
+    {action:'endTutorial'},
+  ];
+  TUT.step=0;
+  showScreen('game-screen');
+  tutProcess();
+}
+
+function tutProcess(){
+  if(TUT.step>=TUT.queue.length)return;
+  const item=TUT.queue[TUT.step];
+  if(item.action){
+    if(item.action==='enterRound'){
+      G.round=item.round;enterShopping();TUT.step++;tutProcess();
+    } else if(item.action==='waitForBuy'){
+      TUT.step++;// Just advance; player interacts freely, next tutProcess called after battle
+    } else if(item.action==='waitForBattle'){
+      TUT.forceWin=item.forceWin;TUT.step++;
+    } else if(item.action==='endTutorial'){
+      showScreen('title-screen');
+    }
+  } else {
+    showTutBox(item);
+  }
+}
+
+function showTutBox(item){
+  document.getElementById('tut-icon').textContent=item.icon||'📜';
+  document.getElementById('tut-title').textContent=item.title||'';
+  document.getElementById('tut-body').innerHTML=item.body||'';
+  const totalSteps=TUT.queue.filter(q=>!q.action).length;
+  const currentStep=TUT.queue.slice(0,TUT.step+1).filter(q=>!q.action).length;
+  document.getElementById('tut-step').textContent=`Step ${currentStep} of ${totalSteps}`;
+  document.getElementById('tut-overlay').style.display='flex';
+}
+
+function tutNext(){
+  document.getElementById('tut-overlay').style.display='none';
+  TUT.step++;tutProcess();
+}
+
+// Override battle result in tutorial
+const _origCustomerDone=customerDone;
+customerDone=function(winner,cust){
+  if(G.difficulty==='tutorial'&&TUT.forceWin!==undefined){
+    // Force the outcome
+    if(TUT.forceWin&&winner==='opp'){winner='player';G.playerSat=cust.threshold}
+    if(!TUT.forceWin&&winner==='player'&&G.custIdx>=G.customers.length-1){winner='opp';G.oppSat=cust.threshold}
+  }
+  _origCustomerDone(winner,cust);
+};
+
+// Hook into endBattle to show tutorial boxes after battle
+const _origEndBattle=endBattle;
+endBattle=function(){
+  _origEndBattle();
+  if(G.difficulty==='tutorial'){
+    // Advance to next tutorial step (should be the post-round message)
+    setTimeout(()=>{
+      // Skip the round-end screen in tutorial, go straight to tutorial message
+      tutProcess();
+    },500);
+  }
+};
+
+// Hook into nextRound for tutorial
+const _origNextRound=nextRound;
+nextRound=function(){
+  if(G.difficulty==='tutorial'){
+    // In tutorial, tutProcess handles round advancement
+    tutProcess();return;
+  }
+  _origNextRound();
+};
 
 // ============================================================
 // LEADERBOARD

@@ -13,6 +13,22 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.0.8-alpha",
+    date: "2026-04-09",
+    title: "Round Timer & Tutorial Mode",
+    changes: [
+      "Round transition timer: countdown between rounds scales by difficulty (Easy 10s, Normal 5s, Hard 2s, Insane 0s).",
+      "Big countdown numbers zoom in from small, pulse, then fade each second.",
+      "Sound tick on each countdown number.",
+      "Tutorial mode: guided 5-round experience teaching every game mechanic.",
+      "Royal-themed tutorial info boxes with gold headers, red/blue accents.",
+      "Covers: gold, shop, hirelings, potions, pricing, battles, customers, reputation, spells, upgrades, transformations.",
+      "Round 1-3: player wins (easy opponents). Round 4: player loses (tough opponent, explains why). Round 5: player wins (tutorial complete).",
+      "Weighted randomness: tutorial picks different dialog variants each playthrough for replayability.",
+      "Tutorial accessible from difficulty selection screen.",
+    ],
+  },
+  {
     version: "V0.0.7-alpha",
     date: "2026-04-09",
     title: "Menus, Difficulty, Leaderboard, Settings, Sandbox & Rich Tooltips",
