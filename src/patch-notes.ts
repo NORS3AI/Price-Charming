@@ -13,6 +13,24 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.0.7-alpha",
+    date: "2026-04-09",
+    title: "Menus, Difficulty, Leaderboard, Settings, Sandbox & Rich Tooltips",
+    changes: [
+      "Main menu: Play, Leaderboard, Sandbox, Settings buttons.",
+      "Difficulty selection: Easy (2 gold), Normal, Hard, Insane (0 gold) with scaling opponents.",
+      "Renamed 'coins' to 'gold' everywhere.",
+      "Leaderboard: top 15 players with NPC placeholder names. Victories save to board.",
+      "Settings: sound toggle, 3 save slots with save/load/delete, reset all data.",
+      "Auto-save after each battle to slot 1.",
+      "Sandbox: deck builder with full card pool. Click to add cards, test battle with custom deck.",
+      "Rich colorful tooltips: gold header bar, colored potion stat badges (potency/stock/price), pros & cons list, upgrade/transform hints, total output calculation.",
+      "Mobile/tablet: long-press (500ms hold) to show tooltip on touch devices.",
+      "Fixed: PumpkinMouse added to TypeScript, stock values synced, price field added to PotionSlot type, version mismatch resolved.",
+      "Created icon folder structure: docs/assets/icons/ with difficulty, hirelings, spells, customers, ui subfolders.",
+    ],
+  },
+  {
     version: "V0.0.6-alpha",
     date: "2026-04-09",
     title: "Battle Sidebar & Round Reports",

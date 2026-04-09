@@ -18,6 +18,7 @@ export {
   HiddenPrincess,
   LittlePiggy,
   Teacups,
+  PumpkinMouse,
   EvilRoyal,
   PoisonQueen,
   RoyalFlyCatch,

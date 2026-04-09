@@ -17,6 +17,7 @@ export interface PotionSlot {
   name: string;
   stock: number;
   potency: number;
+  price: number;
 }
 
 /** Base fields shared by every card. */

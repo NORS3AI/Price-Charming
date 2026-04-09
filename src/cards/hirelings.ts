@@ -9,7 +9,7 @@ export const Hag: HirelingCard = {
   tier: 1,
   tribe: "mischief",
   description: "A crooked old hag with dubious potions.",
-  potions: [{ name: "Murky Brew", stock: 2, potency: 1 }],
+  potions: [{ name: "Murky Brew", stock: 2, potency: 1, price: 1 }],
   castTime: 3,
   transformable: true,
 };
@@ -21,7 +21,7 @@ export const Frog: HirelingCard = {
   tier: 1,
   tribe: "woodland",
   description: "A small frog hoping for a kiss.",
-  potions: [{ name: "Swamp Sip", stock: 1, potency: 1 }],
+  potions: [{ name: "Swamp Sip", stock: 2, potency: 1, price: 1 }],
   castTime: 2,
   transformable: true,
 };
@@ -33,12 +33,50 @@ export const HiddenPrincess: HirelingCard = {
   tier: 1,
   tribe: "royalty",
   description: "A princess in disguise, waiting to be revealed.",
-  potions: [{ name: "Secret Elixir", stock: 1, potency: 1 }],
+  potions: [{ name: "Secret Elixir", stock: 2, potency: 1, price: 1 }],
   castTime: 4,
   transformable: true,
 };
 
-/** Higher-tier transformation results (not directly purchasable at low tiers). */
+/** Tier-1 shop hirelings (non-transformable). */
+
+export const LittlePiggy: HirelingCard = {
+  id: "little-piggy",
+  name: "Little Piggy",
+  kind: "hireling",
+  tier: 1,
+  tribe: "culinary",
+  description: "Sniffs out the finest ingredients.",
+  potions: [{ name: "Truffle Tonic", stock: 3, potency: 1, price: 1 }],
+  castTime: 2,
+  transformable: false,
+};
+
+export const Teacups: HirelingCard = {
+  id: "teacups",
+  name: "Teacups",
+  kind: "hireling",
+  tier: 1,
+  tribe: "enchanted",
+  description: "Pours enchanted tea.",
+  potions: [{ name: "Tea Brew", stock: 4, potency: 1, price: 1 }],
+  castTime: 3,
+  transformable: false,
+};
+
+export const PumpkinMouse: HirelingCard = {
+  id: "pumpkin-mouse",
+  name: "Pumpkin Mouse",
+  kind: "hireling",
+  tier: 1,
+  tribe: "woodland",
+  description: "A quick little brewer with surprisingly potent pumpkin potions.",
+  potions: [{ name: "Pumpkin Juice", stock: 2, potency: 2, price: 1 }],
+  castTime: 3,
+  transformable: false,
+};
+
+/** Higher-tier transformation results (not directly purchasable). */
 
 export const EvilRoyal: HirelingCard = {
   id: "evil-royal",
@@ -48,8 +86,8 @@ export const EvilRoyal: HirelingCard = {
   tribe: "royalty",
   description: "A royal with a wicked streak and potent poisons.",
   potions: [
-    { name: "Royal Venom", stock: 3, potency: 3 },
-    { name: "Crown Toxin", stock: 2, potency: 2 },
+    { name: "Royal Venom", stock: 3, potency: 3, price: 2 },
+    { name: "Crown Toxin", stock: 2, potency: 2, price: 2 },
   ],
   castTime: 3,
   transformable: false,
@@ -63,8 +101,8 @@ export const PoisonQueen: HirelingCard = {
   tribe: "mischief",
   description: "She brews the deadliest draughts in the realm.",
   potions: [
-    { name: "Queen's Bane", stock: 2, potency: 4 },
-    { name: "Apple Extract", stock: 3, potency: 2 },
+    { name: "Queen's Bane", stock: 2, potency: 4, price: 2 },
+    { name: "Apple Extract", stock: 3, potency: 2, price: 2 },
   ],
   castTime: 4,
   transformable: false,
@@ -78,8 +116,8 @@ export const RoyalFlyCatch: HirelingCard = {
   tribe: "woodland",
   description: "A regal amphibian with a lightning-fast tongue.",
   potions: [
-    { name: "Fly Fizz", stock: 4, potency: 2 },
-    { name: "Tongue Tonic", stock: 2, potency: 3 },
+    { name: "Fly Fizz", stock: 4, potency: 2, price: 2 },
+    { name: "Tongue Tonic", stock: 2, potency: 3, price: 2 },
   ],
   castTime: 1,
   transformable: false,
@@ -93,8 +131,8 @@ export const WartCoveredPrince: HirelingCard = {
   tribe: "royalty",
   description: "A prince cursed with warts but blessed with charm.",
   potions: [
-    { name: "Wartbrew", stock: 3, potency: 2 },
-    { name: "Prince's Perfume", stock: 2, potency: 3 },
+    { name: "Wartbrew", stock: 3, potency: 2, price: 2 },
+    { name: "Prince's Perfume", stock: 2, potency: 3, price: 2 },
   ],
   castTime: 3,
   transformable: false,
@@ -108,8 +146,8 @@ export const SnowWhite: HirelingCard = {
   tribe: "royalty",
   description: "Fairest of them all, her potions enchant every customer.",
   potions: [
-    { name: "Mirror Mist", stock: 3, potency: 3 },
-    { name: "Apple Blossom Dew", stock: 3, potency: 3 },
+    { name: "Mirror Mist", stock: 3, potency: 3, price: 2 },
+    { name: "Apple Blossom Dew", stock: 3, potency: 3, price: 2 },
   ],
   castTime: 3,
   transformable: false,
@@ -123,36 +161,10 @@ export const MasterPieMaker: HirelingCard = {
   tribe: "culinary",
   description: "Bakes potions into irresistible pies.",
   potions: [
-    { name: "Pie Potion", stock: 4, potency: 2 },
-    { name: "Crust Crumble Elixir", stock: 3, potency: 2 },
+    { name: "Pie Potion", stock: 4, potency: 2, price: 2 },
+    { name: "Crust Crumble Elixir", stock: 3, potency: 2, price: 2 },
   ],
   castTime: 2,
-  transformable: false,
-};
-
-/** Tier-1 hirelings available in the shop. */
-
-export const LittlePiggy: HirelingCard = {
-  id: "little-piggy",
-  name: "Little Piggy",
-  kind: "hireling",
-  tier: 1,
-  tribe: "culinary",
-  description: "Sniffs out the finest ingredients.",
-  potions: [{ name: "Truffle Tonic", stock: 3, potency: 1 }],
-  castTime: 2,
-  transformable: false,
-};
-
-export const Teacups: HirelingCard = {
-  id: "teacups",
-  name: "Teacups",
-  kind: "hireling",
-  tier: 1,
-  tribe: "enchanted",
-  description: "Pours enchanted tea.",
-  potions: [{ name: "Tea Brew", stock: 4, potency: 1 }],
-  castTime: 3,
   transformable: false,
 };
 
@@ -166,8 +178,8 @@ export const BigBadWolf: HirelingCard = {
   tribe: "culinary",
   description: "Huffs, puffs, and brews.",
   potions: [
-    { name: "Huff Brew", stock: 4, potency: 3 },
-    { name: "Puff Potion", stock: 3, potency: 3 },
+    { name: "Huff Brew", stock: 4, potency: 3, price: 2 },
+    { name: "Puff Potion", stock: 3, potency: 3, price: 2 },
   ],
   castTime: 2,
   transformable: false,
@@ -181,8 +193,8 @@ export const MadameTeapot: HirelingCard = {
   tribe: "enchanted",
   description: "Pours potions with elegance.",
   potions: [
-    { name: "Grand Tea", stock: 5, potency: 3 },
-    { name: "Earl Elixir", stock: 4, potency: 2 },
+    { name: "Grand Tea", stock: 5, potency: 3, price: 2 },
+    { name: "Earl Elixir", stock: 4, potency: 2, price: 2 },
   ],
   castTime: 2,
   transformable: false,
@@ -194,6 +206,7 @@ export const ALL_HIRELINGS: HirelingCard[] = [
   HiddenPrincess,
   LittlePiggy,
   Teacups,
+  PumpkinMouse,
   EvilRoyal,
   PoisonQueen,
   RoyalFlyCatch,
