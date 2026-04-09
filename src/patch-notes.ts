@@ -13,6 +13,18 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.0.6-alpha",
+    date: "2026-04-09",
+    title: "Battle Sidebar & Round Reports",
+    changes: [
+      "Customer sidebar during battle: shows won/lost/pending customers as icons on the right edge.",
+      "Hover over any completed customer icon to see detailed stats (your sales vs opponent, gold earned, rep change, budget).",
+      "Last Round Report button appears in the shop after your first battle.",
+      "Report modal shows: round summary, every customer result with detailed stats, your full board stats, opponent's full board stats.",
+      "All potion prices and potency visible in the report for analysis.",
+    ],
+  },
+  {
     version: "V0.0.5-alpha",
     date: "2026-04-09",
     title: "Drag & Drop, Tooltips, Potion Pricing",

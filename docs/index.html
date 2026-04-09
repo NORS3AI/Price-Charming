@@ -141,6 +141,31 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 #game-over h1{font-size:2.5rem;margin-bottom:.5rem}
 #game-over .go-sub{color:var(--parch-d);font-size:1.1rem;margin-bottom:2rem}
 
+/* CUSTOMER SIDEBAR (battle results) */
+#cust-sidebar{position:fixed;right:0;top:60px;width:52px;display:flex;flex-direction:column;gap:4px;padding:6px;z-index:200}
+.cust-icon{width:40px;height:40px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:default;border:2px solid;transition:transform .15s}
+.cust-icon:hover{transform:scale(1.2);z-index:201}
+.cust-icon.cust-won{border-color:var(--green);background:rgba(58,122,58,.3)}
+.cust-icon.cust-lost{border-color:var(--red);background:rgba(160,48,48,.3)}
+.cust-icon.cust-pending{border-color:var(--gold-dim);background:rgba(74,32,96,.3);opacity:.4}
+
+/* ROUND REPORT MODAL */
+#report-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
+#report{background:linear-gradient(135deg,var(--purple),var(--deep));border:3px solid var(--gold);border-radius:12px;padding:1.5rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
+#report h2{color:var(--gold);margin-bottom:.75rem;font-size:1.3rem;text-align:center}
+.report-section{margin-bottom:1rem}
+.report-section h3{color:var(--gold-dim);font-size:.9rem;margin-bottom:.4rem;border-bottom:1px solid var(--gold-dim);padding-bottom:.2rem}
+.report-cust{display:flex;align-items:center;gap:.5rem;padding:.4rem;border-radius:6px;margin-bottom:.3rem;font-size:.8rem}
+.report-cust.rpt-won{background:rgba(58,122,58,.15);border-left:3px solid var(--green)}
+.report-cust.rpt-lost{background:rgba(160,48,48,.15);border-left:3px solid var(--red)}
+.report-cust .rpt-emoji{font-size:1.1rem}
+.report-cust .rpt-name{color:var(--parch);font-weight:bold;min-width:100px}
+.report-cust .rpt-detail{color:var(--parch-d);font-size:.75rem}
+.report-board{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem}
+.report-board .rpt-card{background:rgba(74,32,96,.3);border:1px solid var(--gold-dim);border-radius:6px;padding:.4rem;font-size:.7rem;width:130px}
+.report-board .rpt-card .rpt-card-name{color:var(--gold);font-weight:bold}
+.report-board .rpt-card .rpt-card-stat{color:var(--parch-d)}
+
 /* HAND */
 #hand-area{background:rgba(58,26,96,.25);border:2px solid #7a5aaa;border-radius:10px;padding:.75rem;margin-top:.5rem}
 #hand-area .hand-title{color:#b090d0;font-size:.85rem;font-weight:bold;margin-bottom:.4rem;text-align:center}
@@ -262,6 +287,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
       <div id="shop-cards"></div>
       <div id="shop-btns">
         <button class="btn btn-sm" onclick="refreshShop()">Refresh (1 coin)</button>
+        <button class="btn btn-sm" id="report-btn" style="display:none" onclick="openReport()">Last Round Report</button>
         <button class="btn btn-sm btn-blue" onclick="startBattle()">Start Battle</button>
       </div>
     </div>
@@ -280,8 +306,20 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   </div>
 </div>
 
+<!-- CUSTOMER SIDEBAR (battle) -->
+<div id="cust-sidebar"></div>
+
 <!-- TOOLTIP (follows mouse) -->
 <div class="tooltip" id="tooltip"></div>
+
+<!-- ROUND REPORT -->
+<div id="report-overlay" onclick="closeReport()">
+  <div id="report" onclick="event.stopPropagation()">
+    <h2>Last Round Report</h2>
+    <div id="report-content"></div>
+    <div style="text-align:center;margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div>
+  </div>
+</div>
 
 <!-- MODAL -->
 <div id="modal-overlay" onclick="closeModal()">
@@ -370,6 +408,8 @@ function resetState() {
     battleTimer:null,battleSpeed:100,
     roundGold:0,roundRep:0,custWins:0,custLosses:0,
     pendingSpell:null,
+    custResults:[], // {customer,winner,playerSat,oppSat,playerBoard,oppBoard}
+    lastReport:null, // saved after each battle for viewing in shop
   };
 }
 resetState();
@@ -538,7 +578,7 @@ function closeModal(){document.getElementById('modal-overlay').style.display='no
 function startBattle(){
   if(G.board.length===0){showFloat(document.getElementById('shop-btns'),'Hire at least one hireling!','var(--red)');return}
   G.phase='battle';generateOpponent();generateCustomers();
-  G.custIdx=0;G.roundGold=0;G.roundRep=0;G.custWins=0;G.custLosses=0;
+  G.custIdx=0;G.roundGold=0;G.roundRep=0;G.custWins=0;G.custLosses=0;G.custResults=[];
   G.board.forEach(h=>{h._timer=h.castTime;h._potIdx=0});
   G.opp.board.forEach(h=>{h._timer=h.castTime;h._potIdx=0});
   renderAll();loadNextCustomer();
@@ -624,24 +664,35 @@ function allExhausted(board){return board.every(isExhausted)}
 
 function customerDone(winner,cust){
   clearInterval(G.battleTimer);const res=document.getElementById('customer-result');
+  let goldEarned=0;
   if(winner==='player'){
-    // Gold earned scales with potion prices
     const avgPrice=G.board.length>0?G.board.reduce((s,h)=>s+h.potions.reduce((ps,p)=>ps+(p.price||1),0),0)/G.board.reduce((s,h)=>s+h.potions.length,0):1;
-    const goldBonus=Math.round(cust.gold*Math.min(1.5,avgPrice));
-    G.roundGold+=goldBonus;G.roundRep+=cust.rep;G.custWins++;G.coins+=goldBonus;
-    res.innerHTML=`<span style="color:var(--green)">You won ${cust.name}'s business! +${goldBonus} coins, +${cust.rep} rep</span>`;
-    addLog(`<span class="log-gold">Won ${cust.name}: +${goldBonus} coins, +${cust.rep} rep</span>`);playCustomerWin();
+    goldEarned=Math.round(cust.gold*Math.min(1.5,avgPrice));
+    G.roundGold+=goldEarned;G.roundRep+=cust.rep;G.custWins++;G.coins+=goldEarned;
+    res.innerHTML=`<span style="color:var(--green)">You won ${cust.name}'s business! +${goldEarned} coins, +${cust.rep} rep</span>`;
+    addLog(`<span class="log-gold">Won ${cust.name}: +${goldEarned} coins, +${cust.rep} rep</span>`);playCustomerWin();
   } else {
     G.roundRep-=Math.ceil(cust.rep/2);G.custLosses++;
     res.innerHTML=`<span style="color:var(--red)">Opponent won ${cust.name}! -${Math.ceil(cust.rep/2)} rep</span>`;
     addLog(`<span class="log-opp">Lost ${cust.name}: -${Math.ceil(cust.rep/2)} rep</span>`);playCustomerLose();
   }
+  // Record result
+  G.custResults.push({customer:{...cust},winner,playerSat:G.playerSat,oppSat:G.oppSat,goldEarned,repChange:winner==='player'?cust.rep:-Math.ceil(cust.rep/2)});
+  renderCustSidebar();
   updateTopBar();
   setTimeout(()=>{G.custIdx++;if(G.custIdx<G.customers.length)loadNextCustomer();else endBattle()},1500);
 }
 
 function endBattle(){
   clearInterval(G.battleTimer);G.phase='round_end';G.reputation+=G.roundRep;
+  // Save report for viewing in shop phase
+  G.lastReport={
+    round:G.round,custResults:[...G.custResults],
+    custWins:G.custWins,custLosses:G.custLosses,
+    roundGold:G.roundGold,roundRep:G.roundRep,
+    board:G.board.map(h=>({name:h.name,emoji:h.emoji,tribe:h.tribe,tier:h.tier,potions:h.potions.map(p=>({...p})),castTime:h.castTime})),
+    oppBoard:G.opp.board.map(h=>({name:h.name,emoji:h.emoji,tribe:h.tribe,tier:h.tier,potions:h.potions.map(p=>({...p})),castTime:h.castTime})),
+  };
   G.board.forEach(h=>h.potions.forEach(p=>{
     const orig=HIRELINGS_ALL.find(o=>o.id===h.id);
     if(orig){const op=orig.potions.find(op2=>op2.name===p.name);if(op)p.stock=op.stock}
@@ -677,20 +728,24 @@ function renderAll(){
     playerSec=document.getElementById('player-section'),phaseLabel=document.getElementById('phase-label'),
     handArea=document.getElementById('hand-area'),potionPanel=document.getElementById('potion-panel');
 
+  const sidebar=document.getElementById('cust-sidebar');
   shopArea.style.display='none';oppSec.style.display='none';custArea.style.display='none';
   logEl.style.display='none';roundEnd.style.display='none';gameOverEl.style.display='none';
   playerSec.style.display='block';handArea.style.display='none';potionPanel.style.display='none';
+  sidebar.style.display='none';
 
   if(G.phase==='shopping'){
     phaseLabel.textContent='Shopping Phase — Round '+G.round;
     shopArea.style.display='block';
     if(G.hand.length>0)handArea.style.display='block';
     if(G.board.length>0)potionPanel.style.display='block';
+    document.getElementById('report-btn').style.display=G.lastReport?'inline-block':'none';
     renderBoard('player-board',G.board,true);renderShop();renderHand();renderPotionPanel();
   } else if(G.phase==='battle'){
     phaseLabel.textContent='Battle Phase — Round '+G.round;
     oppSec.style.display='block';custArea.style.display='block';logEl.style.display='block';
-    renderBoard('player-board',G.board,false);renderBoard('opp-board',G.opp.board,false);renderBattle();
+    sidebar.style.display='flex';
+    renderBoard('player-board',G.board,false);renderBoard('opp-board',G.opp.board,false);renderBattle();renderCustSidebar();
   } else if(G.phase==='round_end'){
     phaseLabel.textContent='Round '+G.round+' Complete';roundEnd.style.display='block';playerSec.style.display='none';
     const t=document.getElementById('round-end-title'),r=document.getElementById('round-end-results');
@@ -836,6 +891,91 @@ function updateTopBar(){
   document.getElementById('rep-min').textContent='-'+G.repMax;
   document.getElementById('rep-max-label').textContent=G.repMax;
 }
+
+// ============================================================
+// CUSTOMER SIDEBAR
+// ============================================================
+function renderCustSidebar(){
+  const el=document.getElementById('cust-sidebar');el.innerHTML='';
+  // Show all customers for this round: completed ones + pending
+  G.customers.forEach((cust,i)=>{
+    const icon=document.createElement('div');
+    const result=G.custResults[i];
+    if(result){
+      icon.className='cust-icon '+(result.winner==='player'?'cust-won':'cust-lost');
+      icon.textContent=cust.emoji;
+      setupCustTooltip(icon,result);
+    } else {
+      icon.className='cust-icon cust-pending';
+      icon.textContent=cust.emoji;
+    }
+    el.appendChild(icon);
+  });
+}
+
+function setupCustTooltip(el,result){
+  el.addEventListener('mouseenter',e=>{
+    const c=result.customer;
+    let html=`<div class="tt-name">${c.emoji} ${c.name}</div>`;
+    html+=`<div class="tt-stat"><span class="tt-label">Result:</span> <span style="color:${result.winner==='player'?'var(--green)':'var(--red)'}">${result.winner==='player'?'Won':'Lost'}</span></div>`;
+    html+=`<div class="tt-stat"><span class="tt-label">Your sales:</span> ${result.playerSat} / ${c.threshold}</div>`;
+    html+=`<div class="tt-stat"><span class="tt-label">Opp sales:</span> ${result.oppSat} / ${c.threshold}</div>`;
+    if(result.winner==='player'){
+      html+=`<div class="tt-stat"><span class="tt-label">Gold earned:</span> <span style="color:var(--gold)">${result.goldEarned}g</span></div>`;
+    }
+    html+=`<div class="tt-stat"><span class="tt-label">Rep change:</span> <span style="color:${result.repChange>=0?'var(--green)':'var(--red)'}">${result.repChange>=0?'+':''}${result.repChange}</span></div>`;
+    html+=`<div class="tt-stat"><span class="tt-label">Budget:</span> ${c.budget}g per potion</div>`;
+    tooltipEl.innerHTML=html;tooltipEl.style.display='block';tooltipVisible=true;moveTooltip(e);
+  });
+  el.addEventListener('mousemove',e=>moveTooltip(e));
+  el.addEventListener('mouseleave',hideTooltip);
+}
+
+// ============================================================
+// ROUND REPORT
+// ============================================================
+function openReport(){
+  if(!G.lastReport)return;
+  const r=G.lastReport;
+  let html=`<div class="report-section"><h3>Round ${r.round} Summary</h3>
+    <div style="color:var(--parch-d);font-size:.85rem;margin-bottom:.5rem">
+      Customers Won: <strong style="color:var(--green)">${r.custWins}</strong> · Lost: <strong style="color:var(--red)">${r.custLosses}</strong> · Gold: <strong style="color:var(--gold)">${r.roundGold}</strong> · Rep: <strong style="color:${r.roundRep>=0?'var(--green)':'var(--red)'}">${r.roundRep>=0?'+':''}${r.roundRep}</strong>
+    </div></div>`;
+
+  html+=`<div class="report-section"><h3>Customers</h3>`;
+  r.custResults.forEach(cr=>{
+    const c=cr.customer;const won=cr.winner==='player';
+    html+=`<div class="report-cust ${won?'rpt-won':'rpt-lost'}">
+      <span class="rpt-emoji">${c.emoji}</span>
+      <span class="rpt-name">${c.name}</span>
+      <span class="rpt-detail">You: ${cr.playerSat}/${c.threshold} · Opp: ${cr.oppSat}/${c.threshold} · ${won?'+'+cr.goldEarned+'g, +'+c.rep+' rep':''+cr.repChange+' rep'}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  html+=`<div class="report-section"><h3>Your Board</h3><div class="report-board">`;
+  r.board.forEach(h=>{
+    html+=`<div class="rpt-card"><div class="rpt-card-name">${h.emoji} ${h.name}</div>
+      <div class="rpt-card-stat">${h.tribe} · T${h.tier} · ${h.castTime}s cast</div>
+      ${h.potions.map(p=>`<div class="rpt-card-stat">${p.name}: ${p.potency}✦ x${p.stock} @ ${p.price||1}g</div>`).join('')}
+    </div>`;
+  });
+  html+=`</div></div>`;
+
+  html+=`<div class="report-section"><h3>Opponent's Board</h3><div class="report-board">`;
+  r.oppBoard.forEach(h=>{
+    html+=`<div class="rpt-card"><div class="rpt-card-name">${h.emoji} ${h.name}</div>
+      <div class="rpt-card-stat">${h.tribe} · T${h.tier} · ${h.castTime}s cast</div>
+      ${h.potions.map(p=>`<div class="rpt-card-stat">${p.name}: ${p.potency}✦ x${p.stock}</div>`).join('')}
+    </div>`;
+  });
+  html+=`</div></div>`;
+
+  document.getElementById('report-content').innerHTML=html;
+  document.getElementById('report-overlay').style.display='flex';
+}
+
+function closeReport(){document.getElementById('report-overlay').style.display='none'}
 
 // ============================================================
 // DRAG AND DROP
