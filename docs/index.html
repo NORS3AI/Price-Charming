@@ -125,6 +125,16 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 /* LOGO */
 #title-logo{max-width:400px;width:80%;margin-bottom:1rem;border-radius:12px}
 
+/* TITLE PATCH NOTES */
+#title-patch{background:rgba(0,0,0,.3);border:1px solid var(--gold-dim);border-radius:8px;padding:.75rem 1.25rem;max-width:480px;width:90%;margin-bottom:1.5rem;text-align:left;max-height:200px;overflow-y:auto}
+#title-patch .tp-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem}
+#title-patch .tp-ver{color:var(--gold);font-weight:bold;font-size:.95rem}
+#title-patch .tp-date{color:var(--parch-d);font-size:.75rem}
+#title-patch .tp-title{color:var(--parch);font-weight:bold;font-size:.85rem;margin-bottom:.3rem}
+#title-patch ul{list-style:none;padding:0;margin:0}
+#title-patch li{padding:2px 0 2px 1rem;position:relative;color:var(--parch-d);font-size:.75rem;line-height:1.4}
+#title-patch li::before{content:"\2726";position:absolute;left:0;color:var(--gold-dim)}
+
 @keyframes sellPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes fadeUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-30px)}}
 .float-text{position:absolute;pointer-events:none;font-weight:bold;font-size:.9rem;animation:fadeUp .8s forwards;z-index:500}
@@ -138,6 +148,21 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <h1 id="title-fallback" style="display:none">Price Charming</h1>
   <div class="sub">A fairy-tale auto-battler card game</div>
   <div class="ver">V0.0.3-alpha</div>
+  <div id="title-patch">
+    <div class="tp-header">
+      <span class="tp-ver">V0.0.3-alpha</span>
+      <span class="tp-date">2026-04-09</span>
+    </div>
+    <div class="tp-title">Hand System, Sound FX &amp; Balance</div>
+    <ul>
+      <li>Transformation-only cards no longer appear in the shop — only via Wishing Star.</li>
+      <li>Hand system: spells go to hand (up to 5). Play them anytime during shop phase.</li>
+      <li>Opponent scaling: strength now matches player board power.</li>
+      <li>Reputation bar shows current value and goal numbers.</li>
+      <li>Logo support on title screen.</li>
+      <li>Sound effects for buy, sell, refresh, spells, battle events.</li>
+    </ul>
+  </div>
   <button class="btn" onclick="startGame()">Play</button>
 </div>
 
