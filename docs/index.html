@@ -116,6 +116,15 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 #game-over h1{font-size:2.5rem;margin-bottom:.5rem}
 #game-over .go-sub{color:var(--parch-d);font-size:1.1rem;margin-bottom:2rem}
 
+/* HAND */
+#hand-area{background:rgba(58,26,96,.25);border:2px solid #7a5aaa;border-radius:10px;padding:.75rem;margin-top:.5rem}
+#hand-area .hand-title{color:#b090d0;font-size:.85rem;font-weight:bold;margin-bottom:.4rem;text-align:center}
+#hand-cards{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;min-height:50px}
+#hand-cards .card{width:120px;min-height:90px}
+
+/* LOGO */
+#title-logo{max-width:400px;width:80%;margin-bottom:1rem;border-radius:12px}
+
 @keyframes sellPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes fadeUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-30px)}}
 .float-text{position:absolute;pointer-events:none;font-weight:bold;font-size:.9rem;animation:fadeUp .8s forwards;z-index:500}
@@ -125,9 +134,10 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 
 <!-- TITLE SCREEN -->
 <div id="title-screen">
-  <h1>Price Charming</h1>
+  <img id="title-logo" src="assets/logo.jpg" alt="Price Charming" onerror="this.style.display='none';document.getElementById('title-fallback').style.display='block'">
+  <h1 id="title-fallback" style="display:none">Price Charming</h1>
   <div class="sub">A fairy-tale auto-battler card game</div>
-  <div class="ver">V0.0.2-alpha</div>
+  <div class="ver">V0.0.3-alpha</div>
   <button class="btn" onclick="startGame()">Play</button>
 </div>
 
@@ -140,10 +150,14 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
       <div><span class="label">Coins </span><span class="val" id="coin-num">3</span></div>
     </div>
     <div>
-      <div id="rep-bar-wrap">
-        <div id="rep-bar-fill" style="width:50%"></div>
-        <div id="rep-bar-mid"></div>
-        <div id="rep-text">0</div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span class="label" id="rep-min" style="color:var(--red);font-weight:bold;font-size:.8rem">-30</span>
+        <div id="rep-bar-wrap">
+          <div id="rep-bar-fill" style="width:50%"></div>
+          <div id="rep-bar-mid"></div>
+          <div id="rep-text">0</div>
+        </div>
+        <span class="label" id="rep-max-label" style="color:var(--green);font-weight:bold;font-size:.8rem">30</span>
       </div>
     </div>
   </div>
@@ -185,6 +199,12 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <!-- BATTLE LOG -->
     <div id="battle-log" style="display:none"></div>
 
+    <!-- HAND (spells held for later use) -->
+    <div id="hand-area" style="display:none">
+      <div class="hand-title">Your Hand (spells — click to cast during shop phase)</div>
+      <div id="hand-cards"></div>
+    </div>
+
     <!-- SHOP (shopping phase only) -->
     <div id="shop-area">
       <div class="shop-title">Fairy Godmother's Shop</div>
@@ -225,13 +245,19 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 // ============================================================
 // CARD DEFINITIONS
 // ============================================================
-const HIRELINGS = [
+// Shopable hirelings — transformation results are NOT in this pool
+const HIRELINGS_SHOP = [
   {id:'hag',name:'Hag',emoji:'🧙‍♀️',tribe:'mischief',tier:1,desc:'Dubious brews.',potions:[{name:'Murky Brew',stock:2,potency:1}],castTime:3,transformable:true,cost:2},
   {id:'frog',name:'Frog',emoji:'🐸',tribe:'woodland',tier:1,desc:'Hoping for a kiss.',potions:[{name:'Swamp Sip',stock:2,potency:1}],castTime:2,transformable:true,cost:2},
   {id:'hidden-princess',name:'Hidden Princess',emoji:'👸',tribe:'royalty',tier:1,desc:'Waiting to be revealed.',potions:[{name:'Secret Elixir',stock:2,potency:1}],castTime:4,transformable:true,cost:2},
   {id:'little-piggy',name:'Little Piggy',emoji:'🐷',tribe:'culinary',tier:1,desc:'Sniffs out ingredients.',potions:[{name:'Truffle Tonic',stock:3,potency:1}],castTime:2,transformable:false,cost:2},
   {id:'teacups',name:'Teacups',emoji:'🫖',tribe:'enchanted',tier:1,desc:'Pours enchanted tea.',potions:[{name:'Tea Brew',stock:4,potency:1}],castTime:3,transformable:false,cost:2},
   {id:'pumpkin-mouse',name:'Pumpkin Mouse',emoji:'🐭',tribe:'woodland',tier:1,desc:'Quick little brewer.',potions:[{name:'Pumpkin Juice',stock:2,potency:2}],castTime:3,transformable:false,cost:3},
+];
+
+// All hirelings including transformation results (for opponent generation / stock restore)
+const HIRELINGS_ALL = [
+  ...HIRELINGS_SHOP,
   {id:'evil-royal',name:'Evil Royal',emoji:'👑',tribe:'royalty',tier:2,desc:'Wicked & potent.',potions:[{name:'Royal Venom',stock:3,potency:3},{name:'Crown Toxin',stock:2,potency:2}],castTime:3,transformable:false,cost:5},
   {id:'poison-queen',name:'Poison Queen',emoji:'🍎',tribe:'mischief',tier:2,desc:'Deadliest draughts.',potions:[{name:"Queen's Bane",stock:2,potency:4},{name:'Apple Extract',stock:3,potency:2}],castTime:4,transformable:false,cost:5},
   {id:'royal-fly-catch',name:'Royal Fly Catch',emoji:'🐸',tribe:'woodland',tier:2,desc:'Lightning tongue.',potions:[{name:'Fly Fizz',stock:4,potency:2},{name:'Tongue Tonic',stock:2,potency:3}],castTime:1,transformable:false,cost:5},
@@ -281,7 +307,7 @@ let G = {};
 function resetState() {
   G = {
     phase:'title',round:1,coins:3,reputation:0,repMax:30,
-    board:[],shop:[],spellHand:[],
+    board:[],shop:[],hand:[], // hand holds up to 5 spell cards
     opp:{board:[]},
     customers:[],custIdx:0,
     playerSat:0,oppSat:0,
@@ -294,6 +320,92 @@ resetState();
 
 function getTier(round){return round<=3?1:round<=6?2:3}
 function deepCopyCard(c){return {...c,potions:c.potions.map(p=>({...p}))}}
+
+// ============================================================
+// SOUND EFFECTS (Web Audio API — no external files needed)
+// ============================================================
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx=null;
+function ensureAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
+
+function playBuy(){
+  ensureAudio();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='triangle';o.frequency.setValueAtTime(600,audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(900,audioCtx.currentTime+.1);
+  g.gain.setValueAtTime(.15,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.2);
+  o.start();o.stop(audioCtx.currentTime+.2);
+}
+
+function playSell(){
+  ensureAudio();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sine';o.frequency.setValueAtTime(400,audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(200,audioCtx.currentTime+.15);
+  g.gain.setValueAtTime(.12,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.15);
+  o.start();o.stop(audioCtx.currentTime+.15);
+}
+
+function playPotionSell(){
+  ensureAudio();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sine';o.frequency.setValueAtTime(500+Math.random()*200,audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(800+Math.random()*200,audioCtx.currentTime+.08);
+  g.gain.setValueAtTime(.08,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.12);
+  o.start();o.stop(audioCtx.currentTime+.12);
+}
+
+function playCustomerWin(){
+  ensureAudio();
+  [0,.1,.2].forEach((d,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='triangle';o.frequency.setValueAtTime([523,659,784][i],audioCtx.currentTime+d);
+    g.gain.setValueAtTime(.12,audioCtx.currentTime+d);
+    g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d+.2);
+    o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+.2);
+  });
+}
+
+function playCustomerLose(){
+  ensureAudio();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sawtooth';o.frequency.setValueAtTime(300,audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(100,audioCtx.currentTime+.3);
+  g.gain.setValueAtTime(.08,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.3);
+  o.start();o.stop(audioCtx.currentTime+.3);
+}
+
+function playRefresh(){
+  ensureAudio();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sine';o.frequency.setValueAtTime(800,audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(400,audioCtx.currentTime+.15);
+  g.gain.setValueAtTime(.1,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.15);
+  o.start();o.stop(audioCtx.currentTime+.15);
+}
+
+function playSpellCast(){
+  ensureAudio();
+  [0,.05,.1,.15].forEach((d,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='sine';o.frequency.setValueAtTime(600+i*150,audioCtx.currentTime+d);
+    g.gain.setValueAtTime(.1,audioCtx.currentTime+d);
+    g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d+.15);
+    o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+.15);
+  });
+}
 
 // ============================================================
 // GAME FLOW
@@ -316,7 +428,7 @@ function enterShopping(){
 
 function generateShop(){
   const tier=getTier(G.round);
-  const pool=HIRELINGS.filter(h=>h.tier<=tier);
+  const pool=HIRELINGS_SHOP.filter(h=>h.tier<=tier);
   G.shop=[];
   for(let i=0;i<4;i++){
     if(Math.random()<0.3 && SPELLS.length>0){
@@ -333,6 +445,7 @@ function generateShop(){
 function refreshShop(){
   if(G.coins<1){showFloat(document.getElementById('shop-btns'),'No coins!','var(--red)');return}
   G.coins--;
+  playRefresh();
   generateShop();
   updateTopBar();
   renderShop();
@@ -343,11 +456,13 @@ function buyCard(idx){
   if(!item)return;
   if(G.coins<item.cost){showFloat(document.getElementById('shop-cards'),'Not enough coins!','var(--red)');return}
   if(item.type==='spell'){
+    if(G.hand.length>=5){showFloat(document.getElementById('shop-cards'),'Hand full! (max 5)','var(--red)');return}
     G.coins-=item.cost;
     G.shop[idx]=null;
-    handleSpell(item);
+    G.hand.push({...item});
+    playBuy();
     updateTopBar();
-    renderShop();
+    renderAll();
     return;
   }
   // hireling
@@ -357,6 +472,7 @@ function buyCard(idx){
   card._timer=card.castTime;
   G.board.push(card);
   G.shop[idx]=null;
+  playBuy();
   updateTopBar();
   renderAll();
 }
@@ -365,7 +481,17 @@ function sellCard(idx){
   if(G.phase!=='shopping')return;
   G.board.splice(idx,1);
   G.coins++;
+  playSell();
   updateTopBar();
+  renderAll();
+}
+
+function playHandSpell(handIdx){
+  if(G.phase!=='shopping')return;
+  const spell=G.hand[handIdx];
+  if(!spell)return;
+  G.hand.splice(handIdx,1);
+  handleSpell(spell);
   renderAll();
 }
 
@@ -419,6 +545,7 @@ function doTransform(hireling){
       newCard._timer=newCard.castTime;
       G.board[idx]=newCard;
       G.pendingSpell=null;
+      playSpellCast();
       closeModal();
       renderAll();
     };
@@ -430,12 +557,14 @@ function doTransform(hireling){
 function doPotencyBoost(hireling){
   hireling.potions.forEach(p=>p.potency++);
   G.pendingSpell=null;
+  playSpellCast();
   closeModal();renderAll();
 }
 
 function doSpeedBoost(hireling){
   hireling.castTime=Math.max(1,hireling.castTime-1);
   G.pendingSpell=null;
+  playSpellCast();
   closeModal();renderAll();
 }
 
@@ -478,13 +607,35 @@ function startBattle(){
 
 function generateOpponent(){
   const tier=getTier(G.round);
-  const pool=HIRELINGS.filter(h=>h.tier<=tier);
-  const count=Math.min(5,Math.floor(G.round/2)+1+Math.floor(Math.random()*2));
+  const pool=HIRELINGS_SHOP.filter(h=>h.tier<=tier);
+  // Measure player strength: total potency output
+  const playerStrength=G.board.reduce((s,h)=>s+h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0),0);
+  // Opponent should have comparable or slightly higher strength as rounds progress
+  const count=Math.min(5,Math.max(G.board.length,Math.floor(G.round/2)+1+Math.floor(Math.random()*2)));
   G.opp.board=[];
+  let oppStrength=0;
+  const targetStrength=playerStrength*(0.85+G.round*0.04+Math.random()*0.2);
   for(let i=0;i<count;i++){
     const h=deepCopyCard(pool[Math.floor(Math.random()*pool.length)]);
     h.type='hireling';h._timer=h.castTime;h._potIdx=0;
+    // Scale opponent potions based on round to keep up with player upgrades
+    const potencyBonus=Math.floor(G.round/4);
+    const stockBonus=Math.floor(G.round/5);
+    h.potions.forEach(p=>{p.potency+=potencyBonus;p.stock+=stockBonus});
     G.opp.board.push(h);
+    oppStrength+=h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0);
+  }
+  // If still too weak, buff the existing hirelings
+  if(oppStrength<targetStrength&&G.opp.board.length>0){
+    const deficit=targetStrength-oppStrength;
+    const perCard=Math.ceil(deficit/G.opp.board.length);
+    G.opp.board.forEach(h=>{
+      const mainPot=h.potions[0];
+      if(mainPot){
+        const bonus=Math.ceil(perCard/Math.max(1,mainPot.stock));
+        mainPot.potency+=bonus;
+      }
+    });
   }
 }
 
@@ -521,6 +672,7 @@ function battleTick(){
         G.playerSat+=pot.potency;
         addLog(`<span class="log-player">Your ${h.name}</span> sold ${pot.name} (+${pot.potency})`);
         flashCard(h.id,'player');
+        playPotionSell();
       }
       h._timer=h.castTime;
     }
@@ -574,10 +726,12 @@ function customerDone(winner,cust){
     G.coins+=cust.gold;
     res.innerHTML=`<span style="color:var(--green)">You won ${cust.name}'s business! +${cust.gold} coins, +${cust.rep} rep</span>`;
     addLog(`<span class="log-gold">Won ${cust.name}: +${cust.gold} coins, +${cust.rep} rep</span>`);
+    playCustomerWin();
   } else {
     G.roundRep-=Math.ceil(cust.rep/2);G.custLosses++;
     res.innerHTML=`<span style="color:var(--red)">Opponent won ${cust.name}! -${Math.ceil(cust.rep/2)} rep</span>`;
     addLog(`<span class="log-opp">Lost ${cust.name}: -${Math.ceil(cust.rep/2)} rep</span>`);
+    playCustomerLose();
   }
   updateTopBar();
   setTimeout(()=>{
@@ -596,13 +750,13 @@ function endBattle(){
   G.reputation+=G.roundRep;
   // restore potion stock for next round
   G.board.forEach(h=>h.potions.forEach(p=>{
-    const orig=HIRELINGS.find(o=>o.id===h.id);
+    const orig=HIRELINGS_ALL.find(o=>o.id===h.id);
     if(orig){
       const op=orig.potions.find(op2=>op2.name===p.name);
       if(op)p.stock=op.stock;
     } else {
-      // transformed card - reset to base
-      p.stock=p.stock+2; // rough restore
+      // custom/buffed card - restore to reasonable baseline
+      p.stock=Math.max(p.stock,2);
     }
   }));
   updateTopBar();
@@ -653,6 +807,7 @@ function renderAll(){
   const gameOverEl=document.getElementById('game-over');
   const playerSec=document.getElementById('player-section');
   const phaseLabel=document.getElementById('phase-label');
+  const handArea=document.getElementById('hand-area');
 
   // hide all
   shopArea.style.display='none';
@@ -662,12 +817,15 @@ function renderAll(){
   roundEnd.style.display='none';
   gameOverEl.style.display='none';
   playerSec.style.display='block';
+  handArea.style.display='none';
 
   if(G.phase==='shopping'){
     phaseLabel.textContent='Shopping Phase — Round '+G.round;
     shopArea.style.display='block';
+    if(G.hand.length>0)handArea.style.display='block';
     renderBoard('player-board',G.board,true);
     renderShop();
+    renderHand();
   } else if(G.phase==='battle'){
     phaseLabel.textContent='Battle Phase — Round '+G.round;
     oppSec.style.display='block';
@@ -801,6 +959,22 @@ function updateTopBar(){
   const repPct=((G.reputation+G.repMax)/(2*G.repMax))*100;
   document.getElementById('rep-bar-fill').style.width=Math.max(2,Math.min(98,repPct))+'%';
   document.getElementById('rep-text').textContent=G.reputation+' / '+G.repMax;
+  document.getElementById('rep-min').textContent='-'+G.repMax;
+  document.getElementById('rep-max-label').textContent=G.repMax;
+}
+
+function renderHand(){
+  const el=document.getElementById('hand-cards');
+  el.innerHTML='';
+  G.hand.forEach((spell,i)=>{
+    const card=document.createElement('div');
+    card.className='card spell-card clickable';
+    card.innerHTML=`<div class="emoji">${spell.emoji}</div>
+      <div class="c-name">${spell.name}</div>
+      <div class="c-info">${spell.desc}</div>`;
+    card.onclick=()=>playHandSpell(i);
+    el.appendChild(card);
+  });
 }
 
 // ============================================================

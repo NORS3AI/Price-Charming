@@ -13,6 +13,19 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.0.3-alpha",
+    date: "2026-04-09",
+    title: "Hand System, Sound FX & Balance",
+    changes: [
+      "Transformation-only cards (Evil Royal, Poison Queen, etc.) no longer appear in the shop. They can only be obtained via Wishing Star.",
+      "Hand system: spells purchased go to a hand (up to 5 cards). Play them anytime during the shop phase.",
+      "Opponent scaling: opponent strength now scales with player board strength and round progression.",
+      "Reputation bar now shows current value and goal numbers (e.g. -30 | 5 / 30 | 30).",
+      "Logo support: title screen loads logo.jpg from docs/assets/ folder (falls back to text title).",
+      "Sound effects: buy, sell, refresh, spell cast, potion sell, customer win/lose — all synthesized via Web Audio API.",
+    ],
+  },
+  {
     version: "V0.0.2-alpha",
     date: "2026-04-08",
     title: "Playable Game Mockup",
