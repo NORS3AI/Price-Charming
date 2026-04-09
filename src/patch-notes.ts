@@ -13,6 +13,21 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.0.5-alpha",
+    date: "2026-04-09",
+    title: "Drag & Drop, Tooltips, Potion Pricing",
+    changes: [
+      "Drag and drop: drag cards from shop to your board to buy, drag board cards away to sell.",
+      "Click-to-buy still works as a fallback.",
+      "Hover tooltips: hover over any card to see full details — description, potions, stats, upgrade/transform hints.",
+      "Potion panel: new panel during shopping shows all your hirelings' potions in a table.",
+      "Adjustable potion pricing: set each potion's price from 0g to 5g using +/- buttons.",
+      "Customer budget system: each customer has a budget tolerance. Overpriced potions are less effective.",
+      "Higher prices earn more gold when you win a customer, but risk losing the sale.",
+      "Customer info now shows their budget during battle.",
+    ],
+  },
+  {
     version: "V0.0.4-alpha",
     date: "2026-04-09",
     title: "Upgrade System",
