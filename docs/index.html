@@ -250,7 +250,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .float-text{position:absolute;pointer-events:none;font-weight:bold;font-size:.9rem;animation:fadeUp .8s forwards;z-index:500}
 
 /* ROUND TIMER */
-#round-timer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;align-items:center;justify-content:center}
+#round-timer-overlay{display:none;position:fixed;inset:0;background:transparent;z-index:800;pointer-events:none;align-items:center;justify-content:center}
 #round-timer-num{position:absolute;top:50%;left:50%;font-size:8rem;font-weight:bold;color:var(--gold);text-shadow:0 0 40px rgba(212,168,67,.6),0 0 80px rgba(212,168,67,.3);animation:countZoom 1s forwards;pointer-events:none}
 
 /* TUTORIAL BOX */
@@ -552,7 +552,7 @@ function nextRound(){
   if(G.round===13)G.repMax=25;if(G.round===14)G.repMax=20;if(G.round===15)G.repMax=15;
   if(G.reputation<-G.repMax)G.reputation=-G.repMax;
   if(G.reputation>G.repMax)G.reputation=G.repMax;
-  const timerSecs={easy:10,normal:5,hard:2,insane:0,tutorial:5}[G.difficulty]||5;
+  const timerSecs={easy:4,normal:3,hard:2,insane:0,tutorial:3}[G.difficulty]||3;
   if(timerSecs>0){showRoundTimer(timerSecs,()=>enterShopping())}else{enterShopping()}
 }
 
