@@ -408,7 +408,6 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <div id="shop-area"><div class="shop-title">Fairy Godmother's Shop</div><div id="shop-cards"></div><div id="shop-btns">
       <button class="btn btn-sm" onclick="refreshShop()">Refresh (1 gold)</button>
       <button class="btn btn-sm" id="report-btn" style="display:none" onclick="openReport()">Last Round</button>
-      <button class="btn btn-sm btn-blue" onclick="startBattle()">Start Battle</button>
     </div></div>
     <div id="round-end"><h2 id="round-end-title"></h2><div class="results" id="round-end-results"></div><button class="btn" id="round-end-btn" onclick="nextRound()">Next Round</button></div>
     <div id="game-over"><h1 id="go-title"></h1><div class="go-sub" id="go-sub"></div><button class="btn" onclick="showScreen('title-screen')">Play Again</button></div>
@@ -511,7 +510,7 @@ function startGame(diff){
   G.gold=diff==='easy'?2:0;
   showScreen('game-screen');enterShopping();
 }
-function enterShopping(){G.phase='shopping';G.gold+=G.round;if(G.round===1&&G.difficulty!=='easy')G.gold=G.round;if(G.round===1&&G.difficulty==='easy')G.gold=2+1;generateShop();renderAll()}
+function enterShopping(){G.phase='shopping';G.gold+=G.round;if(G.round===1){if(G.difficulty==='easy'||G.difficulty==='tutorial')G.gold=2+1;else G.gold=G.round}generateShop();renderAll()}
 function generateShop(){const t=getTier(G.round);const pool=HIRELINGS_SHOP.filter(h=>h.tier<=t);G.shop=[];for(let i=0;i<4;i++){if(Math.random()<.3){G.shop.push({...SPELLS[Math.floor(Math.random()*SPELLS.length)],type:'spell'})}else{const h=deepCopyCard(pool[Math.floor(Math.random()*pool.length)]);h.type='hireling';G.shop.push(h)}}}
 function refreshShop(){if(G.gold<1){showFloat(document.getElementById('shop-btns'),'No gold!','var(--red)');return}G.gold--;playRefresh();generateShop();updateTopBar();renderShop();renderPotionPanel()}
 function buyCard(idx){const item=G.shop[idx];if(!item)return;if(G.gold<item.cost){showFloat(document.getElementById('shop-cards'),'Not enough gold!','var(--red)');return}if(item.type==='spell'){if(G.hand.length>=5){showFloat(document.getElementById('shop-cards'),'Hand full!','var(--red)');return}G.gold-=item.cost;G.shop[idx]=null;G.hand.push({...item});playBuy();updateTopBar();renderAll();return}if(G.board.length>=5){showFloat(document.getElementById('shop-cards'),'Board full!','var(--red)');return}G.gold-=item.cost;const c=deepCopyCard(item);c._timer=c.castTime;G.board.push(c);G.shop[idx]=null;playBuy();checkUpgrade(c.id);updateTopBar();renderAll()}
@@ -714,7 +713,7 @@ const TUT_POOL={
 function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
 
 function startTutorial(){
-  resetState();G.difficulty='tutorial';G.gold=3;
+  resetState();G.difficulty='tutorial';G.gold=2;
   TUT={step:0,queue:[],round:0};
   // Build tutorial script — pick random variants for replayability
   TUT.queue=[
