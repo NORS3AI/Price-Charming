@@ -278,7 +278,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <img id="title-logo" src="assets/logo.jpeg" alt="Price Charming" onerror="this.style.display='none';document.getElementById('title-fallback').style.display='block'">
   <h1 id="title-fallback" style="display:none">Price Charming</h1>
   <div class="sub">A fairy-tale auto-battler card game</div>
-  <div class="ver">V0.0.8-alpha</div>
+  <div class="ver">V0.0.9-alpha</div>
   <div class="menu-btns">
     <button class="btn" onclick="showScreen('diff-screen')">Play</button>
     <button class="btn btn-purple" onclick="showScreen('leader-screen')">Leaderboard</button>
@@ -286,14 +286,17 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <button class="btn btn-ghost" onclick="showScreen('settings-screen')">Settings</button>
   </div>
   <div id="title-patch">
-    <div class="tp-header"><span class="tp-ver">V0.0.8-alpha</span><span class="tp-date">2026-04-09</span></div>
-    <div class="tp-title">Round Timer, Tutorial Mode</div>
+    <div class="tp-header"><span class="tp-ver">V0.0.9-alpha</span><span class="tp-date">2026-04-09</span></div>
+    <div class="tp-title">Latest Changes</div>
     <ul>
+      <li>Free Gingerbread Man hireling always in round 1 shop (0 gold).</li>
+      <li>Removed duplicate Start Battle button from shop area.</li>
+      <li>Start Battle moved to top with animated green pulse.</li>
+      <li>Disabled drag on mobile/tablet — long-press for card details only.</li>
+      <li>Fixed save/load game system with error handling and overwrite support.</li>
+      <li>Tutorial mode starts with 2 gold to afford a hireling.</li>
       <li>Round transition timer: Easy 10s, Normal 5s, Hard 2s, Insane instant.</li>
-      <li>Big countdown numbers zoom in and fade each second.</li>
-      <li>Tutorial mode: guided 5-round experience teaching every mechanic.</li>
-      <li>Royal-themed info boxes with step-by-step explanations.</li>
-      <li>Tutorial has weighted randomness for replayability.</li>
+      <li>Tutorial mode: guided 5-round experience with themed info boxes.</li>
     </ul>
   </div>
 </div>
