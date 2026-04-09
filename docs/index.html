@@ -535,7 +535,10 @@ function closeModal(){document.getElementById('modal-overlay').style.display='no
 // ============================================================
 // BATTLE
 // ============================================================
-function startBattle(){if(!G.board.length){showFloat(document.getElementById('shop-btns'),'Hire first!','var(--red)');return}G.phase='battle';generateOpponent();generateCustomers();G.custIdx=0;G.roundGold=0;G.roundRep=0;G.custWins=0;G.custLosses=0;G.custResults=[];G.board.forEach(h=>{h._timer=h.castTime});G.opp.board.forEach(h=>{h._timer=h.castTime});renderAll();loadNextCustomer()}
+function startBattle(){if(!G.board.length){showFloat(document.getElementById('start-battle-top'),'Hire first!','var(--red)');return}
+  const timerSecs={easy:4,normal:3,hard:2,insane:0,tutorial:3}[G.difficulty]||3;
+  if(timerSecs>0){showRoundTimer(timerSecs,()=>launchBattle())}else{launchBattle()}}
+function launchBattle(){G.phase='battle';generateOpponent();generateCustomers();G.custIdx=0;G.roundGold=0;G.roundRep=0;G.custWins=0;G.custLosses=0;G.custResults=[];G.board.forEach(h=>{h._timer=h.castTime});G.opp.board.forEach(h=>{h._timer=h.castTime});renderAll();loadNextCustomer()}
 function generateOpponent(){const t=getTier(G.round);const pool=HIRELINGS_SHOP.filter(h=>h.tier<=t);const ps=G.board.reduce((s,h)=>s+h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0),0);const dm=diffMultiplier();const count=Math.min(5,Math.max(G.board.length,Math.floor(G.round/2)+1+Math.floor(Math.random()*2)));G.opp.board=[];const target=ps*(0.85+G.round*0.04+Math.random()*0.2)*dm;let os=0;for(let i=0;i<count;i++){const h=deepCopyCard(pool[Math.floor(Math.random()*pool.length)]);h.type='hireling';h._timer=h.castTime;const pb=Math.floor(G.round/4*dm);const sb=Math.floor(G.round/5*dm);h.potions.forEach(p=>{p.potency+=pb;p.stock+=sb;if(!p.price)p.price=1});G.opp.board.push(h);os+=h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0)}if(os<target&&G.opp.board.length>0){const def=target-os;G.opp.board.forEach(h=>{const mp=h.potions[0];if(mp)mp.potency+=Math.ceil(def/G.opp.board.length/Math.max(1,mp.stock))})}}
 function generateCustomers(){const c=3+Math.floor(G.round/3);const s=[...CUSTOMERS].sort(()=>Math.random()-.5);G.customers=s.slice(0,Math.min(c,s.length)).map(c=>({...c}))}
 function loadNextCustomer(){if(G.custIdx>=G.customers.length){endBattle();return}G.playerSat=0;G.oppSat=0;document.getElementById('customer-result').textContent='';renderAll();G.battleTimer=setInterval(battleTick,G.battleSpeed)}
@@ -552,8 +555,7 @@ function nextRound(){
   if(G.round===13)G.repMax=25;if(G.round===14)G.repMax=20;if(G.round===15)G.repMax=15;
   if(G.reputation<-G.repMax)G.reputation=-G.repMax;
   if(G.reputation>G.repMax)G.reputation=G.repMax;
-  const timerSecs={easy:4,normal:3,hard:2,insane:0,tutorial:3}[G.difficulty]||3;
-  if(timerSecs>0){showRoundTimer(timerSecs,()=>enterShopping())}else{enterShopping()}
+  enterShopping();
 }
 
 // ============================================================
