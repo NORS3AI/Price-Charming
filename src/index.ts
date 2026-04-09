@@ -16,12 +16,16 @@ export {
   Hag,
   Frog,
   HiddenPrincess,
+  LittlePiggy,
+  Teacups,
   EvilRoyal,
   PoisonQueen,
   RoyalFlyCatch,
   WartCoveredPrince,
   SnowWhite,
   MasterPieMaker,
+  BigBadWolf,
+  MadameTeapot,
   ALL_HIRELINGS,
 } from "./cards/hirelings";
 
@@ -40,3 +44,11 @@ export {
   applyTransformation,
 } from "./spells/wishing-star";
 export type { CastResult, TransformPick } from "./spells/wishing-star";
+
+// Upgrade system
+export {
+  hasUpgrade,
+  getUpgradeResult,
+  applyUpgrade,
+  registerUpgrade,
+} from "./spells/upgrades";

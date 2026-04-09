@@ -130,14 +130,76 @@ export const MasterPieMaker: HirelingCard = {
   transformable: false,
 };
 
+/** Tier-1 hirelings available in the shop. */
+
+export const LittlePiggy: HirelingCard = {
+  id: "little-piggy",
+  name: "Little Piggy",
+  kind: "hireling",
+  tier: 1,
+  tribe: "culinary",
+  description: "Sniffs out the finest ingredients.",
+  potions: [{ name: "Truffle Tonic", stock: 3, potency: 1 }],
+  castTime: 2,
+  transformable: false,
+};
+
+export const Teacups: HirelingCard = {
+  id: "teacups",
+  name: "Teacups",
+  kind: "hireling",
+  tier: 1,
+  tribe: "enchanted",
+  description: "Pours enchanted tea.",
+  potions: [{ name: "Tea Brew", stock: 4, potency: 1 }],
+  castTime: 3,
+  transformable: false,
+};
+
+/** Upgrade results — obtained only by merging 3 identical hirelings. */
+
+export const BigBadWolf: HirelingCard = {
+  id: "big-bad-wolf",
+  name: "Big Bad Wolf",
+  kind: "hireling",
+  tier: 2,
+  tribe: "culinary",
+  description: "Huffs, puffs, and brews.",
+  potions: [
+    { name: "Huff Brew", stock: 4, potency: 3 },
+    { name: "Puff Potion", stock: 3, potency: 3 },
+  ],
+  castTime: 2,
+  transformable: false,
+};
+
+export const MadameTeapot: HirelingCard = {
+  id: "madame-teapot",
+  name: "Madame Teapot",
+  kind: "hireling",
+  tier: 2,
+  tribe: "enchanted",
+  description: "Pours potions with elegance.",
+  potions: [
+    { name: "Grand Tea", stock: 5, potency: 3 },
+    { name: "Earl Elixir", stock: 4, potency: 2 },
+  ],
+  castTime: 2,
+  transformable: false,
+};
+
 export const ALL_HIRELINGS: HirelingCard[] = [
   Hag,
   Frog,
   HiddenPrincess,
+  LittlePiggy,
+  Teacups,
   EvilRoyal,
   PoisonQueen,
   RoyalFlyCatch,
   WartCoveredPrince,
   SnowWhite,
   MasterPieMaker,
+  BigBadWolf,
+  MadameTeapot,
 ];

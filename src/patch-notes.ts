@@ -13,6 +13,20 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.0.4-alpha",
+    date: "2026-04-09",
+    title: "Upgrade System",
+    changes: [
+      "Upgrade system: 3 identical hirelings auto-merge into a stronger card on purchase.",
+      "Little Piggy x3 upgrades to Big Bad Wolf (culinary, tier 2).",
+      "Teacups x3 upgrades to Madame Teapot (enchanted, tier 2).",
+      "Upgrade triggers instantly when the 3rd copy is purchased from the shop.",
+      "Ascending fanfare sound effect on upgrade.",
+      "Added Little Piggy and Teacups to TypeScript hireling definitions.",
+      "14 new unit tests for the upgrade system.",
+    ],
+  },
+  {
     version: "V0.0.3-alpha",
     date: "2026-04-09",
     title: "Hand System, Sound FX & Balance",

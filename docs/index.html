@@ -289,6 +289,8 @@ const HIRELINGS_ALL = [
   {id:'wart-covered-prince',name:'Wart Covered Prince',emoji:'🤴',tribe:'royalty',tier:2,desc:'Cursed but charming.',potions:[{name:'Wartbrew',stock:3,potency:2},{name:"Prince's Perfume",stock:2,potency:3}],castTime:3,transformable:false,cost:5},
   {id:'snow-white',name:'Snow White',emoji:'❄️',tribe:'royalty',tier:2,desc:'Fairest potions.',potions:[{name:'Mirror Mist',stock:3,potency:3},{name:'Apple Blossom Dew',stock:3,potency:3}],castTime:3,transformable:false,cost:5},
   {id:'master-pie-maker',name:'Master Pie Maker',emoji:'🥧',tribe:'culinary',tier:2,desc:'Bakes potion pies.',potions:[{name:'Pie Potion',stock:4,potency:2},{name:'Crust Elixir',stock:3,potency:2}],castTime:2,transformable:false,cost:5},
+  {id:'big-bad-wolf',name:'Big Bad Wolf',emoji:'🐺',tribe:'culinary',tier:2,desc:'Huffs, puffs, and brews.',potions:[{name:'Huff Brew',stock:4,potency:3},{name:'Puff Potion',stock:3,potency:3}],castTime:2,transformable:false,cost:6},
+  {id:'madame-teapot',name:'Madame Teapot',emoji:'🫖',tribe:'enchanted',tier:2,desc:'Pours potions with elegance.',potions:[{name:'Grand Tea',stock:5,potency:3},{name:'Earl Elixir',stock:4,potency:2}],castTime:2,transformable:false,cost:6},
 ];
 
 const SPELLS = [
@@ -310,6 +312,12 @@ const TRANSFORMATIONS = {
     {id:'snow-white',name:'Snow White',emoji:'❄️',tribe:'royalty',tier:2,potions:[{name:'Mirror Mist',stock:3,potency:3},{name:'Apple Blossom Dew',stock:3,potency:3}],castTime:3},
     {id:'master-pie-maker',name:'Master Pie Maker',emoji:'🥧',tribe:'culinary',tier:2,potions:[{name:'Pie Potion',stock:4,potency:2},{name:'Crust Elixir',stock:3,potency:2}],castTime:2}
   ]
+};
+
+// Upgrade registry: 3 identical cards merge into one upgraded card
+const UPGRADES = {
+  'little-piggy':{id:'big-bad-wolf',name:'Big Bad Wolf',emoji:'🐺',tribe:'culinary',tier:2,desc:'Huffs, puffs, and brews.',potions:[{name:'Huff Brew',stock:4,potency:3},{name:'Puff Potion',stock:3,potency:3}],castTime:2,transformable:false,cost:6},
+  'teacups':{id:'madame-teapot',name:'Madame Teapot',emoji:'🫖',tribe:'enchanted',tier:2,desc:'Pours potions with elegance.',potions:[{name:'Grand Tea',stock:5,potency:3},{name:'Earl Elixir',stock:4,potency:2}],castTime:2,transformable:false,cost:6},
 };
 
 const CUSTOMERS = [
@@ -432,6 +440,41 @@ function playSpellCast(){
   });
 }
 
+function playUpgrade(){
+  ensureAudio();
+  [0,.08,.16,.24,.32].forEach((d,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='triangle';o.frequency.setValueAtTime([523,659,784,988,1175][i],audioCtx.currentTime+d);
+    g.gain.setValueAtTime(.12,audioCtx.currentTime+d);
+    g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d+.25);
+    o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+.25);
+  });
+}
+
+// ============================================================
+// UPGRADE SYSTEM — 3 identical hirelings auto-merge
+// ============================================================
+function checkUpgrade(cardId){
+  const matching=G.board.filter(h=>h.id===cardId);
+  if(matching.length<3)return false;
+  const upgrade=UPGRADES[cardId];
+  if(!upgrade)return false;
+  // Remove the 3 copies
+  let removed=0;
+  G.board=G.board.filter(h=>{
+    if(h.id===cardId&&removed<3){removed++;return false}
+    return true;
+  });
+  // Add the upgraded card
+  const newCard=deepCopyCard({...upgrade,type:'hireling'});
+  newCard._timer=newCard.castTime;
+  G.board.push(newCard);
+  playUpgrade();
+  showFloat(document.getElementById('player-board'),`UPGRADE! ${upgrade.name}!`,'var(--gold)');
+  return true;
+}
+
 // ============================================================
 // GAME FLOW
 // ============================================================
@@ -498,6 +541,8 @@ function buyCard(idx){
   G.board.push(card);
   G.shop[idx]=null;
   playBuy();
+  // Check for upgrade (3 identical → merged)
+  checkUpgrade(card.id);
   updateTopBar();
   renderAll();
 }
