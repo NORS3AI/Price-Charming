@@ -13,6 +13,17 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.1.3-alpha",
+    date: "2026-04-09",
+    title: "Layout Polish & Battle Snap",
+    changes: [
+      "Shop side panel moved to lower-left so it doesn't block content behind it.",
+      "Battle phase now centers the screen on the customer area when combat starts.",
+      "Title logo has an animated purple glow that pulses between 20px and 40px radius.",
+      "Centered Leaderboard title and compensated button text for letter-spacing.",
+    ],
+  },
+  {
     version: "V0.1.2-alpha",
     date: "2026-04-09",
     title: "Epic Victory Confetti",
