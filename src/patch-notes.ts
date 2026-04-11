@@ -13,6 +13,18 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.1.1-alpha",
+    date: "2026-04-09",
+    title: "Shop Side Panel & Settings Access",
+    changes: [
+      "Added a left side panel during shopping phase showing Round, Tier, Gold, Reputation (as number), and Goal.",
+      "Added a Settings button to the side panel so you can access settings mid-game.",
+      "Settings back button now returns to the game if opened from the shop, otherwise returns to main menu.",
+      "Side panel collapses above the game area on small screens (mobile/tablet).",
+      "In-game patch notes now auto-generated from src/patch-notes.ts via a pre-commit hook — no more manual HTML edits.",
+    ],
+  },
+  {
     version: "V0.1.0-alpha",
     date: "2026-04-09",
     title: "Epic Victory, Font Settings, Spell Fixes",
