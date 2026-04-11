@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "jest --verbose"
+    "test": "jest --verbose",
+    "gen-notes": "node scripts/gen-patch-notes.js"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
