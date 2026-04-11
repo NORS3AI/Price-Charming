@@ -110,7 +110,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .board-slots.drop-hover{background:rgba(212,168,67,.1);border-radius:8px}
 
 /* CARDS */
-.card{background:linear-gradient(135deg,var(--purple),var(--lite));border:2px solid var(--gold-dim);border-radius:8px;padding:.6rem;width:140px;min-height:120px;position:relative;transition:transform .2s,border-color .2s,box-shadow .2s;cursor:default;flex-shrink:0;user-select:none}
+.card{background:linear-gradient(135deg,var(--purple),var(--lite));border:2px solid var(--gold-dim);border-radius:8px;padding:.6rem;width:9rem;min-height:8rem;position:relative;transition:transform .2s,border-color .2s,box-shadow .2s;cursor:default;flex-shrink:0;user-select:none}
 .card:hover{border-color:var(--gold);box-shadow:0 0 10px rgba(212,168,67,.3)}
 .card.draggable{cursor:grab}.card.draggable:active{cursor:grabbing}
 .card.dragging{opacity:.4;transform:scale(.95)}
@@ -126,7 +126,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .card .sell-btn{position:absolute;bottom:4px;right:4px;background:var(--red);color:var(--parch);border:none;font-size:.6rem;padding:1px 5px;border-radius:4px;cursor:pointer;font-family:inherit}
 .card.spell-card{border-color:#7a5aaa;background:linear-gradient(135deg,#3a1860,#5a3080)}
 .card.spell-card:hover{border-color:#b090d0;box-shadow:0 0 10px rgba(180,140,220,.4)}
-.empty-slot{width:140px;min-height:120px;border:2px dashed rgba(212,168,67,.3);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(212,168,67,.3);font-size:.8rem}
+.empty-slot{width:9rem;min-height:8rem;border:2px dashed rgba(212,168,67,.3);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(212,168,67,.3);font-size:.8rem}
 
 /* RICH TOOLTIP */
 .tooltip{display:none;position:fixed;z-index:900;background:linear-gradient(145deg,#1a0a2e,var(--purple));border:2px solid var(--gold);border-radius:10px;padding:0;width:260px;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.7);overflow:hidden}
@@ -199,7 +199,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 #hand-area{background:rgba(58,26,96,.25);border:2px solid #7a5aaa;border-radius:10px;padding:.75rem;margin-top:.5rem}
 #hand-area .hand-title{color:#b090d0;font-size:.85rem;font-weight:bold;margin-bottom:.4rem;text-align:center}
 #hand-cards{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;min-height:50px}
-#hand-cards .card{width:120px;min-height:90px}
+#hand-cards .card{width:7.5rem;min-height:5.6rem}
 
 /* MODALS */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
@@ -238,11 +238,27 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .report-board .rpt-card .rpt-card-name{color:var(--gold);font-weight:bold}
 .report-board .rpt-card .rpt-card-stat{color:var(--parch-d)}
 
+/* FONT SIZE BUTTONS */
+.font-size-btns{display:flex;gap:.3rem}
+.font-size-btns button{background:var(--gold-dim);color:var(--deep);border:none;padding:.3rem .6rem;border-radius:4px;cursor:pointer;font-family:inherit;font-weight:bold;font-size:.8rem}
+.font-size-btns button.active{background:var(--gold);box-shadow:0 0 8px rgba(212,168,67,.4)}
+.font-size-btns button:hover{background:var(--gold)}
+
 /* START BATTLE - EAGER BUTTON */
 #start-battle-top{display:none;text-align:center;margin-bottom:.75rem}
 #start-battle-top .btn{animation:eagerPulse 1.5s ease-in-out infinite;font-size:1.2rem;padding:.75rem 3rem;background:linear-gradient(180deg,#5aba5a,#3a8a3a);box-shadow:0 0 20px rgba(90,186,90,.3)}
 #start-battle-top .btn:hover{animation:none;transform:translateY(-3px);box-shadow:0 6px 25px rgba(90,186,90,.5)}
 @keyframes eagerPulse{0%{transform:scale(1);box-shadow:0 0 15px rgba(90,186,90,.2)}50%{transform:scale(1.05);box-shadow:0 0 30px rgba(90,186,90,.5)}100%{transform:scale(1);box-shadow:0 0 15px rgba(90,186,90,.2)}}
+
+/* VICTORY SCREEN */
+#game-over .victory-title{font-size:4.5rem;color:var(--gold);text-shadow:0 0 30px rgba(212,168,67,.6),0 0 60px rgba(212,168,67,.3);animation:victoryGlow 2s ease-in-out infinite;letter-spacing:.05em}
+#go-name-input{display:none;margin:1.5rem auto;max-width:400px;padding:1rem;background:linear-gradient(145deg,rgba(212,168,67,.1),rgba(74,32,96,.3));border:2px solid var(--gold);border-radius:12px}
+#go-name-input label{display:block;color:var(--gold);font-size:.9rem;margin-bottom:.5rem;font-weight:bold}
+#go-name{width:100%;padding:.6rem .8rem;background:rgba(0,0,0,.3);border:2px solid var(--gold-dim);border-radius:6px;color:var(--parch);font-family:inherit;font-size:1rem;margin-bottom:.75rem}
+#go-name:focus{outline:none;border-color:var(--gold);box-shadow:0 0 10px rgba(212,168,67,.3)}
+.confetti{position:fixed;pointer-events:none;font-size:2rem;animation:floatUp 4s linear forwards;z-index:500}
+@keyframes victoryGlow{0%,100%{text-shadow:0 0 20px rgba(212,168,67,.4),0 0 40px rgba(212,168,67,.2);transform:scale(1)}50%{text-shadow:0 0 40px rgba(212,168,67,.8),0 0 80px rgba(212,168,67,.5);transform:scale(1.02)}}
+@keyframes floatUp{0%{transform:translateY(100vh) rotate(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-20vh) rotate(360deg);opacity:0}}
 
 @keyframes sellPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes fadeUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-30px)}}
@@ -278,7 +294,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <img id="title-logo" src="assets/logo.jpeg" alt="Price Charming" onerror="this.style.display='none';document.getElementById('title-fallback').style.display='block'">
   <h1 id="title-fallback" style="display:none">Price Charming</h1>
   <div class="sub">A fairy-tale auto-battler card game</div>
-  <div class="ver">V0.0.9-alpha</div>
+  <div class="ver">V0.1.0-alpha</div>
   <div class="menu-btns">
     <button class="btn" onclick="showScreen('diff-screen')">Play</button>
     <button class="btn btn-purple" onclick="showScreen('leader-screen')">Leaderboard</button>
@@ -286,17 +302,17 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <button class="btn btn-ghost" onclick="showScreen('settings-screen')">Settings</button>
   </div>
   <div id="title-patch">
-    <div class="tp-header"><span class="tp-ver">V0.0.9-alpha</span><span class="tp-date">2026-04-09</span></div>
-    <div class="tp-title">Latest Changes</div>
+    <div class="tp-header"><span class="tp-ver">V0.1.0-alpha</span><span class="tp-date">2026-04-09</span></div>
+    <div class="tp-title">Epic Victory, Fonts, Fixes</div>
     <ul>
-      <li>Free Gingerbread Man hireling always in round 1 shop (0 gold).</li>
-      <li>Removed duplicate Start Battle button from shop area.</li>
-      <li>Start Battle moved to top with animated green pulse.</li>
-      <li>Disabled drag on mobile/tablet — long-press for card details only.</li>
-      <li>Fixed save/load game system with error handling and overwrite support.</li>
-      <li>Tutorial mode starts with 2 gold to afford a hireling.</li>
-      <li>Round transition timer: Easy 10s, Normal 5s, Hard 2s, Insane instant.</li>
-      <li>Tutorial mode: guided 5-round experience with themed info boxes.</li>
+      <li>Spells cancelled or with no valid target return to hand (no more lost spells).</li>
+      <li>All difficulty modes start with 3 gold.</li>
+      <li>Countdown fixed at 3 seconds (before battle, not shopping).</li>
+      <li>Font size setting in Settings: Small, Medium, Large, XL.</li>
+      <li>Epic Victory screen with glowing title, confetti, fanfare, and name input.</li>
+      <li>Save your name to the leaderboard on victory!</li>
+      <li>Free Gingerbread Man always in round 1 shop.</li>
+      <li>Tutorial mode: guided 5-round experience.</li>
     </ul>
   </div>
 </div>
@@ -311,25 +327,25 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
         <div class="df-icon">🌿</div>
         <div class="df-name">Easy</div>
         <div class="df-desc">Gentler opponents, forgiving customers</div>
-        <div class="df-gold">Start with 2 gold</div>
+        <div class="df-gold">Start with 3 gold</div>
       </div>
       <div class="diff-card df-normal" onclick="startGame('normal')">
         <div class="df-icon">⚔️</div>
         <div class="df-name">Normal</div>
         <div class="df-desc">Balanced challenge for most players</div>
-        <div class="df-gold">Start with 0 gold</div>
+        <div class="df-gold">Start with 3 gold</div>
       </div>
       <div class="diff-card df-hard" onclick="startGame('hard')">
         <div class="df-icon">🔥</div>
         <div class="df-name">Hard</div>
         <div class="df-desc">Tougher opponents, pickier customers</div>
-        <div class="df-gold">Start with 0 gold</div>
+        <div class="df-gold">Start with 3 gold</div>
       </div>
       <div class="diff-card df-insane" onclick="startGame('insane')">
         <div class="df-icon">💀</div>
         <div class="df-name">Insane</div>
         <div class="df-desc">Brutal opponents, merciless marketplace</div>
-        <div class="df-gold">Start with 0 gold</div>
+        <div class="df-gold">Start with 3 gold</div>
       </div>
     </div>
     <div style="margin-top:.5rem;display:flex;gap:.75rem;align-items:center">
@@ -352,6 +368,17 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <div class="sett-group">
     <h3>Audio</h3>
     <div class="sett-row"><label>Sound Effects</label><div class="sett-toggle on" id="snd-toggle" onclick="toggleSound()"></div></div>
+  </div>
+  <div class="sett-group">
+    <h3>Display</h3>
+    <div class="sett-row"><label>Font Size</label>
+      <div class="font-size-btns" id="font-size-btns">
+        <button data-size="small" onclick="setFontSize('small')">S</button>
+        <button data-size="medium" onclick="setFontSize('medium')">M</button>
+        <button data-size="large" onclick="setFontSize('large')">L</button>
+        <button data-size="xl" onclick="setFontSize('xl')">XL</button>
+      </div>
+    </div>
   </div>
   <div class="sett-group">
     <h3>Game Saves</h3>
@@ -413,7 +440,16 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
       <button class="btn btn-sm" id="report-btn" style="display:none" onclick="openReport()">Last Round</button>
     </div></div>
     <div id="round-end"><h2 id="round-end-title"></h2><div class="results" id="round-end-results"></div><button class="btn" id="round-end-btn" onclick="nextRound()">Next Round</button></div>
-    <div id="game-over"><h1 id="go-title"></h1><div class="go-sub" id="go-sub"></div><button class="btn" onclick="showScreen('title-screen')">Play Again</button></div>
+    <div id="game-over">
+      <h1 id="go-title"></h1>
+      <div class="go-sub" id="go-sub"></div>
+      <div id="go-name-input">
+        <label>Enter your name for the Leaderboard!</label>
+        <input id="go-name" type="text" placeholder="Your name..." maxlength="20">
+        <button class="btn btn-sm" onclick="saveVictory()">Save to Leaderboard</button>
+      </div>
+      <div style="margin-top:1rem"><button class="btn" onclick="showScreen('title-screen')">Play Again</button></div>
+    </div>
   </div>
 </div>
 
@@ -435,7 +471,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 
 <div class="tooltip" id="tooltip"></div>
 <div class="modal-overlay" id="report-overlay" onclick="closeReport()"><div class="modal-box" onclick="event.stopPropagation()"><h2>Last Round Report</h2><div id="report-content"></div><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div></div></div>
-<div class="modal-overlay" id="modal-overlay" onclick="closeModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="closeModal()">Cancel</button></div></div>
+<div class="modal-overlay" id="modal-overlay" onclick="cancelModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="cancelModal()">Cancel</button></div></div>
 <script>
 // ============================================================
 // CARD DEFINITIONS
@@ -474,7 +510,7 @@ const NPC_NAMES=['Fairy Godmother','Rumpelstiltskin','Wicked Witch','Gingerbread
 // ============================================================
 let soundEnabled=true;
 let G={};
-function resetState(){G={phase:'title',round:1,gold:0,reputation:0,repMax:30,difficulty:'normal',board:[],shop:[],hand:[],opp:{board:[]},customers:[],custIdx:0,playerSat:0,oppSat:0,battleTimer:null,battleSpeed:100,roundGold:0,roundRep:0,custWins:0,custLosses:0,pendingSpell:null,custResults:[],lastReport:null}}
+function resetState(){G={phase:'title',round:1,gold:0,reputation:0,repMax:30,difficulty:'normal',board:[],shop:[],hand:[],opp:{board:[]},customers:[],custIdx:0,playerSat:0,oppSat:0,battleTimer:null,battleSpeed:100,roundGold:0,roundRep:0,custWins:0,custLosses:0,pendingSpell:null,pendingHandSpell:null,custResults:[],lastReport:null}}
 resetState();
 function getTier(r){return r<=3?1:r<=6?2:3}
 function deepCopyCard(c){return{...c,potions:c.potions.map(p=>({...p}))}}
@@ -510,33 +546,34 @@ function checkUpgrade(cardId){const m=G.board.filter(h=>h.id===cardId);if(m.leng
 // GAME FLOW
 // ============================================================
 function startGame(diff){
-  resetState();G.difficulty=diff;
-  G.gold=diff==='easy'?2:0;
+  resetState();G.difficulty=diff;G.gold=3;
   showScreen('game-screen');enterShopping();
 }
-function enterShopping(){G.phase='shopping';G.gold+=G.round;if(G.round===1){if(G.difficulty==='easy'||G.difficulty==='tutorial')G.gold=2+1;else G.gold=G.round}generateShop();renderAll()}
+function enterShopping(){G.phase='shopping';if(G.round>1)G.gold+=G.round;generateShop();renderAll()}
 function generateShop(){const t=getTier(G.round);const pool=HIRELINGS_SHOP.filter(h=>h.tier<=t);G.shop=[];if(G.round===1){const gb=deepCopyCard(GINGERBREAD_MAN);gb.type='hireling';G.shop.push(gb)}for(let i=G.shop.length;i<4;i++){if(Math.random()<.3){G.shop.push({...SPELLS[Math.floor(Math.random()*SPELLS.length)],type:'spell'})}else{const h=deepCopyCard(pool[Math.floor(Math.random()*pool.length)]);h.type='hireling';G.shop.push(h)}}}
 function refreshShop(){if(G.gold<1){showFloat(document.getElementById('shop-btns'),'No gold!','var(--red)');return}G.gold--;playRefresh();generateShop();updateTopBar();renderShop();renderPotionPanel()}
 function buyCard(idx){const item=G.shop[idx];if(!item)return;if(G.gold<item.cost){showFloat(document.getElementById('shop-cards'),'Not enough gold!','var(--red)');return}if(item.type==='spell'){if(G.hand.length>=5){showFloat(document.getElementById('shop-cards'),'Hand full!','var(--red)');return}G.gold-=item.cost;G.shop[idx]=null;G.hand.push({...item});playBuy();updateTopBar();renderAll();return}if(G.board.length>=5){showFloat(document.getElementById('shop-cards'),'Board full!','var(--red)');return}G.gold-=item.cost;const c=deepCopyCard(item);c._timer=c.castTime;G.board.push(c);G.shop[idx]=null;playBuy();checkUpgrade(c.id);updateTopBar();renderAll()}
 function sellCard(idx){if(G.phase!=='shopping')return;G.board.splice(idx,1);G.gold++;playSell();updateTopBar();renderAll()}
-function playHandSpell(i){if(G.phase!=='shopping')return;const s=G.hand[i];if(!s)return;G.hand.splice(i,1);handleSpell(s);renderAll()}
+function playHandSpell(i){if(G.phase!=='shopping')return;const s=G.hand[i];if(!s)return;G.hand.splice(i,1);G.pendingHandSpell=s;handleSpell(s);renderAll()}
 function adjustPrice(bi,pi,d){const h=G.board[bi];if(!h)return;const p=h.potions[pi];if(!p)return;p.price=Math.max(0,Math.min(5,(p.price||1)+d));renderPotionPanel()}
 
 // ============================================================
 // SPELLS
 // ============================================================
-function handleSpell(spell){if(G.board.length===0){showFloat(document.getElementById('shop-cards'),'No hirelings!','var(--red)');G.gold+=spell.cost;return}G.pendingSpell=spell;if(spell.kind==='transform'){const t=G.board.filter(h=>h.transformable);if(!t.length){showFloat(document.getElementById('shop-cards'),'No transformable!','var(--red)');G.gold+=spell.cost;G.pendingSpell=null;return}openTargetModal('Transform',G.board.filter(h=>h.transformable),doTransform)}else if(spell.kind==='potency'){openTargetModal('Boost Potency',G.board,doPotencyBoost)}else if(spell.kind==='speed'){const v=G.board.filter(h=>h.castTime>1);if(!v.length){showFloat(document.getElementById('shop-cards'),'All at min!','var(--red)');G.gold+=spell.cost;G.pendingSpell=null;return}openTargetModal('Speed Up',v,doSpeedBoost)}}
-function doTransform(h){closeModal();const p=TRANSFORMATIONS[h.id];if(!p){G.pendingSpell=null;return}const el=document.getElementById('modal-choices');el.innerHTML='';document.getElementById('modal-title').textContent='Choose Transformation';document.getElementById('modal-desc').textContent=h.name+' transforms into...';p.forEach(opt=>{const c=document.createElement('div');c.className='card clickable';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${opt.emoji}</div><div class="c-name">${opt.name}</div><div style="text-align:center"><span class="c-tribe">${opt.tribe}</span></div><div class="c-info">${opt.potions.map(p=>p.name+' '+p.potency+'✦x'+p.stock).join('<br>')}<br>Cast:${opt.castTime}s</div>`;c.onclick=()=>{const i=G.board.findIndex(x=>x===h);if(i===-1)return;const nc=deepCopyCard({...opt,type:'hireling',transformable:false,cost:5});nc._timer=nc.castTime;G.board[i]=nc;G.pendingSpell=null;playSpellCast();closeModal();renderAll()};el.appendChild(c)});document.getElementById('modal-overlay').style.display='flex'}
-function doPotencyBoost(h){h.potions.forEach(p=>p.potency++);G.pendingSpell=null;playSpellCast();closeModal();renderAll()}
-function doSpeedBoost(h){h.castTime=Math.max(1,h.castTime-1);G.pendingSpell=null;playSpellCast();closeModal();renderAll()}
+function handleSpell(spell){if(G.board.length===0){showFloat(document.getElementById('shop-cards'),'No hirelings!','var(--red)');returnSpellToHand();return}G.pendingSpell=spell;if(spell.kind==='transform'){const t=G.board.filter(h=>h.transformable);if(!t.length){showFloat(document.getElementById('shop-cards'),'No transformable!','var(--red)');returnSpellToHand();return}openTargetModal('Transform',G.board.filter(h=>h.transformable),doTransform)}else if(spell.kind==='potency'){openTargetModal('Boost Potency',G.board,doPotencyBoost)}else if(spell.kind==='speed'){const v=G.board.filter(h=>h.castTime>1);if(!v.length){showFloat(document.getElementById('shop-cards'),'All at min!','var(--red)');returnSpellToHand();return}openTargetModal('Speed Up',v,doSpeedBoost)}}
+function returnSpellToHand(){if(G.pendingHandSpell){G.hand.push(G.pendingHandSpell);G.pendingHandSpell=null}G.pendingSpell=null;renderAll()}
+function doTransform(h){document.getElementById('modal-overlay').style.display='none';const p=TRANSFORMATIONS[h.id];if(!p){returnSpellToHand();return}const el=document.getElementById('modal-choices');el.innerHTML='';document.getElementById('modal-title').textContent='Choose Transformation';document.getElementById('modal-desc').textContent=h.name+' transforms into...';p.forEach(opt=>{const c=document.createElement('div');c.className='card clickable';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${opt.emoji}</div><div class="c-name">${opt.name}</div><div style="text-align:center"><span class="c-tribe">${opt.tribe}</span></div><div class="c-info">${opt.potions.map(p=>p.name+' '+p.potency+'✦x'+p.stock).join('<br>')}<br>Cast:${opt.castTime}s</div>`;c.onclick=()=>{const i=G.board.findIndex(x=>x===h);if(i===-1)return;const nc=deepCopyCard({...opt,type:'hireling',transformable:false,cost:5});nc._timer=nc.castTime;G.board[i]=nc;G.pendingSpell=null;G.pendingHandSpell=null;playSpellCast();closeModal();renderAll()};el.appendChild(c)});document.getElementById('modal-overlay').style.display='flex'}
+function doPotencyBoost(h){h.potions.forEach(p=>p.potency++);G.pendingSpell=null;G.pendingHandSpell=null;playSpellCast();closeModal();renderAll()}
+function doSpeedBoost(h){h.castTime=Math.max(1,h.castTime-1);G.pendingSpell=null;G.pendingHandSpell=null;playSpellCast();closeModal();renderAll()}
 function openTargetModal(title,targets,cb){document.getElementById('modal-title').textContent=title;document.getElementById('modal-desc').textContent='Click a hireling:';const el=document.getElementById('modal-choices');el.innerHTML='';targets.forEach(h=>{const c=document.createElement('div');c.className='card clickable';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${h.emoji}</div><div class="c-name">${h.name}</div><div class="c-info">${h.potions.map(p=>p.name+' '+p.potency+'✦').join(', ')}<br>Cast:${h.castTime}s</div>`;c.onclick=()=>cb(h);el.appendChild(c)});document.getElementById('modal-overlay').style.display='flex'}
-function closeModal(){document.getElementById('modal-overlay').style.display='none';G.pendingSpell=null}
+function closeModal(){document.getElementById('modal-overlay').style.display='none'}
+function cancelModal(){closeModal();returnSpellToHand()}
 
 // ============================================================
 // BATTLE
 // ============================================================
 function startBattle(){if(!G.board.length){showFloat(document.getElementById('start-battle-top'),'Hire first!','var(--red)');return}
-  const timerSecs={easy:4,normal:3,hard:2,insane:0,tutorial:3}[G.difficulty]||3;
+  const timerSecs={easy:3,normal:3,hard:3,insane:0,tutorial:3}[G.difficulty]||3;
   if(timerSecs>0){showRoundTimer(timerSecs,()=>launchBattle())}else{launchBattle()}}
 function launchBattle(){G.phase='battle';generateOpponent();generateCustomers();G.custIdx=0;G.roundGold=0;G.roundRep=0;G.custWins=0;G.custLosses=0;G.custResults=[];G.board.forEach(h=>{h._timer=h.castTime});G.opp.board.forEach(h=>{h._timer=h.castTime});renderAll();loadNextCustomer()}
 function generateOpponent(){const t=getTier(G.round);const pool=HIRELINGS_SHOP.filter(h=>h.tier<=t);const ps=G.board.reduce((s,h)=>s+h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0),0);const dm=diffMultiplier();const count=Math.min(5,Math.max(G.board.length,Math.floor(G.round/2)+1+Math.floor(Math.random()*2)));G.opp.board=[];const target=ps*(0.85+G.round*0.04+Math.random()*0.2)*dm;let os=0;for(let i=0;i<count;i++){const h=deepCopyCard(pool[Math.floor(Math.random()*pool.length)]);h.type='hireling';h._timer=h.castTime;const pb=Math.floor(G.round/4*dm);const sb=Math.floor(G.round/5*dm);h.potions.forEach(p=>{p.potency+=pb;p.stock+=sb;if(!p.price)p.price=1});G.opp.board.push(h);os+=h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0)}if(os<target&&G.opp.board.length>0){const def=target-os;G.opp.board.forEach(h=>{const mp=h.potions[0];if(mp)mp.potency+=Math.ceil(def/G.opp.board.length/Math.max(1,mp.stock))})}}
@@ -574,7 +611,10 @@ function showRoundTimer(secs,callback){
   }
   tick();
 }
-function gameOver(won){G.phase='gameover';renderAll();const t=document.getElementById('go-title'),s=document.getElementById('go-sub');if(won){t.style.color='var(--gold)';t.textContent='Victory!';s.textContent='Round '+G.round+', Rep: '+G.reputation+', Difficulty: '+G.difficulty;updateLeaderboard(G.reputation,G.round)}else{t.style.color='var(--red)';t.textContent='Defeat';s.textContent='Round '+G.round+', Rep: '+G.reputation}}
+function gameOver(won){G.phase='gameover';renderAll();const t=document.getElementById('go-title'),s=document.getElementById('go-sub'),ni=document.getElementById('go-name-input');if(won){t.className='victory-title';t.innerHTML='✨ VICTORY! ✨';s.innerHTML='You have conquered the enchanted marketplace!<br>Round '+G.round+' · Reputation '+G.reputation+' · '+G.difficulty.toUpperCase()+' mode';ni.style.display='block';document.getElementById('go-name').value='';launchConfetti();playVictoryFanfare()}else{t.className='';t.style.color='var(--red)';t.textContent='Defeat';s.innerHTML='The competition was too fierce.<br>Round '+G.round+' · Rep '+G.reputation;ni.style.display='none'}}
+function launchConfetti(){const emojis=['⭐','✨','🎉','🎊','💰','👑','🌟','💫','🏆'];for(let i=0;i<40;i++){setTimeout(()=>{const c=document.createElement('div');c.className='confetti';c.textContent=emojis[Math.floor(Math.random()*emojis.length)];c.style.left=Math.random()*100+'%';c.style.animationDuration=(3+Math.random()*2)+'s';document.body.appendChild(c);setTimeout(()=>c.remove(),5500)},i*80)}}
+function playVictoryFanfare(){if(!soundEnabled)return;ensureAudio();const notes=[523,659,784,1047,784,1047,1319];notes.forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='triangle';o.frequency.setValueAtTime(f,audioCtx.currentTime+i*.15);g.gain.setValueAtTime(.15,audioCtx.currentTime+i*.15);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+i*.15+.4);o.start(audioCtx.currentTime+i*.15);o.stop(audioCtx.currentTime+i*.15+.4)})}
+function saveVictory(){const name=document.getElementById('go-name').value.trim()||'Anonymous Brewer';updateLeaderboard(G.reputation,G.round,name);document.getElementById('go-name-input').style.display='none';showFloat(document.getElementById('game-over'),'Saved to leaderboard!','var(--green)')}
 
 // ============================================================
 // RENDERING
@@ -719,7 +759,7 @@ const TUT_POOL={
 function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
 
 function startTutorial(){
-  resetState();G.difficulty='tutorial';G.gold=2;
+  resetState();G.difficulty='tutorial';G.gold=3;
   TUT={step:0,queue:[],round:0};
   // Build tutorial script — pick random variants for replayability
   TUT.queue=[
@@ -831,14 +871,16 @@ nextRound=function(){
 // LEADERBOARD
 // ============================================================
 function getLeaderboard(){const lb=JSON.parse(localStorage.getItem('pc_leaderboard')||'null');if(lb)return lb;const def=NPC_NAMES.map((n,i)=>({name:n,score:30-i*2,round:15-Math.floor(i/3),diff:'normal'}));localStorage.setItem('pc_leaderboard',JSON.stringify(def));return def}
-function updateLeaderboard(score,round){const lb=getLeaderboard();lb.push({name:'You',score,round,diff:G.difficulty});lb.sort((a,b)=>b.score-a.score||b.round-a.round);if(lb.length>15)lb.length=15;localStorage.setItem('pc_leaderboard',JSON.stringify(lb))}
+function updateLeaderboard(score,round,name){const lb=getLeaderboard();lb.push({name:name||'Anonymous Brewer',score,round,diff:G.difficulty});lb.sort((a,b)=>b.score-a.score||b.round-a.round);if(lb.length>15)lb.length=15;localStorage.setItem('pc_leaderboard',JSON.stringify(lb))}
 function renderLeaderboard(){const lb=getLeaderboard();const t=document.getElementById('lb-table');t.innerHTML='<thead><tr><th>#</th><th>Name</th><th>Score</th><th>Round</th></tr></thead><tbody>';lb.forEach((e,i)=>{t.innerHTML+=`<tr><td class="lb-rank">${i+1}</td><td class="lb-name">${e.name}</td><td class="lb-score">${e.score}</td><td class="lb-score">R${e.round}</td></tr>`});t.innerHTML+='</tbody>'}
 
 // ============================================================
 // SETTINGS
 // ============================================================
 function toggleSound(){soundEnabled=!soundEnabled;const t=document.getElementById('snd-toggle');t.classList.toggle('on',soundEnabled);localStorage.setItem('pc_sound',soundEnabled?'1':'0')}
-function renderSettings(){const s=document.getElementById('snd-toggle');s.classList.toggle('on',soundEnabled);const sl=document.getElementById('save-slots');sl.innerHTML='';const hasGame=G.phase!=='title'&&G.phase!=='gameover';for(let i=0;i<3;i++){let info=null;try{const raw=localStorage.getItem('pc_save_'+i);if(raw)info=JSON.parse(raw)}catch(e){}const div=document.createElement('div');div.className='sett-save-slot';if(info){let btns=`<button class="btn btn-sm" onclick="loadSave(${i})">Load</button> <button class="btn btn-sm btn-danger" onclick="deleteSave(${i})">Del</button>`;if(hasGame)btns+=` <button class="btn btn-sm btn-blue" onclick="saveCurrent(${i})">Overwrite</button>`;div.innerHTML=`<span>Slot ${i+1}: R${info.round}, ${info.gold||0}g, Rep ${info.reputation||0} (${info.difficulty||'?'})</span><div>${btns}</div>`}else{div.innerHTML=`<span>Slot ${i+1}: Empty</span>${hasGame?`<button class="btn btn-sm" onclick="saveCurrent(${i})">Save</button>`:'<span style="opacity:.4">Start a game first</span>'}`}sl.appendChild(div)}}
+let currentFontSize='medium';
+function setFontSize(size){const sizes={small:13,medium:16,large:19,xl:22};document.documentElement.style.fontSize=sizes[size]+'px';currentFontSize=size;localStorage.setItem('pc_fontsize',size);document.querySelectorAll('#font-size-btns button').forEach(b=>{b.classList.toggle('active',b.dataset.size===size)})}
+function renderSettings(){const s=document.getElementById('snd-toggle');s.classList.toggle('on',soundEnabled);document.querySelectorAll('#font-size-btns button').forEach(b=>{b.classList.toggle('active',b.dataset.size===currentFontSize)});const sl=document.getElementById('save-slots');sl.innerHTML='';const hasGame=G.phase!=='title'&&G.phase!=='gameover';for(let i=0;i<3;i++){let info=null;try{const raw=localStorage.getItem('pc_save_'+i);if(raw)info=JSON.parse(raw)}catch(e){}const div=document.createElement('div');div.className='sett-save-slot';if(info){let btns=`<button class="btn btn-sm" onclick="loadSave(${i})">Load</button> <button class="btn btn-sm btn-danger" onclick="deleteSave(${i})">Del</button>`;if(hasGame)btns+=` <button class="btn btn-sm btn-blue" onclick="saveCurrent(${i})">Overwrite</button>`;div.innerHTML=`<span>Slot ${i+1}: R${info.round}, ${info.gold||0}g, Rep ${info.reputation||0} (${info.difficulty||'?'})</span><div>${btns}</div>`}else{div.innerHTML=`<span>Slot ${i+1}: Empty</span>${hasGame?`<button class="btn btn-sm" onclick="saveCurrent(${i})">Save</button>`:'<span style="opacity:.4">Start a game first</span>'}`}sl.appendChild(div)}}
 function saveCurrent(slot){if(G.phase==='title')return;const save={round:G.round,gold:G.gold,reputation:G.reputation,repMax:G.repMax,difficulty:G.difficulty,board:G.board.map(h=>{const c=deepCopyCard(h);c.type=h.type||'hireling';return c}),hand:G.hand.map(s=>({...s})),lastReport:G.lastReport};try{localStorage.setItem('pc_save_'+slot,JSON.stringify(save));renderSettings();showFloat(document.getElementById('save-slots'),'Saved!','var(--green)')}catch(e){showFloat(document.getElementById('save-slots'),'Save failed!','var(--red)')}}
 function loadSave(slot){try{const raw=localStorage.getItem('pc_save_'+slot);if(!raw)return;const save=JSON.parse(raw);resetState();G.round=save.round||1;G.gold=save.gold||0;G.reputation=save.reputation||0;G.repMax=save.repMax||30;G.difficulty=save.difficulty||'normal';G.board=(save.board||[]).map(h=>{const c=deepCopyCard(h);c.type=c.type||'hireling';c._timer=c.castTime||3;return c});G.hand=(save.hand||[]).map(s=>({...s}));G.lastReport=save.lastReport||null;G.phase='shopping';showScreen('game-screen');generateShop();renderAll()}catch(e){showFloat(document.getElementById('save-slots'),'Load failed!','var(--red)')}}
 function deleteSave(slot){localStorage.removeItem('pc_save_'+slot);renderSettings()}
@@ -863,6 +905,7 @@ function showFloat(p,t,c){const el=document.createElement('div');el.className='f
 
 // Init sound pref
 if(localStorage.getItem('pc_sound')==='0')soundEnabled=false;
+const savedFont=localStorage.getItem('pc_fontsize');if(savedFont)setFontSize(savedFont);else setFontSize('medium');
 </script>
 </body>
 </html>

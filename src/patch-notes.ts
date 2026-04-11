@@ -13,6 +13,25 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.1.0-alpha",
+    date: "2026-04-09",
+    title: "Epic Victory, Font Settings, Spell Fixes",
+    changes: [
+      "Spells cancelled or cast with no valid target now return to the hand (no more lost spells).",
+      "All difficulty modes start with 3 gold (was variable).",
+      "Countdown timer fixed at 3 seconds (Insane still 0).",
+      "Countdown now fires before battle, not before shopping.",
+      "Font size setting in Settings: Small, Medium, Large, XL. Cards and layout scale proactively.",
+      "Enhanced Victory screen: glowing animated title, confetti shower, fanfare music.",
+      "Name input on victory: enter your name to save to the leaderboard.",
+      "Leaderboard now stores custom player names instead of 'You'.",
+      "Free Gingerbread Man (0 gold) always in round 1 shop.",
+      "Removed duplicate Start Battle button from shop area.",
+      "Disabled drag-and-drop on mobile/tablet (long-press for details only).",
+      "Fixed save/load system with error handling and overwrite support.",
+    ],
+  },
+  {
     version: "V0.0.8-alpha",
     date: "2026-04-09",
     title: "Round Timer & Tutorial Mode",
