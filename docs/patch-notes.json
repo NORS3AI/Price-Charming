@@ -1,5 +1,15 @@
 [
   {
+    "version": "V0.1.4-alpha",
+    "date": "2026-04-09",
+    "title": "Sellable Spells",
+    "changes": [
+      "Spells in your hand can now be sold for 1 gold each.",
+      "Each hand spell shows a 'Sell 1g' button, same as hireling cards.",
+      "Free up hand slots when you don't need a spell anymore."
+    ]
+  },
+  {
     "version": "V0.1.3-alpha",
     "date": "2026-04-09",
     "title": "Layout Polish & Battle Snap",
