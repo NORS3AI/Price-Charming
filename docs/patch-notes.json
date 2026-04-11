@@ -1,5 +1,18 @@
 [
   {
+    "version": "V0.1.2-alpha",
+    "date": "2026-04-09",
+    "title": "Epic Victory Confetti",
+    "changes": [
+      "Confetti now bursts higher, flying well past the top of the screen.",
+      "150 particles across 3 waves for sustained celebration.",
+      "3 different animation paths: straight up, spinning drift, wandering drift.",
+      "Larger particles (up to 3.8rem) with golden drop-shadow glow.",
+      "6 firework bursts with colored radial bursts in 8 different colors.",
+      "New emojis: 💎🔮🎇🎆🌠 added to the celebration pool."
+    ]
+  },
+  {
     "version": "V0.1.1-alpha",
     "date": "2026-04-09",
     "title": "Shop Side Panel & Settings Access",
