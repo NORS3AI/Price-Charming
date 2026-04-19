@@ -1,0 +1,73 @@
+Guild,Name,Star Rating,Wage Tier,Round Available,Pool Count,Potion 1 Stock,Potion 1 Potency,Potion 2 Stock,Potion 2 Potency,Cast Time,Keywords,Ability Text
+Sugar Guild,Doughboy,,Low,1,4,,4,,,5s,Quickcraft x2,Quickcraft x2.
+Sugar Guild,Pantry Stocker,,Low,1,4,2,3,,,Passive,,+1 stock each round.
+Sugar Guild,Cookie Seller,,Low,1,4,4,1,,,Passive,,First sale each round grants +1 gold.
+Sugar Guild,Apprentice Baker,,Low,1,4,3,3,,,4s,,"After an ally uses Quickcraft, gain +1 temporary stock."
+Sugar Guild,Batter Boy,,Low,2,4,,3,,4,5s,Quickcraft x2,"Quickcraft x2. Each time an opponent sabotages you this round, gain +3 temporary stock."
+Sugar Guild,Candied Witch,,Low,3,3,,5,,4,5s,Quickcraft x3 / Bewitch,Quickcraft x3. Bewitch one customer.
+Sugar Guild,Burnt Batch,,Low,2,4,,4,,,3s,Quickcraft x2,"Quickcraft x2. If this sells nothing this round, gain +6 potency permanently."
+Sugar Guild,Sugar Sprinkler,,Medium,4,3,,5,,,5s,,Adjacent allies gain +1 potency (permanent).
+Sugar Guild,Sample Server,,Medium,4,3,1,5,,,Passive,,First stock each round sells immediately.
+Sugar Guild,Glazier,,Medium,4,3,,5,,6,6s,Quickcraft x4,"Quickcraft x4. If total temporary stock generated this round exceeds 10, gain +3 permanent potency."
+Sugar Guild,Sugar Rush Peddler,,Medium,5,3,,6,,5,6s,Quickcraft x4,Quickcraft x4. Each sale this round reduces cast time by 0.5s until end of round.
+Sugar Guild,Confectioner,,Medium,5,3,,6,,7,7s,Quickcraft x4 / Haggle,"Quickcraft x4. Haggle. If a Haggled sale succeeds, all Sugar Guild allies gain +1 potency permanently."
+Sugar Guild,Tasting Table,,Medium,4,3,2,4,,,5s,,"When a customer walks away without buying from any hireling, redirect them to this hireling. If they buy, all Sugar Guild allies gain +1 temporary stock."
+Sugar Guild,Frosted Lookout,,Medium,5,3,,5,,,5s,Quickcraft x3,"Quickcraft x3. When an opponent uses Sabotage, immediately trigger your highest potency Sugar Guild ally's ability."
+Sugar Guild,Oven Master,⭐,High,6,3,,7,,7,6s,Quickcraft x5,Quickcraft x5. Allies gain +2 potency (permanent).
+Sugar Guild,Rush Order Cook,,High,6,3,,6,,7,8s,Quickcraft x5,Quickcraft x5. -1s cast time for each other Sugar Guild ally.
+Sugar Guild,Sugar Crash,,High,7,3,,8,,6,7s,Quickcraft x5 / Bewitch,"Quickcraft x5. Once per round, when your total temporary stock hits 20, all customers in the middle zone are Bewitched simultaneously."
+Sugar Guild,The Candy Architect,,High,7,3,,7,,8,8s,Quickcraft x6,"Quickcraft x6. Each time any Sugar Guild ally gains permanent potency this round, this hireling's next Quickcraft generates +2 additional stock."
+Sugar Guild,Gingerbread King,⭐,High,9,2,,8,,12,8s,Quickcraft x10,"Quickcraft x10. After an ally sells, gain +2 potency (permanent)."
+Sugar Guild,The Muffin Man,⭐,High,10,2,,10,,10,10s,Quickcraft x10,Quickcraft x10. Allies with Quickcraft gain +2 Quickcraft (permanent).
+Thieves Guild,Robbin Goblin,,Low,1,4,3,2,,,4s,Knockoff x1,"Knockoff x1. If potency is below 5, steal +1 permanent stock from opponent's lowest potency hireling."
+Thieves Guild,Pickpocket Pixie,,Low,1,4,2,2,2,3,4s,,"After this sells, gain +1 temporary stock for every Thieves hireling in play (including opponent's)."
+Thieves Guild,Snitch Witch,,Low,2,4,3,3,,,5s,Knockoff x1,"Knockoff x1. Once per round, when an ally uses Sabotage, gain +1 permanent stock."
+Thieves Guild,Miss Fortune Teller,⭐,Low,2,4,2,3,3,2,5s,Knockoff x1,"Knockoff x1. At the start of the shop round, gain +1 permanent stock for each customer that the opponent won."
+Thieves Guild,Nimble Ned,,Low,3,3,3,3,3,4,5s,Knockoff x2,"Knockoff x2. When a customer buys nothing from your hirelings, pickpocket +1 gold from them, if you have at least 2 other Thieves Guild allies in play."
+Thieves Guild,Street Rat,,Medium,4,3,4,3,3,3,5s,Knockoff x2 / Haggle,"Knockoff x2. Haggle. If Haggled sale succeeds, gain +2 permanent stock."
+Thieves Guild,Snatchling,,Medium,4,3,4,4,,,6s,Knockoff x2,Knockoff x2. Spend -1 Reputation. Gain +4 permanent stock.
+Thieves Guild,Sticky Fingers,,Medium,4,3,3,4,4,3,6s,Knockoff x2 / Sabotage,Knockoff x2. Sabotage opponent's lowest cast time hireling. Gain +2 temporary stock.
+Thieves Guild,Masked Minstrel,,Medium,5,3,3,4,4,4,6s,Knockoff x2 / Bewitch,"Knockoff x2. Bewitch one customer. If the Bewitched customer buys, gain +3 permanent stock instead of gold."
+Thieves Guild,The Saboteur,,Medium,5,3,4,4,,,6s,Sabotage x2 / Knockoff x1,"Sabotage x2. Knockoff x1. Each time this Sabotages successfully this round, all Thieves allies gain +0.5s cast time reduction until end of round."
+Thieves Guild,Grumblegut Dragon,,High,6,3,6,3,5,3,7s,Knockoff x3,Knockoff x3. Eat +2 potency permanently from each adjacent hireling. Gain +1 permanent stock per potency eaten.
+Thieves Guild,Cloaked Crook,,High,6,3,5,4,4,5,7s,Knockoff x3,"Knockoff x3. If this hireling has not been Bewitched or targeted this round, gain +4 permanent stock."
+Thieves Guild,Fence Master,,High,7,3,5,5,5,4,7s,Knockoff x3 / Haggle,Knockoff x3. Haggle. Spend -1 Reputation. All Thieves allies gain +1 permanent stock.
+Thieves Guild,The Highwayman,⭐,High,7,3,4,6,5,5,7s,Knockoff x3 / Sabotage / Bewitch,Knockoff x3. Sabotage. Bewitch.
+Thieves Guild,Crooked Confessor,,High,7,3,4,5,5,4,7s,Knockoff x2,"Knockoff x2. If this hireling is in play, all ally Haggle sales no longer cost Reputation."
+Thieves Guild,Goblin King,⭐,High,8,2,6,5,5,6,8s,Knockoff x4,"Knockoff x4. If Robbin Goblin is on your board, both gain +3 permanent stock and +1 permanent potency."
+Thieves Guild,Prince of Thieves,,High,9,2,5,7,6,6,8s,Knockoff x4,Knockoff x4. Spend -2 Reputation. Curse opponent's highest potency hireling — it adds 3 seconds to their current cast.
+Thieves Guild,The Grand Thief,,High,9,2,6,6,7,5,9s,Knockoff x5,"Knockoff x5. For each Thieves ally with Knockoff, gain +2 temporary stock. All Thieves allies trigger Knockoff x1 immediately."
+Thieves Guild,Puss in Boots,⭐⭐,High,10,2,7,7,8,6,9s,Knockoff x5 / Haggle,Knockoff x5. Haggle. Steal 1 Reputation star from each customer (they must have more than 1 reputation star). Gain +1 permanent stock per star stolen.
+Nobles Guild,The Page,,Low,1,4,2,3,,,4s,,"When an ally sells, gain +1 temporary stock."
+Nobles Guild,Lady's Maid,,Low,1,4,2,3,3,2,4s,Bewitch,"Bewitch. After Bewitch succeeds, a random ally gains +1 permanent potency."
+Nobles Guild,Court Jester,,Low,2,4,3,3,2,4,5s,,"When any ally gains a stock buff, gain +1 temporary stock. When any ally gains a potency buff, gain +1 temporary potency."
+Nobles Guild,The Squire,⭐,Low,2,4,4,1,4,1,5s,Bewitch,"Bewitch. If a Knight Errant is adjacent, copy his cast time and action."
+Nobles Guild,The Herald,,Medium,4,3,4,4,3,5,5s,,All Nobles Guild allies gain +1 temporary stock.
+Nobles Guild,Knight Errant,,Medium,4,3,4,5,4,4,6s,Bewitch,"Bewitch. If Bewitched customer has 3 or more reputation stars, gain +3 permanent potency."
+Nobles Guild,Royal Advisor,,Medium,5,3,3,5,4,5,1-8s (random),Sabotage,"Sabotage an ally. If it is a Nobles Guild ally, that ally's next action gains +2 to all stat effects permanently."
+Nobles Guild,The Duchess,⭐,Medium,5,3,4,5,5,4,6s,,"Only applies to Nobles Guild Allies: All allies to the left gain +1 permanent stock. All allies to the right gain +1 permanent potency. If she has at least one Nobles Guild ally on both sides, she also gains the same stats."
+Nobles Guild,The Royal Tutor,,Medium,5,3,3,4,4,3,6s,,Choose one ally. That ally's next action gains +1 to all stat effects permanently. Cannot buff another Royal Tutor.
+Nobles Guild,The Court Scribe,,Medium,5,3,4,4,3,5,6s,,The last permanent buff any ally gained this round is increased by +1 permanently.
+Nobles Guild,Royal Treasurer,,High,6,3,5,5,4,6,Passive,,"At the end of each action round, gain +1 gold for each Noble ally that sold at least once last round."
+Nobles Guild,The Champion Knight,⭐,High,6,3,5,6,6,5,7s,Bewitch,"Bewitch the highest reputation customer only. If they buy, all Nobles Guild allies gain +2 permanent potency."
+Nobles Guild,Lord Chamberlain,⭐,High,7,3,5,6,6,6,7s,,All Nobles Guild allies gain +1 permanent stock and +1 permanent potency. This effect doubles during the action round immediately following payday.
+Nobles Guild,The Grand Vizier,⭐,High,7,3,6,6,5,7,7s (reduces by 1s per cast),,"Copy the last permanent buff any ally received and apply it to himself. Once cast time reaches 0, he stops casting permanently."
+Nobles Guild,The Kingmaker,⭐,High,7,3,5,5,4,6,10s,,Choose one Nobles Guild ally. Potency gains through actions are doubled for that ally. (Temporary effect.)
+Nobles Guild,The Prince,⭐,High,9,2,7,7,6,8,9s,Bewitch,"Bewitch the highest reputation customer only. If they buy, gain +3 permanent potency and all Noble allies gain +1 permanent potency."
+Nobles Guild,The Queen,⭐⭐,High,10,2,8,8,7,9,9s,Bewitch,Bewitch. Grant all customers currently in the middle zone +1 reputation. (This effect cannot be buffed.)
+No Guild,Dusty Broom,,None,1,4,5,1,,,5s,,Cannot be Sabotaged. Cannot be buffed. Starting hireling — given to player for free.
+No Guild,Jumping Jack,,Low,1,4,3,3,2,4,5s,,"After this sells, gain +1 permanent stock and +1 permanent potency."
+No Guild,Almost-A-Knight,,Low,1,4,4,3,3,3,5s,Haggle,"Haggle. If Haggled sale succeeds, gain +2 temporary stock."
+No Guild,Part-Time Potioneer,,Medium,3,3,3,5,4,4,6s,Bewitch,"Bewitch. After Bewitch succeeds, gain +2 permanent potency."
+No Guild,Tower Escapee,,Medium,3,3,4,4,5,3,6s,,Reduce the cast time of a random active hireling by 1s for this round only.
+No Guild,Spare Charming,,Low,2,4,2,2,2,2,4s,Knockoff x1 / Haggle,"Knockoff x1. Haggle. If Haggled sale fails, gain +3 permanent potency."
+No Guild,Ogreachiever,,High,7,3,5,6,4,7,8s,,All active hirelings gain +1 permanent potency. (Does not apply to hirelings with Quickcraft.)
+Spell,Bottomless Bottle,,N/A,N/A,3,N/A,N/A,N/A,N/A,N/A,None,Grant one hireling of your choice +3 permanent stock. (Does not apply to hirelings with Quickcraft.)
+Spell,Potion Polish,,N/A,N/A,3,N/A,N/A,N/A,N/A,N/A,None,Grant one hireling of your choice +3 permanent potency.
+Spell,Star Power,,N/A,N/A,3,N/A,N/A,N/A,N/A,N/A,None,"The first 3 customers in the next action round will all have +1 reputation. (This effect cannot stack, only castable once per shop phase.)"
+Spell,Talent Scout,,N/A,N/A,3,N/A,N/A,N/A,N/A,N/A,None,The next shop refresh is free and guaranteed to contain at least one hireling from your most represented guild.
+Spell,Spring Cleaning,,N/A,6,3,N/A,N/A,N/A,N/A,N/A,None,Remove all Tier 1 hirelings from the card pool permanently. This spell returns to the pool upgraded.
+Spell,Spring Cleaning (Upgraded),,N/A,6,3,N/A,N/A,N/A,N/A,N/A,None,Remove all Tier 2 hirelings from the card pool permanently.
+Spell,Tip Jar Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Gain +3 gold.
+Spell,Second Chance Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Refresh the shop for free.
+Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hireling +3 permanent potency.

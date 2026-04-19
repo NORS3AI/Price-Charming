@@ -24,6 +24,8 @@ src/
   cards/
     types.ts        — Card type system (HirelingCard, SpellCard, AssistantCard)
     hirelings.ts    — All hireling card definitions
+  data/
+    cards.csv       — Master card data (guilds, stats, keywords, abilities)
   spells/
     transformations.ts — Transformation registry (maps transformable cards to outcomes)
     wishing-star.ts    — Wishing Star spell implementation
@@ -32,6 +34,13 @@ src/
 docs/
   index.html      — GitHub Pages site
 ```
+
+## Guilds & Keywords (from cards.csv)
+
+- **Guilds:** Sugar Guild, Thieves Guild, Nobles Guild, No Guild, Spell.
+- **Keywords:** Quickcraft (xN), Knockoff (xN), Bewitch, Haggle, Sabotage, Charm, Passive.
+- **Wage Tiers:** Low, Medium, High (None for starters).
+- **Star Rating:** blank, ⭐, or ⭐⭐ marks rarity.
 
 ## Key Concepts
 

@@ -8,7 +8,7 @@ Comprehensive feature list for Price Charming. Status indicators: Implemented, P
 
 The full-game build is split into 11 small phases so each one fits inside a single working session.
 
-1. **Core Data & Keywords** — load card CSV, define all keywords.
+1. **Core Data & Keywords** — load card CSV (`src/data/cards.csv`), define all keywords (Quickcraft, Knockoff, Bewitch, Haggle, Sabotage, Charm, Passive).
 2. **Economy System** — gold, wages, payday escalation.
 3. **Board & Hand Layout** — 7 board slots, bench, hand UI.
 4. **Shop System** — pool management, potion assignment, Spring Cleaning.

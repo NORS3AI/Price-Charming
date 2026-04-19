@@ -18,7 +18,8 @@ export const PATCH_NOTES: PatchNote[] = [
     title: "11-Phase Rollout Plan",
     changes: [
       "Documented the 11-phase rollout plan in README.md, CLAUDE.md, and FEATURES.md.",
-      "Phase 1: Core Data & Keywords — load card CSV, define all keywords.",
+      "Added src/data/cards.csv — master card list across Sugar Guild, Thieves Guild, Nobles Guild, No Guild, and Spells.",
+      "Phase 1: Core Data & Keywords — load card CSV, define all keywords (Quickcraft, Knockoff, Bewitch, Haggle, Sabotage, Charm, Passive).",
       "Phase 2: Economy System — gold, wages, payday escalation.",
       "Phase 3: Board & Hand Layout — 7 board slots, bench, hand UI.",
       "Phase 4: Shop System — pool management, potion assignment, Spring Cleaning.",
