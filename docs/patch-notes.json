@@ -1,5 +1,24 @@
 [
   {
+    "version": "V0.1.5-alpha",
+    "date": "2026-04-19",
+    "title": "11-Phase Rollout Plan",
+    "changes": [
+      "Documented the 11-phase rollout plan in README.md, CLAUDE.md, and FEATURES.md.",
+      "Phase 1: Core Data & Keywords — load card CSV, define all keywords.",
+      "Phase 2: Economy System — gold, wages, payday escalation.",
+      "Phase 3: Board & Hand Layout — 7 board slots, bench, hand UI.",
+      "Phase 4: Shop System — pool management, potion assignment, Spring Cleaning.",
+      "Phase 5: Potion Pricing — pricing panel, brackets, stock effects.",
+      "Phase 6: Customer System — 4-axis tug-of-war, patience timers.",
+      "Phase 7: Action Round — auto-battler combat, weather events.",
+      "Phase 8: Opponent System — async ghost opponent.",
+      "Phase 9: Charmed Hireling — merge mechanic, charm cards.",
+      "Phase 10: Round Structure — full 15-round game loop.",
+      "Phase 11: Export Button — admin tool."
+    ]
+  },
+  {
     "version": "V0.1.4-alpha",
     "date": "2026-04-09",
     "title": "Sellable Spells",

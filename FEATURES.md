@@ -4,6 +4,24 @@ Comprehensive feature list for Price Charming. Status indicators: Implemented, P
 
 ---
 
+## 11-Phase Rollout Plan — Planned
+
+The full-game build is split into 11 small phases so each one fits inside a single working session.
+
+1. **Core Data & Keywords** — load card CSV, define all keywords.
+2. **Economy System** — gold, wages, payday escalation.
+3. **Board & Hand Layout** — 7 board slots, bench, hand UI.
+4. **Shop System** — pool management, potion assignment, Spring Cleaning.
+5. **Potion Pricing** — pricing panel, brackets, stock effects.
+6. **Customer System** — 4-axis tug-of-war, patience timers.
+7. **Action Round** — auto-battler combat, weather events.
+8. **Opponent System** — async ghost opponent.
+9. **Charmed Hireling** — merge mechanic, charm cards.
+10. **Round Structure** — full 15-round game loop.
+11. **Export Button** — admin tool.
+
+---
+
 ## Cards
 
 ### Hirelings — Implemented (partial)

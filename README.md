@@ -44,6 +44,22 @@ npm test
 npm run build
 ```
 
+## Rollout Plan
+
+The full game is being built in 11 phases, each scoped to fit in a single session:
+
+1. **Core Data & Keywords** — load card CSV, define all keywords.
+2. **Economy System** — gold, wages, payday escalation.
+3. **Board & Hand Layout** — 7 board slots, bench, hand UI.
+4. **Shop System** — pool management, potion assignment, Spring Cleaning.
+5. **Potion Pricing** — pricing panel, brackets, stock effects.
+6. **Customer System** — 4-axis tug-of-war, patience timers.
+7. **Action Round** — auto-battler combat, weather events.
+8. **Opponent System** — async ghost opponent.
+9. **Charmed Hireling** — merge mechanic, charm cards.
+10. **Round Structure** — full 15-round game loop.
+11. **Export Button** — admin tool.
+
 ## Documentation
 
 - [Features List](FEATURES.md)

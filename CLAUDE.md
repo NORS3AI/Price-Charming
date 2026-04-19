@@ -45,6 +45,24 @@ docs/
 
 Patch notes are tracked in `src/patch-notes.ts`. Versions follow `V0.0.X-alpha` format, incrementing to 100 before becoming `V0.1.0-alpha`.
 
+## 11-Phase Rollout Plan
+
+The full-game build is split into 11 bite-sized phases. Each phase is small enough to complete in a single session without timing out.
+
+1. **Core Data & Keywords** — load card CSV, define all keywords.
+2. **Economy System** — gold, wages, payday escalation.
+3. **Board & Hand Layout** — 7 board slots, bench, hand UI.
+4. **Shop System** — pool management, potion assignment, Spring Cleaning.
+5. **Potion Pricing** — pricing panel, brackets, stock effects.
+6. **Customer System** — 4-axis tug-of-war, patience timers.
+7. **Action Round** — auto-battler combat, weather events.
+8. **Opponent System** — async ghost opponent.
+9. **Charmed Hireling** — merge mechanic, charm cards.
+10. **Round Structure** — full 15-round game loop.
+11. **Export Button** — admin tool.
+
+When picking up a phase, keep the change surface scoped to that phase only and update patch notes on completion.
+
 ## Code Conventions
 
 - Deep copy card objects when creating instances to avoid shared mutable state.
