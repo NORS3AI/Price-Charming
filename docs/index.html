@@ -846,10 +846,15 @@ function pcBuildSlotCard(inst, slotIdx, isBench){
 function pcRenderPlayerBoard(){
   const el = $("pc-player-board"); if (!el) return;
   el.innerHTML = "";
+  const targeting = !!pcTargetPick;
   for (let i = 0; i < pcGame.board.slots.length; i++) {
     const card = pcBuildSlotCard(pcGame.board.slots[i], i, E.isBenchSlot(i));
     const inst = pcGame.board.slots[i];
-    if (inst && pcGame.phase === "shop") {
+    if (targeting && inst) {
+      card.classList.add("pc-targetable");
+      card.onclick = () => pcApplyTarget(i);
+      card.title = "Click to target this hireling";
+    } else if (inst && pcGame.phase === "shop") {
       card.onclick = () => pcSellBoard(i);
       card.title = "Click to sell for 1g";
     }
@@ -1177,16 +1182,78 @@ function pcPlayHand(handIdx){
       const res = E.castSpringCleaning(pcGame.hand, handIdx, pcGame.pool);
       pcGame = { ...pcGame, hand: res.hand, pool: res.pool };
       pcFlash(`${card.card.name}: removed ${res.removedHirelings.length} hirelings from the pool.`);
+    } else if (id === "lucky-charm") {
+      pcEnterTargetMode(handIdx, "lucky", "Pick a board hireling to grant +3 permanent potency.");
+      return;
+    } else if (id === "bottomless-bottle") {
+      pcEnterTargetMode(handIdx, "bottle", "Pick a board hireling to grant +3 permanent stock.");
+      return;
+    } else if (id === "potion-polish") {
+      pcEnterTargetMode(handIdx, "polish", "Pick a board hireling to grant +3 permanent potency.");
+      return;
     } else {
-      // Placeholder until chunk G wires target-pick cast helpers.
+      // Star Power / Talent Scout and any future non-targeted spells.
       const { hand: nextHand } = E.removeFromHand(pcGame.hand, handIdx);
       pcGame = { ...pcGame, hand: nextHand };
-      pcFlash(`Cast ${card.card.name} (effect coming in chunk G).`);
+      pcFlash(`Cast ${card.card.name}.`);
     }
     pcAfterChange();
   } catch (err) { pcFlash(err.message); }
 }
 window.pcPlayHand = pcPlayHand;
+
+// --- target picker for Lucky / Bottle / Polish ----------------------
+function pcEnterTargetMode(handIdx, type, message){
+  pcTargetPick = { handIdx, type };
+  const overlay = $("pc-target-overlay");
+  const msg = $("pc-target-msg");
+  if (msg) msg.textContent = message;
+  if (overlay) overlay.style.display = "flex";
+  pcRender();
+}
+
+function pcCancelTarget(){
+  pcTargetPick = null;
+  const overlay = $("pc-target-overlay");
+  if (overlay) overlay.style.display = "none";
+  pcRender();
+}
+window.pcCancelTarget = pcCancelTarget;
+
+function pcApplyTarget(slot){
+  if (!pcTargetPick) return;
+  const inst = pcGame.board.slots[slot];
+  if (!inst) { pcFlash("Target slot is empty."); return; }
+  const { handIdx, type } = pcTargetPick;
+  try {
+    if (type === "lucky") {
+      const res = E.castLuckyCharm(pcGame.hand, handIdx, pcGame.board, slot);
+      pcGame = { ...pcGame, hand: res.hand, board: res.board };
+      pcFlash(`Lucky Charm: ${inst.card.name} +3 potency.`);
+    } else if (type === "bottle" || type === "polish") {
+      // No dedicated engine helper for these two spells; apply the
+      // buff inline and consume the spell from the hand.
+      const { hand: nextHand } = E.removeFromHand(pcGame.hand, handIdx);
+      const buffed = {
+        ...inst,
+        permanentStockBonus: inst.permanentStockBonus + (type === "bottle" ? 3 : 0),
+        permanentPotencyBonus: inst.permanentPotencyBonus + (type === "polish" ? 3 : 0),
+      };
+      const slots = pcGame.board.slots.slice();
+      slots[slot] = buffed;
+      pcGame = { ...pcGame, hand: nextHand, board: { slots } };
+      pcFlash(
+        type === "bottle"
+          ? `Bottomless Bottle: ${inst.card.name} +3 stock.`
+          : `Potion Polish: ${inst.card.name} +3 potency.`
+      );
+    }
+  } catch (err) { pcFlash(err.message); }
+  pcTargetPick = null;
+  const overlay = $("pc-target-overlay");
+  if (overlay) overlay.style.display = "none";
+  pcAfterChange();
+}
 
 function pcSetPrice(type, delta){
   if (!pcGame || pcGame.phase !== "shop") return;
