@@ -153,3 +153,15 @@ export {
   assignHirelingPotion,
   assignPotionsToPool,
 } from "./shop/assignment";
+export type { RollOptions, ShopOffering } from "./shop/offering";
+export {
+  DEFAULT_SHOP_SIZE,
+  DEFAULT_SPELL_CHANCE,
+  createEmptyOffering,
+  offeringHirelings,
+  offeringInstances,
+  offeringSpells,
+  refreshShop,
+  rollShop,
+  takeFromOffering,
+} from "./shop/offering";
