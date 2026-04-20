@@ -946,11 +946,15 @@ function pcBuildSlotCard(inst, slotIdx, isBench, opts){
     ? "pc-slot-stats-bold pc-stat-loss"
     : "pc-slot-stats-bold";
 
-  // Surface the permanent buff delta so the player can see how far a
-  // hireling has climbed above its printed stats.
+  // Surface only the PERMANENT buff delta (cross-round bonus + this-round
+  // gains), not temp Quickcraft or units sold — otherwise Quickcraft would
+  // falsely read as a permanent buff and a well-sold hireling with a real
+  // buff would drop its badge.
+  const permStock = (inst.permanentStockBonus || 0) + (hs ? (hs.permanentStockGainedThisRound || 0) : 0);
+  const permPotency = (inst.permanentPotencyBonus || 0) + (hs ? (hs.permanentPotencyGainedThisRound || 0) : 0);
   const buffBits = [];
-  if (stockDelta > 0) buffBits.push(`+${stockDelta} stock`);
-  if (potencyDelta > 0) buffBits.push(`+${potencyDelta} pot`);
+  if (permStock > 0) buffBits.push(`+${permStock} stock`);
+  if (permPotency > 0) buffBits.push(`+${permPotency} pot`);
   const buffBadge = buffBits.length
     ? `<div class="pc-slot-buff">${buffBits.join(" · ")}</div>`
     : "";
