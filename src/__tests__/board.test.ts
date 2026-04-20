@@ -201,10 +201,17 @@ describe("rearrangeBoard", () => {
     return b.slots.map((s) => (s ? s.id : null));
   }
 
-  test("moves a hireling and shifts intermediate slots (splice-insert)", () => {
+  test("moves a hireling and shifts intermediate slots (splice-insert, high→low)", () => {
     const b = boardOf(["A", "B", "C", "D", "E", "F", "G"]);
     const next = rearrangeBoard(b, 4, 1); // move E to slot 1
     expect(idsOf(next)).toEqual(["A", "E", "B", "C", "D", "F", "G"]);
+  });
+
+  test("splice-insert also shifts when fromSlot < toSlot (low→high)", () => {
+    const b = boardOf(["A", "B", "C", "D", null, null, null]);
+    // Drag A rightward to slot 2; B and C shift left to close the gap.
+    const next = rearrangeBoard(b, 0, 2);
+    expect(idsOf(next)).toEqual(["B", "C", "A", "D", null, null, null]);
   });
 
   test("moving from bench to active works", () => {

@@ -1,8 +1,7 @@
 import { HirelingCard } from "../cards/types";
-import { createWageTracker } from "../economy/wages";
 import { Board, Hand, HirelingInstance } from "./types";
 import { createBoard, placeHireling, STARTER_SLOT } from "./board";
-import { createHand } from "./hand";
+import { createHand, createHirelingInstance } from "./hand";
 
 /**
  * Build a Dusty Broom instance. Its wage tier is "None" (payday-exempt)
@@ -17,11 +16,7 @@ export function createDustyBroomInstance(
       `createDustyBroomInstance expected the Dusty Broom card (got "${card.id}").`
     );
   }
-  return {
-    id,
-    card,
-    wageTracker: createWageTracker(card.wageTier),
-  };
+  return createHirelingInstance(card, id);
 }
 
 /**

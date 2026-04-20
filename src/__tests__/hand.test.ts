@@ -1,10 +1,11 @@
 import { ALL_HIRELINGS } from "../cards/hirelings";
 import { ALL_SPELLS } from "../cards/spells";
-import { createWageTracker } from "../economy/wages";
 import {
   MAX_HAND_SIZE,
   addToHand,
   createHand,
+  createHirelingInstance,
+  createSpellInstance,
   handSize,
   isHandFull,
   isHireling,
@@ -16,14 +17,32 @@ import { HandCardInstance } from "../board/types";
 function hireling(name: string, id: string): HandCardInstance {
   const card = ALL_HIRELINGS.find((h) => h.name === name);
   if (!card) throw new Error(`Missing hireling: ${name}`);
-  return { id, card, wageTracker: createWageTracker(card.wageTier) };
+  return createHirelingInstance(card, id);
 }
 
 function spell(name: string, id: string): HandCardInstance {
   const card = ALL_SPELLS.find((s) => s.name === name);
   if (!card) throw new Error(`Missing spell: ${name}`);
-  return { id, card };
+  return createSpellInstance(card, id);
 }
+
+describe("instance factories", () => {
+  test("createHirelingInstance wires the wage tracker from the card", () => {
+    const card = ALL_HIRELINGS.find((h) => h.name === "Sugar Sprinkler")!;
+    const inst = createHirelingInstance(card, "inst-1");
+    expect(inst.id).toBe("inst-1");
+    expect(inst.card).toBe(card);
+    expect(inst.wageTracker.tier).toBe("Medium");
+    expect(inst.wageTracker.paydaysSurvived).toBe(0);
+  });
+
+  test("createSpellInstance returns a minimal spell wrapper", () => {
+    const card = ALL_SPELLS.find((s) => s.name === "Potion Polish")!;
+    const inst = createSpellInstance(card, "spell-1");
+    expect(inst.id).toBe("spell-1");
+    expect(inst.card).toBe(card);
+  });
+});
 
 describe("hand", () => {
   test("new hand is empty", () => {
@@ -44,7 +63,9 @@ describe("hand", () => {
     let h = createHand();
     for (let i = 0; i < MAX_HAND_SIZE; i++) {
       h = addToHand(h, hireling("Doughboy", `h${i}`));
+      expect(handSize(h)).toBe(i + 1);
     }
+    expect(handSize(h)).toBe(MAX_HAND_SIZE);
     expect(isHandFull(h)).toBe(true);
     expect(() => addToHand(h, hireling("Doughboy", "overflow"))).toThrow(
       /Hand is full/

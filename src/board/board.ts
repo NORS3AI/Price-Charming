@@ -154,8 +154,8 @@ export function sellHirelingFromHand(
  * positions shifts to accommodate (splice-insert semantics), so a drag
  * from slot 0 to slot 4 pushes slots 1..4 one position left.
  *
- * Throws if either index is out of range, if `fromSlot` is empty, or if
- * `fromSlot === toSlot` (no-op — caller should short-circuit).
+ * Returns the same board unchanged when `fromSlot === toSlot`. Throws
+ * when either index is out of range or `fromSlot` is empty.
  */
 export function rearrangeBoard(
   board: Board,

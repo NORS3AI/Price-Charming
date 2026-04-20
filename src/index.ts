@@ -80,6 +80,8 @@ export type {
 export {
   MAX_HAND_SIZE,
   createHand,
+  createHirelingInstance,
+  createSpellInstance,
   handSize,
   isHandFull,
   addToHand,
