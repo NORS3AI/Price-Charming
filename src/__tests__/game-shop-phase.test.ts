@@ -86,6 +86,7 @@ describe("payWage", () => {
   test("deducts wage and advances the tracker", () => {
     let g = createGame({ rng: mulberry32(1), startingGold: 10 });
     g = withBoardHireling(g, "Doughboy", "d1", 2);
+    g = { ...g, round: 5 };
     const after = payWage(g, "d1");
     expect(after.gold).toBe(8); // 10 - 2
     const survivor = after.board.slots[2]!;
@@ -95,17 +96,33 @@ describe("payWage", () => {
   test("throws on insufficient gold", () => {
     let g = createGame({ rng: mulberry32(1), startingGold: 1 });
     g = withBoardHireling(g, "Doughboy", "d1", 2);
+    g = { ...g, round: 5 };
     expect(() => payWage(g, "d1")).toThrow(/need 2g/);
   });
 
   test("throws when Dusty Broom (exempt) is targeted", () => {
     const g = createGame({ rng: mulberry32(1) });
-    expect(() => payWage(g, g.starterBroom.id)).toThrow(/payday-exempt/);
+    expect(() => payWage({ ...g, round: 5 }, g.starterBroom.id)).toThrow(/payday-exempt/);
   });
 
   test("throws when the hireling isn't on the board", () => {
     const g = createGame({ rng: mulberry32(1) });
-    expect(() => payWage(g, "not-there")).toThrow(/not on the board/);
+    expect(() => payWage({ ...g, round: 5 }, "not-there")).toThrow(/not on the board/);
+  });
+
+  test("throws when the round isn't a payday round", () => {
+    let g = createGame({ rng: mulberry32(1), startingGold: 10 });
+    g = withBoardHireling(g, "Doughboy", "d1", 2);
+    // Default round is 1 — not a payday round.
+    expect(() => payWage(g, "d1")).toThrow(/not a payday round/);
+  });
+
+  test("throws when the hireling has already been paid this payday", () => {
+    let g = createGame({ rng: mulberry32(1), startingGold: 10 });
+    g = withBoardHireling(g, "Doughboy", "d1", 2);
+    g = { ...g, round: 5 };
+    g = payWage(g, "d1"); // first pay succeeds
+    expect(() => payWage(g, "d1")).toThrow(/already been paid/);
   });
 });
 

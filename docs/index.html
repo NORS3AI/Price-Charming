@@ -1773,8 +1773,11 @@ function pcRenderPayday(){
     payBtn.textContent = `Pay ${item.wage}g`;
     payBtn.disabled = !item.canPay;
     payBtn.onclick = () => {
-      try { pcGame = E.payWage(pcGame, h.id); pcRender(); }
-      catch (err) { pcFlash(err.message); }
+      try {
+        pcGame = E.payWage(pcGame, h.id);
+        pcFlash(`Paid ${h.card.name} ${item.wage}g.`);
+        pcRender();
+      } catch (err) { pcFlash(err.message); }
     };
     const sellBtn = document.createElement("button");
     sellBtn.className = "btn btn-sm btn-danger";

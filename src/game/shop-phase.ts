@@ -6,7 +6,7 @@ import {
   currentWageDemand,
   survivePayday,
 } from "../economy/wages";
-import { isPaydayRound, paydayIndex } from "../economy/payday";
+import { PAYDAY_ROUNDS, isPaydayRound, paydayIndex } from "../economy/payday";
 import { SELL_VALUE } from "../economy/gold";
 import { sellHirelingFromBoardToPool } from "../shop/purchase";
 import { assignPotionsToPool } from "../shop/assignment";
@@ -57,7 +57,8 @@ export function paydayLineItems(state: GameState): BoardPaydayLineItem[] {
 /**
  * Pay the given board hireling's wage: deducts gold, advances its
  * wageTracker via survivePayday. Throws when the hireling isn't on the
- * board, is payday-exempt (Dusty Broom), or gold can't cover the wage.
+ * board, is payday-exempt (Dusty Broom), has already been paid this
+ * payday, the round isn't a payday round, or gold can't cover the wage.
  */
 export function payWage(state: GameState, hirelingId: string): GameState {
   const slot = state.board.slots.findIndex((s) => s?.id === hirelingId);
@@ -67,6 +68,17 @@ export function payWage(state: GameState, hirelingId: string): GameState {
   const hireling = state.board.slots[slot]!;
   if (isExemptFromPayday(hireling.wageTracker)) {
     throw new Error(`payWage: "${hirelingId}" is payday-exempt.`);
+  }
+  const idx = paydayIndex(state.round);
+  if (idx === null) {
+    throw new Error(
+      `payWage: round ${state.round} is not a payday round (${PAYDAY_ROUNDS.join(", ")}).`
+    );
+  }
+  if (hireling.wageTracker.paydaysSurvived >= idx) {
+    throw new Error(
+      `payWage: "${hirelingId}" has already been paid this payday.`
+    );
   }
   const wage = currentWageDemand(hireling.wageTracker);
   if (!canAfford(state.gold, wage)) {

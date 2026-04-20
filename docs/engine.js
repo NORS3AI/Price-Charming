@@ -2296,6 +2296,17 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     if (isExemptFromPayday(hireling.wageTracker)) {
       throw new Error(`payWage: "${hirelingId}" is payday-exempt.`);
     }
+    const idx = paydayIndex(state.round);
+    if (idx === null) {
+      throw new Error(
+        `payWage: round ${state.round} is not a payday round (${PAYDAY_ROUNDS.join(", ")}).`
+      );
+    }
+    if (hireling.wageTracker.paydaysSurvived >= idx) {
+      throw new Error(
+        `payWage: "${hirelingId}" has already been paid this payday.`
+      );
+    }
     const wage = currentWageDemand(hireling.wageTracker);
     if (!canAfford(state.gold, wage)) {
       throw new Error(
