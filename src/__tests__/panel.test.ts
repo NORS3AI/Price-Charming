@@ -73,6 +73,12 @@ describe("setPrice", () => {
       setPrice(map, "half-curse-cure", 2, 5)
     ).toThrow(/not in the price map/);
   });
+
+  test("does not mutate the input map", () => {
+    const map = defaultPriceMap(ACTIVE);
+    setPrice(map, "love", 3, 5);
+    expect(priceFor(map, "love")).toBe(MIN_PRICE);
+  });
 });
 
 describe("buildPricingPanel", () => {
@@ -151,5 +157,12 @@ describe("applyHaggle", () => {
     const card = ALL_HIRELINGS.find((h) => h.name === "Doughboy")!;
     const inst = createHirelingInstance(card, "h", "love");
     expect(applyHaggle(2, inst)).toBe(2);
+  });
+
+  test("Haggle adds +3g even above the 8g cap (no cap on the modifier)", () => {
+    const card = ALL_HIRELINGS.find((h) => h.name === "Almost-A-Knight")!;
+    const inst = createHirelingInstance(card, "h", "love");
+    // Player at cap charges 8g; Haggle pushes the sale to 11g.
+    expect(applyHaggle(MAX_PRICE, inst)).toBe(MAX_PRICE + 3);
   });
 });

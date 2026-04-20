@@ -112,14 +112,17 @@ export function buildPricingPanel(
 }
 
 /**
- * Apply the per-hireling Haggle modifier to a panel price: +3g per sale.
- * Haggle does not appear in the pricing panel; it's resolved when a
- * specific hireling rings up a customer.
+ * Apply the per-hireling Haggle modifier to a ringing-up price: +3g per
+ * sale. `basePrice` should be the effective (panel-clamped) price the
+ * customer would otherwise pay — Haggle pushes above that, which may
+ * exceed the 8g cap (the cap governs what the player can *set*; Haggle
+ * is a separate per-hireling sale modifier). Haggle does not appear in
+ * the pricing panel.
  */
 export function applyHaggle(
-  panelPrice: number,
+  basePrice: number,
   hireling: HirelingInstance
 ): number {
   const hasHaggle = hireling.card.keywords.some((k) => k.name === "Haggle");
-  return hasHaggle ? panelPrice + 3 : panelPrice;
+  return hasHaggle ? basePrice + 3 : basePrice;
 }
