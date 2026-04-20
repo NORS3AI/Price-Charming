@@ -380,8 +380,8 @@ describe("sale execution", () => {
     let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
     // No customers — tick a while, then finalize.
     s = tick(s, 10, mulberry32(1));
-    const { finalizeRound } = require("../action/state");
-    const fin = finalizeRound(s);
+    const { finalizeRound, applyEndOfRoundHooks } = require("../action/state");
+    const fin = applyEndOfRoundHooks(finalizeRound(s));
     const bb = fin.hirelingStates.get("Burnt Batch-3")!;
     expect(bb.permanentPotencyGainedThisRound).toBe(6);
   });
@@ -398,8 +398,8 @@ describe("sale execution", () => {
     );
     // 3s cast → at least one Quickcraft fires, then the customer resolves.
     s = tick(s, 12, mulberry32(1));
-    const { finalizeRound } = require("../action/state");
-    const fin = finalizeRound(s);
+    const { finalizeRound, applyEndOfRoundHooks } = require("../action/state");
+    const fin = applyEndOfRoundHooks(finalizeRound(s));
     const bb = fin.hirelingStates.get("Burnt Batch-3")!;
     // Sold at least one unit → no end-of-round buff.
     expect(bb.unitsSoldThisRound).toBeGreaterThan(0);
@@ -414,8 +414,8 @@ describe("sale execution", () => {
     let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
     // 3 casts @ 6s = 18s; 3 × 4 = 12 Quickcraft stock generated > 10.
     s = tick(s, 19, mulberry32(1));
-    const { finalizeRound } = require("../action/state");
-    const fin = finalizeRound(s);
+    const { finalizeRound, applyEndOfRoundHooks } = require("../action/state");
+    const fin = applyEndOfRoundHooks(finalizeRound(s));
     const gl = fin.hirelingStates.get("Glazier-3")!;
     expect(gl.permanentPotencyGainedThisRound).toBe(3);
   });
@@ -428,8 +428,8 @@ describe("sale execution", () => {
     let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
     // 2 casts @ 6s = 12s; 2 × 4 = 8 Quickcraft stock — not > 10.
     s = tick(s, 13, mulberry32(1));
-    const { finalizeRound } = require("../action/state");
-    const fin = finalizeRound(s);
+    const { finalizeRound, applyEndOfRoundHooks } = require("../action/state");
+    const fin = applyEndOfRoundHooks(finalizeRound(s));
     const gl = fin.hirelingStates.get("Glazier-3")!;
     expect(gl.permanentPotencyGainedThisRound).toBe(0);
   });

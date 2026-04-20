@@ -1939,43 +1939,44 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     return applyPostCastAbility(withCasterState, inst, atSeconds);
   }
   function finalizeRound(state) {
-    const allResolved = state.customers.every((c) => c.resolvedFor !== null);
+    if (state.customers.every((c) => c.resolvedFor !== null)) return state;
+    const panel = buildPricingPanel(
+      state.activePotionTypes,
+      state.board,
+      state.prices
+    );
+    const priceByType = new Map(
+      panel.map((e) => [e.potionType, e.effectivePrice])
+    );
     let working = state;
     const resolvedCustomers = [];
-    if (!allResolved) {
-      const panel = buildPricingPanel(
-        state.activePotionTypes,
-        state.board,
-        state.prices
-      );
-      const priceByType = new Map(
-        panel.map((e) => [e.potionType, e.effectivePrice])
-      );
-      for (const cs of state.customers) {
-        if (cs.resolvedFor !== null) {
-          resolvedCustomers.push(cs);
-          continue;
-        }
-        const next = resolveCustomer(cs);
-        working = {
-          ...working,
-          log: [
-            ...working.log,
-            {
-              kind: "customer-resolved",
-              customerId: next.customer.id,
-              atSeconds: state.elapsedSeconds,
-              resolution: next.resolvedFor
-            }
-          ]
-        };
-        if (next.resolvedFor === "player") {
-          working = executeSale(working, next, priceByType, deterministicMinRng);
-        }
-        resolvedCustomers.push(next);
+    for (const cs of state.customers) {
+      if (cs.resolvedFor !== null) {
+        resolvedCustomers.push(cs);
+        continue;
       }
-      working = { ...working, customers: resolvedCustomers };
+      const next = resolveCustomer(cs);
+      working = {
+        ...working,
+        log: [
+          ...working.log,
+          {
+            kind: "customer-resolved",
+            customerId: next.customer.id,
+            atSeconds: state.elapsedSeconds,
+            resolution: next.resolvedFor
+          }
+        ]
+      };
+      if (next.resolvedFor === "player") {
+        working = executeSale(working, next, priceByType, deterministicMinRng);
+      }
+      resolvedCustomers.push(next);
     }
+    return { ...working, customers: resolvedCustomers };
+  }
+  function applyEndOfRoundHooks(state) {
+    let working = state;
     for (const inst of activeHirelings(working.board)) {
       working = applyEndOfRoundAbility(working, inst, working.elapsedSeconds);
     }
@@ -2641,7 +2642,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         `endRound: no action phase in progress (phase=${state.phase}).`
       );
     }
-    const finalized = finalizeRound(state.action);
+    const finalized = applyEndOfRoundHooks(finalizeRound(state.action));
     const boardWithBuffs = promotePermanentBuffs({
       ...state,
       action: finalized

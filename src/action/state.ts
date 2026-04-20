@@ -584,60 +584,63 @@ function fireCast(
  * to match the shape produced by `tick` resolutions.
  */
 export function finalizeRound(state: ActionState): ActionState {
-  const allResolved = state.customers.every((c) => c.resolvedFor !== null);
+  if (state.customers.every((c) => c.resolvedFor !== null)) return state;
+
+  const panel = buildPricingPanel(
+    state.activePotionTypes,
+    state.board,
+    state.prices
+  );
+  const priceByType = new Map(
+    panel.map((e) => [e.potionType, e.effectivePrice])
+  );
 
   let working: ActionState = state;
   const resolvedCustomers: CustomerState[] = [];
 
-  if (!allResolved) {
-    const panel = buildPricingPanel(
-      state.activePotionTypes,
-      state.board,
-      state.prices
-    );
-    const priceByType = new Map(
-      panel.map((e) => [e.potionType, e.effectivePrice])
-    );
-
-    for (const cs of state.customers) {
-      if (cs.resolvedFor !== null) {
-        resolvedCustomers.push(cs);
-        continue;
-      }
-      const next = resolveCustomer(cs);
-      working = {
-        ...working,
-        log: [
-          ...working.log,
-          {
-            kind: "customer-resolved",
-            customerId: next.customer.id,
-            atSeconds: state.elapsedSeconds,
-            resolution: next.resolvedFor!,
-          },
-        ],
-      };
-      if (next.resolvedFor === "player") {
-        // Execute a sale with a deterministic min-units pick — finalize
-        // shouldn't consume RNG drawn for gameplay ticks. Any caller
-        // that wants randomized finalize sales can tick until natural
-        // expiry.
-        working = executeSale(working, next, priceByType, deterministicMinRng);
-      }
-      resolvedCustomers.push(next);
+  for (const cs of state.customers) {
+    if (cs.resolvedFor !== null) {
+      resolvedCustomers.push(cs);
+      continue;
     }
-    working = { ...working, customers: resolvedCustomers };
+    const next = resolveCustomer(cs);
+    working = {
+      ...working,
+      log: [
+        ...working.log,
+        {
+          kind: "customer-resolved",
+          customerId: next.customer.id,
+          atSeconds: state.elapsedSeconds,
+          resolution: next.resolvedFor!,
+        },
+      ],
+    };
+    if (next.resolvedFor === "player") {
+      // Execute a sale with a deterministic min-units pick — finalize
+      // shouldn't consume RNG drawn for gameplay ticks. Any caller that
+      // wants randomized finalize sales can tick until natural expiry.
+      working = executeSale(working, next, priceByType, deterministicMinRng);
+    }
+    resolvedCustomers.push(next);
   }
 
-  // End-of-round ability hook: runs once per active hireling after all
-  // sales have finalized. Cards like Burnt Batch ("sold nothing this
-  // round") and Glazier ("Quickcraft stock > 10") check their totals
-  // here and emit permanent-buff log entries that promotePermanentBuffs
-  // will carry onto the HirelingInstance next round.
+  return { ...working, customers: resolvedCustomers };
+}
+
+/**
+ * Run every active hireling's end-of-round ability hook once. Intended
+ * to be called from `endRound` AFTER `finalizeRound` (so totals are
+ * settled) and BEFORE `promotePermanentBuffs` (so gains carry across
+ * rounds). Kept separate from `finalizeRound` to preserve that
+ * function's idempotency — double-calling end-of-round hooks would
+ * double-apply Burnt Batch's +6 potency, Glazier's +3 potency, etc.
+ */
+export function applyEndOfRoundHooks(state: ActionState): ActionState {
+  let working = state;
   for (const inst of activeHirelings(working.board)) {
     working = applyEndOfRoundAbility(working, inst, working.elapsedSeconds);
   }
-
   return working;
 }
 

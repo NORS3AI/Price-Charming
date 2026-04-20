@@ -2,6 +2,7 @@ import { activeHirelings } from "../board/board";
 import { Board, HirelingInstance } from "../board/types";
 import {
   addCustomer,
+  applyEndOfRoundHooks,
   finalizeRound,
   initializeActionState,
   setOpponent,
@@ -141,7 +142,12 @@ export function endRound(state: GameState): GameState {
       `endRound: no action phase in progress (phase=${state.phase}).`
     );
   }
-  const finalized = finalizeRound(state.action);
+  // 1. Resolve any lingering customers (idempotent).
+  // 2. Run each hireling's end-of-round ability hook exactly once — MUST
+  //    come after finalize so "sold nothing this round" / "Quickcraft
+  //    generated > 10" reflect final totals, and MUST come before
+  //    promotion so the gains carry to next round.
+  const finalized = applyEndOfRoundHooks(finalizeRound(state.action));
   const boardWithBuffs = promotePermanentBuffs({
     ...state,
     action: finalized,

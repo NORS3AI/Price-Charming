@@ -257,6 +257,24 @@ describe("finalizeRound + settleRound", () => {
     expect(finalizeRound(s)).toBe(s);
   });
 
+  test("finalizeRound is idempotent across repeated calls (end-of-round hooks do not double-fire)", () => {
+    // A Burnt Batch in an active slot would double-apply its +6 potency
+    // buff if finalizeRound embedded the end-of-round hook — this test
+    // guards that the hook lives outside finalizeRound.
+    let b = createBoard();
+    const card = ALL_HIRELINGS.find((h) => h.name === "Burnt Batch")!;
+    b = placeHireling(b, 3, createHirelingInstance(card, "Burnt Batch-3", "love"));
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
+    s = tick(s, 10, mulberry32(1));
+    const once = finalizeRound(s);
+    const twice = finalizeRound(once);
+    const bbOnce = once.hirelingStates.get("Burnt Batch-3")!;
+    const bbTwice = twice.hirelingStates.get("Burnt Batch-3")!;
+    expect(bbOnce.permanentPotencyGainedThisRound).toBe(
+      bbTwice.permanentPotencyGainedThisRound
+    );
+  });
+
   test("settleRound.playerWonRound true only when player customer count exceeds opponent", () => {
     // Empty player vs strong opponent — player loses the customer.
     let oppBoard = createBoard();
