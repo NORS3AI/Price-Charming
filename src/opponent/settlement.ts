@@ -1,6 +1,5 @@
 import { ActionState } from "../action/types";
-import { resolveCustomer } from "../customers/state";
-import { CustomerState, Resolution } from "../customers/types";
+import { CustomerState } from "../customers/types";
 
 /** Aggregate outcome of an action round for scoring / UI. */
 export interface RoundResult {
@@ -20,19 +19,6 @@ export interface RoundResult {
   playerWonRound: boolean;
 }
 
-/**
- * Force-resolve every unresolved customer using its current axis state.
- * Customers with no side leading collapse to `"no-sale"` via
- * `resolveCustomer`. Typically called at the end of the action phase
- * right before settlement.
- */
-export function finalizeRound(state: ActionState): ActionState {
-  const customers: CustomerState[] = state.customers.map((cs) =>
-    cs.resolvedFor === null ? resolveCustomer(cs) : cs
-  );
-  return { ...state, customers };
-}
-
 /** Count customers by resolution kind. */
 function tally(customers: readonly CustomerState[]): {
   won: number;
@@ -45,7 +31,7 @@ function tally(customers: readonly CustomerState[]): {
   let noSale = 0;
   let unresolved = 0;
   for (const cs of customers) {
-    switch (cs.resolvedFor as Resolution | null) {
+    switch (cs.resolvedFor) {
       case "player":
         won++;
         break;
@@ -64,9 +50,9 @@ function tally(customers: readonly CustomerState[]): {
 }
 
 /**
- * Roll up the ActionState into a RoundResult. `finalizeRound` should
- * already have been called (or enough time passed for every customer
- * to resolve); any stragglers show up as `customersUnresolved`.
+ * Roll up the ActionState into a RoundResult. `finalizeRound` (in
+ * `src/action/state.ts`) should already have been called — any
+ * stragglers show up as `customersUnresolved`.
  */
 export function settleRound(state: ActionState): RoundResult {
   const counts = tally(state.customers);

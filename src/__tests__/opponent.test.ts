@@ -8,12 +8,14 @@ import { PotionTypeId } from "../potions/types";
 import { defaultPriceMap, setPrice } from "../pricing/panel";
 import {
   addCustomer,
+  finalizeRound,
   initializeActionState,
   setOpponent,
   tick,
 } from "../action/state";
+import { ActionLogEntry } from "../action/types";
 import { captureSnapshot } from "../opponent/snapshot";
-import { finalizeRound, settleRound } from "../opponent/settlement";
+import { settleRound } from "../opponent/settlement";
 
 const ACTIVE: readonly PotionTypeId[] = [
   "love",
@@ -75,6 +77,19 @@ describe("captureSnapshot", () => {
         reputation: 0,
       })
     ).toThrow();
+  });
+
+  test("rejects empty id", () => {
+    expect(() =>
+      captureSnapshot({
+        id: "",
+        round: 1,
+        board: createBoard(),
+        prices: defaultPriceMap(ACTIVE),
+        activePotionTypes: ACTIVE,
+        reputation: 0,
+      })
+    ).toThrow(/non-empty/);
   });
 });
 
@@ -198,6 +213,48 @@ describe("finalizeRound + settleRound", () => {
     expect(result.customersWon).toBeGreaterThanOrEqual(1);
     expect(result.customersUnresolved).toBe(0);
     expect(typeof result.playerWonRound).toBe("boolean");
+  });
+
+  test("finalizeRound executes the sale for a player-leading straggler (regression)", () => {
+    // Player with Pantry Stocker selling Love; customer with a long
+    // patience so they haven't expired yet when we finalize.
+    let playerBoard = createBoard();
+    playerBoard = placeAt(playerBoard, 3, "Pantry Stocker", "love");
+    const prices = setPrice(defaultPriceMap(ACTIVE), "love", 1, 8);
+    let s = initializeActionState(playerBoard, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ id: "straggler", patienceSeconds: 100, reputationStars: 2 })
+    );
+    s = tick(s, 5, mulberry32(1));
+    // Customer is leading for player on every axis, but patience is
+    // nowhere near expiring.
+    expect(s.customers[0].resolvedFor).toBeNull();
+    expect(s.gold).toBe(0);
+
+    const finalState = finalizeRound(s);
+    expect(finalState.customers[0].resolvedFor).toBe("player");
+
+    // The sale must fire: gold and reputation should both tick up.
+    expect(finalState.gold).toBeGreaterThan(0);
+    expect(finalState.reputation).toBe(2);
+
+    // And a customer-resolved log entry should have been emitted.
+    const resolvedLog = finalState.log.find(
+      (e): e is Extract<ActionLogEntry, { kind: "customer-resolved" }> =>
+        e.kind === "customer-resolved" && e.customerId === "straggler"
+    );
+    expect(resolvedLog?.resolution).toBe("player");
+  });
+
+  test("finalizeRound is a no-op when every customer already resolved", () => {
+    const s = initializeActionState(
+      createBoard(),
+      defaultPriceMap(ACTIVE),
+      ACTIVE,
+      mulberry32(1)
+    );
+    expect(finalizeRound(s)).toBe(s);
   });
 
   test("settleRound.playerWonRound true only when player customer count exceeds opponent", () => {

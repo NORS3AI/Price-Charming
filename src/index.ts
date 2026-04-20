@@ -249,6 +249,7 @@ export type {
 } from "./action/types";
 export {
   addCustomer,
+  finalizeRound,
   firstCastDelay,
   initializeActionState,
   nextCastDelay,
@@ -263,4 +264,4 @@ export { tickWeather } from "./action/weather";
 export type { OpponentSnapshot } from "./opponent/snapshot";
 export { captureSnapshot } from "./opponent/snapshot";
 export type { RoundResult } from "./opponent/settlement";
-export { finalizeRound, settleRound } from "./opponent/settlement";
+export { settleRound } from "./opponent/settlement";

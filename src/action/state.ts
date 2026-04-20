@@ -285,6 +285,65 @@ function fireCast(
 }
 
 /**
+ * Force-resolve every unresolved customer using its current axis state.
+ * Player-leading stragglers trigger a normal sale (gold, reputation,
+ * stock, Knockoff) so the caller doesn't have to tick past every
+ * patience timer at round end. Emits `customer-resolved` log entries
+ * to match the shape produced by `tick` resolutions.
+ */
+export function finalizeRound(state: ActionState): ActionState {
+  if (state.customers.every((c) => c.resolvedFor !== null)) return state;
+
+  const panel = buildPricingPanel(
+    state.activePotionTypes,
+    state.board,
+    state.prices
+  );
+  const priceByType = new Map(
+    panel.map((e) => [e.potionType, e.effectivePrice])
+  );
+
+  let working: ActionState = state;
+  const resolvedCustomers: CustomerState[] = [];
+
+  for (const cs of state.customers) {
+    if (cs.resolvedFor !== null) {
+      resolvedCustomers.push(cs);
+      continue;
+    }
+    const next = resolveCustomer(cs);
+    working = {
+      ...working,
+      log: [
+        ...working.log,
+        {
+          kind: "customer-resolved",
+          customerId: next.customer.id,
+          atSeconds: state.elapsedSeconds,
+          resolution: next.resolvedFor!,
+        },
+      ],
+    };
+    if (next.resolvedFor === "player") {
+      // Execute a sale with a deterministic min-units pick — finalize
+      // shouldn't consume RNG drawn for gameplay ticks. Any caller that
+      // wants randomized finalize sales can tick until natural expiry.
+      working = executeSale(working, next, priceByType, deterministicMinRng);
+    }
+    resolvedCustomers.push(next);
+  }
+
+  return { ...working, customers: resolvedCustomers };
+}
+
+/**
+ * RNG stand-in that always returns 0 → rollUnitsPerInteraction lands on
+ * the bracket minimum. Used by `finalizeRound` so force-resolved sales
+ * stay deterministic and don't pull from gameplay RNG.
+ */
+const deterministicMinRng: RNG = () => 0;
+
+/**
  * Advance the action round by `deltaSeconds`:
  *   1. Progress every active hireling's cast timer and fire any casts
  *      whose timer expires within this tick (multiple casts per tick

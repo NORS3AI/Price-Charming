@@ -37,6 +37,9 @@ export function captureSnapshot(params: {
       `captureSnapshot round must be a positive integer (got ${params.round}).`
     );
   }
+  if (!params.id) {
+    throw new Error("captureSnapshot id must be a non-empty string.");
+  }
   return {
     id: params.id,
     round: params.round,
