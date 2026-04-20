@@ -7,15 +7,30 @@ import {
   nextPaydayRound,
   paydayIndex,
   roundsUntilPayday,
-  totalPaydays,
 } from "../economy/payday";
-import { createWageTracker } from "../economy/wages";
+import { MAX_PAYDAYS, createWageTracker, survivePayday } from "../economy/wages";
 
 describe("payday schedule", () => {
   test("payday rounds match spec", () => {
     expect([...PAYDAY_ROUNDS]).toEqual([3, 6, 9, 12, 15]);
     expect([...GLOW_ROUNDS]).toEqual([2, 5, 8, 11, 14]);
-    expect(totalPaydays()).toBe(5);
+  });
+
+  test("PAYDAY_ROUNDS count equals MAX_PAYDAYS", () => {
+    expect(PAYDAY_ROUNDS.length).toBe(MAX_PAYDAYS);
+  });
+
+  test("each glow round is exactly one round before its payday", () => {
+    expect(GLOW_ROUNDS.length).toBe(PAYDAY_ROUNDS.length);
+    for (let i = 0; i < PAYDAY_ROUNDS.length; i++) {
+      expect(GLOW_ROUNDS[i]).toBe(PAYDAY_ROUNDS[i] - 1);
+    }
+  });
+
+  test("PAYDAY_ROUNDS and GLOW_ROUNDS are frozen at runtime", () => {
+    expect(Object.isFrozen(PAYDAY_ROUNDS)).toBe(true);
+    expect(Object.isFrozen(GLOW_ROUNDS)).toBe(true);
+    expect(() => (PAYDAY_ROUNDS as number[]).push(18)).toThrow();
   });
 
   test.each(PAYDAY_ROUNDS)("round %i is a payday", (r) => {
@@ -98,5 +113,26 @@ describe("buildPaydayLineItems", () => {
   test("omits Dusty Broom-style trackers entirely", () => {
     const items = buildPaydayLineItems(0, [createWageTracker("None")]);
     expect(items).toHaveLength(0);
+  });
+
+  test("empty tracker list returns empty line items", () => {
+    expect(buildPaydayLineItems(100, [])).toEqual([]);
+  });
+
+  test("canPay reflects updated gold when rebuilt after a payment", () => {
+    const trackers = [createWageTracker("Low"), createWageTracker("Low")];
+    const before = buildPaydayLineItems(3, trackers);
+    expect(before.map((i) => i.canPay)).toEqual([true, true]);
+
+    // Player pays the first hireling: gold drops from 3 to 1; rebuild.
+    const after = buildPaydayLineItems(1, trackers.slice(1));
+    expect(after.map((i) => i.canPay)).toEqual([false]);
+  });
+
+  test("throws if a tracker past MAX_PAYDAYS is fed in (documents behaviour)", () => {
+    let t = createWageTracker("Low");
+    for (let i = 0; i < MAX_PAYDAYS; i++) t = survivePayday(t);
+    // Past round 15 there are no more paydays, so this caller misuse throws.
+    expect(() => buildPaydayLineItems(100, [t])).toThrow();
   });
 });

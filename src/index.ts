@@ -66,6 +66,5 @@ export {
   nextPaydayRound,
   roundsUntilPayday,
   buildPaydayLineItems,
-  totalPaydays,
 } from "./economy/payday";
 export type { PaydayLineItem } from "./economy/payday";

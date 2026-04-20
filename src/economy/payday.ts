@@ -2,15 +2,18 @@ import { canAfford, SELL_VALUE } from "./gold";
 import {
   currentWageDemand,
   isExemptFromPayday,
-  MAX_PAYDAYS,
   WageTracker,
 } from "./wages";
 
 /** Shop rounds at which payday resolves (before the shop phase opens). */
-export const PAYDAY_ROUNDS: readonly number[] = [3, 6, 9, 12, 15];
+export const PAYDAY_ROUNDS: readonly number[] = Object.freeze([
+  3, 6, 9, 12, 15,
+]);
 
 /** Rounds where the payday indicator glows/pulses as a warning. */
-export const GLOW_ROUNDS: readonly number[] = [2, 5, 8, 11, 14];
+export const GLOW_ROUNDS: readonly number[] = Object.freeze([
+  2, 5, 8, 11, 14,
+]);
 
 /** Returns true when the given round is a payday. */
 export function isPaydayRound(round: number): boolean {
@@ -89,7 +92,3 @@ export function buildPaydayLineItems(
     });
 }
 
-/** Guards against a caller asking about paydays beyond the 15-round game. */
-export function totalPaydays(): number {
-  return MAX_PAYDAYS;
-}
