@@ -673,16 +673,210 @@ function pcQuit(){
 }
 window.pcQuit = pcQuit;
 
-// --- render (placeholder until chunk B) -----------------------------
+// --- render ---------------------------------------------------------
+function pcPhaseLabel(phase){
+  if (phase === "action") return "Battle";
+  if (phase === "game-over") return "Over";
+  return "Shop";
+}
+
+function pcPotionIcon(type){
+  if (!type) return "·";
+  const meta = E.getPotionMeta(type);
+  return meta ? meta.icon : "·";
+}
+
+function pcPotionName(type){
+  if (!type) return "—";
+  const meta = E.getPotionMeta(type);
+  return meta ? meta.name : type;
+}
+
+function pcFormatKeywords(keywords){
+  if (!keywords || !keywords.length) return "";
+  return keywords
+    .map(k => k.count != null ? `${k.name} x${k.count}` : k.name)
+    .join(" / ");
+}
+
+function pcFormatCastTime(castTime){
+  if (!castTime) return "";
+  switch (castTime.kind) {
+    case "seconds":    return `${castTime.value}s`;
+    case "passive":    return "Passive";
+    case "random":     return `${castTime.min}-${castTime.max}s`;
+    case "decreasing": return `${castTime.start}s (↓${castTime.decrementPerCast}s/cast)`;
+  }
+  return "";
+}
+
+function pcBuildSlotCard(inst, slotIdx, isBench){
+  const classes = ["pc-slot"];
+  if (isBench) classes.push("pc-bench");
+  if (!inst) {
+    classes.push("pc-empty");
+    const d = document.createElement("div");
+    d.className = classes.join(" ");
+    d.textContent = isBench ? `Bench ${slotIdx === 0 ? "L" : "R"}` : `Slot ${slotIdx}`;
+    return d;
+  }
+  if (inst.charmed) classes.push("pc-charmed");
+  const stock = (inst.card.potions[0]?.stock ?? 0) + (inst.permanentStockBonus || 0);
+  const potency = (inst.card.potions[0]?.potency ?? 0) + (inst.permanentPotencyBonus || 0);
+  const d = document.createElement("div");
+  d.className = classes.join(" ");
+  d.dataset.slot = String(slotIdx);
+  d.innerHTML = `
+    <div class="pc-slot-name">${inst.card.name}${inst.charmed ? " ✨" : ""}</div>
+    <div class="pc-slot-potion">${pcPotionIcon(inst.potionType)}</div>
+    <div class="pc-slot-stats"><span>📦 ${stock}</span><span>⚗ ${potency}</span></div>
+    ${inst.card.keywords.length ? `<div class="pc-slot-keys">${pcFormatKeywords(inst.card.keywords)}</div>` : ""}
+    <div class="pc-slot-cast">${pcFormatCastTime(inst.card.castTime)}</div>
+  `;
+  return d;
+}
+
+function pcRenderPlayerBoard(){
+  const el = $("pc-player-board"); if (!el) return;
+  el.innerHTML = "";
+  for (let i = 0; i < pcGame.board.slots.length; i++) {
+    el.appendChild(pcBuildSlotCard(pcGame.board.slots[i], i, E.isBenchSlot(i)));
+  }
+}
+
+function pcRenderPricingPanel(){
+  const el = $("pc-pricing"); if (!el) return;
+  el.innerHTML = "";
+  const rows = E.buildPricingPanel(pcGame.activePotionTypes, pcGame.board, pcGame.prices);
+  for (const row of rows) {
+    const d = document.createElement("div");
+    d.className = "pc-price-card";
+    let status = "";
+    if (row.status.kind === "no-stock") status = "No hireling sells this type";
+    else if (row.status.kind === "at-cap") status = "Price cap reached";
+    else status = `+${row.status.potencyToNextTier} potency → next tier`;
+    d.innerHTML = `
+      <div class="pc-price-top">
+        <span class="pc-price-icon">${pcPotionIcon(row.potionType)}</span>
+        <span class="pc-price-name">${pcPotionName(row.potionType)}</span>
+      </div>
+      <div class="pc-price-stats">Potency: ${row.combinedPotency} · Max: ${row.currentMax}g</div>
+      <div class="pc-price-controls">
+        <button class="pc-price-btn" data-type="${row.potionType}" data-delta="-1" ${row.storedPrice <= E.MIN_PRICE ? "disabled" : ""}>−</button>
+        <div class="pc-price-current">${row.effectivePrice}g</div>
+        <button class="pc-price-btn" data-type="${row.potionType}" data-delta="1" ${row.storedPrice >= row.currentMax ? "disabled" : ""}>+</button>
+      </div>
+      <div class="pc-price-status">${status}</div>
+    `;
+    el.appendChild(d);
+  }
+}
+
+function pcCardCost(inst){
+  return inst.card.kind === "hireling" ? 4 : 2;
+}
+
+function pcRenderOffering(){
+  const el = $("pc-offering"); if (!el) return;
+  el.innerHTML = "";
+  const slots = pcGame.offering.slots;
+  if (!slots.some(s => s !== null)) {
+    el.innerHTML = '<div class="pc-hint">Shop is empty this refresh.</div>';
+    return;
+  }
+  for (let i = 0; i < slots.length; i++) {
+    const inst = slots[i]; if (!inst) continue;
+    const cost = pcCardCost(inst);
+    const isSpell = inst.card.kind === "spell";
+    const cannotAfford = pcGame.gold < cost;
+    const d = document.createElement("div");
+    d.className = "pc-shop-card" + (isSpell ? " pc-spell" : "") + (cannotAfford ? " pc-disabled" : "");
+    d.dataset.slot = String(i);
+    if (!isSpell) {
+      const h = inst.card;
+      d.innerHTML = `
+        <div class="pc-shop-head"><span class="pc-shop-name">${h.name}${h.starRating ? (h.starRating === 2 ? " ⭐⭐" : " ⭐") : ""}</span><span class="pc-shop-cost">${cost}g</span></div>
+        <div class="pc-shop-meta">${h.guild} · ${h.wageTier} wage · ${pcFormatCastTime(h.castTime)}${h.keywords.length ? " · " + pcFormatKeywords(h.keywords) : ""}</div>
+        <div class="pc-shop-meta">${pcPotionIcon(inst.potionType)} ${pcPotionName(inst.potionType)} · 📦${h.potions[0]?.stock ?? 0} ⚗${h.potions[0]?.potency ?? 0}${h.potions[1] ? ` · 📦${h.potions[1].stock} ⚗${h.potions[1].potency}` : ""}</div>
+        <div class="pc-shop-ability">${h.abilityText || ""}</div>
+      `;
+    } else {
+      const s = inst.card;
+      d.innerHTML = `
+        <div class="pc-shop-head"><span class="pc-shop-name">✦ ${s.name}</span><span class="pc-shop-cost">${cost}g</span></div>
+        <div class="pc-shop-meta">Spell${s.keywords.length ? " · " + pcFormatKeywords(s.keywords) : ""}</div>
+        <div class="pc-shop-ability">${s.abilityText || ""}</div>
+      `;
+    }
+    el.appendChild(d);
+  }
+}
+
+function pcRenderHand(){
+  const el = $("pc-hand"); if (!el) return;
+  el.innerHTML = "";
+  if (pcGame.hand.cards.length === 0) {
+    el.innerHTML = '<div class="pc-hint">Empty hand (max ' + E.MAX_HAND_SIZE + ').</div>';
+    return;
+  }
+  for (let i = 0; i < pcGame.hand.cards.length; i++) {
+    const inst = pcGame.hand.cards[i];
+    const d = document.createElement("div");
+    const isSpell = inst.card.kind === "spell";
+    d.className = "pc-hand-card" + (isSpell ? " pc-spell" : "") + (!isSpell && inst.charmed ? " pc-charmed" : "");
+    d.dataset.index = String(i);
+    if (!isSpell) {
+      const stock = (inst.card.potions[0]?.stock ?? 0) + (inst.permanentStockBonus || 0);
+      const potency = (inst.card.potions[0]?.potency ?? 0) + (inst.permanentPotencyBonus || 0);
+      d.innerHTML = `
+        <div style="font-weight:bold;font-size:.85rem">${inst.card.name}${inst.charmed ? " ✨" : ""}</div>
+        <div style="font-size:.75rem">${pcPotionIcon(inst.potionType)} ${pcPotionName(inst.potionType)}</div>
+        <div style="font-size:.7rem;color:var(--purple)">📦${stock} ⚗${potency} · ${pcFormatCastTime(inst.card.castTime)}</div>
+      `;
+    } else {
+      d.innerHTML = `
+        <div style="font-weight:bold;font-size:.85rem">✦ ${inst.card.name}</div>
+        <div style="font-size:.7rem;color:var(--purple)">Spell${inst.card.keywords.length ? " · " + pcFormatKeywords(inst.card.keywords) : ""}</div>
+      `;
+    }
+    el.appendChild(d);
+  }
+}
+
+function pcRenderOppSection(){
+  const sec = $("pc-opp-section"); if (!sec) return;
+  if (pcGame.phase !== "action" || !pcGame.opponent) { sec.style.display = "none"; return; }
+  sec.style.display = "";
+  const el = $("pc-opp-board"); if (!el) return;
+  el.innerHTML = "";
+  for (let i = 0; i < pcGame.opponent.board.slots.length; i++) {
+    el.appendChild(pcBuildSlotCard(pcGame.opponent.board.slots[i], i, E.isBenchSlot(i)));
+  }
+}
+
 function pcRender(){
   if (!pcGame) return;
-  const round = $("pc-round"); if (round) round.textContent = pcGame.round;
-  const gold = $("pc-gold"); if (gold) gold.textContent = pcGame.gold;
-  const rep = $("pc-rep"); if (rep) rep.textContent = pcGame.reputation;
-  const phaseTag = $("pc-phase-tag");
-  if (phaseTag) phaseTag.textContent = pcGame.phase === "action" ? "Battle" : pcGame.phase === "game-over" ? "Over" : "Shop";
-  const diffTag = $("pc-diff-tag");
-  if (diffTag) diffTag.textContent = pcDifficulty.charAt(0).toUpperCase() + pcDifficulty.slice(1);
+  $("pc-round").textContent = pcGame.round;
+  $("pc-gold").textContent = pcGame.gold;
+  $("pc-rep").textContent = pcGame.reputation;
+  $("pc-phase-tag").textContent = pcPhaseLabel(pcGame.phase);
+  $("pc-diff-tag").textContent = pcDifficulty.charAt(0).toUpperCase() + pcDifficulty.slice(1);
+
+  const shopMode = pcGame.phase === "shop";
+  const actionMode = pcGame.phase === "action";
+  $("pc-pricing-section").style.display = shopMode ? "" : "none";
+  $("pc-shop-section").style.display = shopMode ? "" : "none";
+  $("pc-hand-section").style.display = "";
+  $("pc-customers-section").style.display = actionMode ? "" : "none";
+  $("pc-log-section").style.display = actionMode ? "" : "none";
+  pcRenderOppSection();
+
+  pcRenderPlayerBoard();
+  if (shopMode) {
+    pcRenderPricingPanel();
+    pcRenderOffering();
+  }
+  pcRenderHand();
 }
 
 // --- stub handlers for buttons referenced in the new game-screen ---
