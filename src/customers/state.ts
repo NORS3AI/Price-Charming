@@ -7,8 +7,15 @@ import {
   CustomerState,
   MAX_REPUTATION_STARS,
   MIN_REPUTATION_STARS,
+  Resolution,
   Side,
 } from "./types";
+
+function assertFinite(value: number, label: string): void {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number (got ${value}).`);
+  }
+}
 
 /**
  * Build a fresh state for a customer: every axis at 0/0, patience at
@@ -33,6 +40,7 @@ export function createCustomerState(customer: Customer): CustomerState {
   if (new Set(customer.axisPriority).size !== AXES.length) {
     throw new Error("Customer axisPriority contains duplicates.");
   }
+  assertFinite(customer.patienceSeconds, "Customer patienceSeconds");
   if (customer.patienceSeconds <= 0) {
     throw new Error("Customer patienceSeconds must be positive.");
   }
@@ -79,6 +87,7 @@ export function applyContribution(
   amount: number
 ): CustomerState {
   if (state.resolvedFor !== null) return state;
+  assertFinite(amount, "applyContribution amount");
   const current = state.axes[axis];
   const next: AxisBar =
     side === "player"
@@ -99,6 +108,7 @@ export function tickPatience(
   seconds: number
 ): CustomerState {
   if (state.resolvedFor !== null) return state;
+  assertFinite(seconds, "tickPatience seconds");
   if (seconds < 0) {
     throw new Error("tickPatience seconds must be non-negative.");
   }
@@ -158,13 +168,21 @@ export function determineWinner(state: CustomerState): Side | null {
 
 /**
  * Lock in the customer's decision. If `state.resolvedFor` is already
- * set, the state is returned unchanged. Otherwise it's set to
- * determineWinner(state). Callers typically invoke this when patience
- * hits 0 or a side decisively sweeps.
+ * set, the state is returned unchanged. Otherwise the resolution is
+ * either the winning Side or `"no-sale"` when no axis has a leader.
+ * Unlike a literal null, `"no-sale"` causes subsequent contribution /
+ * patience calls to no-op correctly.
  */
 export function resolveCustomer(state: CustomerState): CustomerState {
   if (state.resolvedFor !== null) return state;
-  return { ...state, resolvedFor: determineWinner(state) };
+  const winner = determineWinner(state);
+  const resolution: Resolution = winner ?? "no-sale";
+  return { ...state, resolvedFor: resolution };
+}
+
+/** True once the customer's fate has been locked in (Side win or no-sale). */
+export function isResolved(state: CustomerState): boolean {
+  return state.resolvedFor !== null;
 }
 
 /**

@@ -212,6 +212,7 @@ export type {
   AxisKind,
   Customer,
   CustomerState,
+  Resolution,
   Side,
 } from "./customers/types";
 export {
@@ -227,6 +228,7 @@ export {
   createCustomerState,
   determineWinner,
   isExpired,
+  isResolved,
   reputationReward,
   resolveCustomer,
   tickPatience,

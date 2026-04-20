@@ -15,6 +15,18 @@ export const AXES: readonly AxisKind[] = Object.freeze([
 export type Side = "player" | "opponent";
 
 /**
+ * Terminal state of a resolved customer:
+ *   - `"player"` / `"opponent"` — that side closed the sale
+ *   - `"no-sale"` — patience expired with nobody leading on any axis;
+ *     the customer walks away and neither side scores
+ *
+ * Distinguishing `"no-sale"` from the unresolved-`null` in CustomerState
+ * lets `applyContribution` and `tickPatience` correctly short-circuit
+ * once the customer is finalised.
+ */
+export type Resolution = Side | "no-sale";
+
+/**
  * Fill required for a side to "win" a single axis. Bars live in [0, AXIS_THRESHOLD].
  * Units are abstract; Phase 7 wires the per-second rates.
  */
@@ -52,6 +64,9 @@ export interface CustomerState {
   customer: Customer;
   axes: Readonly<Record<AxisKind, AxisBar>>;
   patienceRemaining: number;
-  /** Null while the customer is still in play. */
-  resolvedFor: Side | null;
+  /**
+   * Null while the customer is still in play. Once finalised, one of
+   * `"player"` / `"opponent"` / `"no-sale"`.
+   */
+  resolvedFor: Resolution | null;
 }

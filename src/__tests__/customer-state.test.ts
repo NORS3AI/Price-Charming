@@ -13,6 +13,7 @@ import {
   createCustomerState,
   determineWinner,
   isExpired,
+  isResolved,
   reputationReward,
   resolveCustomer,
   tickPatience,
@@ -79,6 +80,15 @@ describe("createCustomerState", () => {
       createCustomerState(makeCustomer({ patienceSeconds: -1 }))
     ).toThrow();
   });
+
+  test("rejects NaN / Infinity patience", () => {
+    expect(() =>
+      createCustomerState(makeCustomer({ patienceSeconds: NaN }))
+    ).toThrow();
+    expect(() =>
+      createCustomerState(makeCustomer({ patienceSeconds: Infinity }))
+    ).toThrow();
+  });
 });
 
 describe("applyContribution", () => {
@@ -112,6 +122,14 @@ describe("applyContribution", () => {
     const after = applyContribution(s, "focus", "opponent", 50);
     expect(after).toBe(s);
   });
+
+  test("rejects NaN / Infinity amounts", () => {
+    const s = createCustomerState(makeCustomer());
+    expect(() => applyContribution(s, "focus", "player", NaN)).toThrow();
+    expect(() =>
+      applyContribution(s, "focus", "player", Infinity)
+    ).toThrow();
+  });
 });
 
 describe("tickPatience", () => {
@@ -126,9 +144,6 @@ describe("tickPatience", () => {
 
   test("noop when already resolved", () => {
     let s = createCustomerState(makeCustomer());
-    s = resolveCustomer(s); // resolves with no winner, but sets resolvedFor anyway? check
-    // determineWinner returns null with empty bars, so resolvedFor stays null.
-    // Force resolution:
     s = applyContribution(s, "focus", "player", AXIS_THRESHOLD);
     s = resolveCustomer(s);
     expect(s.resolvedFor).toBe("player");
@@ -136,9 +151,11 @@ describe("tickPatience", () => {
     expect(after).toBe(s);
   });
 
-  test("rejects negative seconds", () => {
+  test("rejects negative / NaN / Infinity seconds", () => {
     const s = createCustomerState(makeCustomer());
     expect(() => tickPatience(s, -1)).toThrow();
+    expect(() => tickPatience(s, NaN)).toThrow();
+    expect(() => tickPatience(s, Infinity)).toThrow();
   });
 });
 
@@ -195,8 +212,25 @@ describe("determineWinner / resolveCustomer", () => {
     s = applyContribution(s, "focus", "player", 30);
     s = resolveCustomer(s);
     expect(s.resolvedFor).toBe("player");
+    expect(isResolved(s)).toBe(true);
     const stable = resolveCustomer(s);
     expect(stable).toBe(s);
+  });
+
+  test("resolves with \"no-sale\" when no axis has a leader", () => {
+    const s = createCustomerState(makeCustomer());
+    const resolved = resolveCustomer(s);
+    expect(resolved.resolvedFor).toBe("no-sale");
+    expect(isResolved(resolved)).toBe(true);
+  });
+
+  test("no-sale resolution locks out further contributions (regression)", () => {
+    let s = createCustomerState(makeCustomer());
+    s = resolveCustomer(s);
+    expect(s.resolvedFor).toBe("no-sale");
+    const after = applyContribution(s, "focus", "player", 50);
+    expect(after).toBe(s);
+    expect(tickPatience(s, 5)).toBe(s);
   });
 });
 
@@ -208,7 +242,7 @@ describe("reputationReward", () => {
     expect(reputationReward(s)).toBe(4);
   });
 
-  test("returns 0 on opponent win or no-decision", () => {
+  test("returns 0 on opponent win or no-sale", () => {
     let loss = createCustomerState(makeCustomer());
     loss = applyContribution(loss, "focus", "opponent", 30);
     loss = resolveCustomer(loss);
@@ -216,7 +250,7 @@ describe("reputationReward", () => {
 
     const undecided = createCustomerState(makeCustomer());
     const resolved = resolveCustomer(undecided);
-    expect(resolved.resolvedFor).toBeNull();
+    expect(resolved.resolvedFor).toBe("no-sale");
     expect(reputationReward(resolved)).toBe(0);
   });
 });
