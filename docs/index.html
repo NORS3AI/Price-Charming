@@ -417,62 +417,170 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   </div>
 </div>
 
-<!-- GAME SCREEN -->
+<!-- GAME SCREEN (engine-driven) -->
 <div class="screen" id="game-screen">
-  <div id="top-bar">
-    <div class="info">
-      <div><span class="label">Round </span><span class="val" id="round-num">1</span><span class="label"> / 15</span></div>
-      <div><span class="label">Tier </span><span class="val" id="tier-num">1</span></div>
-      <div><span class="label">Gold </span><span class="val" id="gold-num">0</span></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:.5rem">
-      <span class="label" id="rep-min" style="color:var(--red);font-weight:bold;font-size:.8rem">-30</span>
-      <div id="rep-bar-wrap"><div id="rep-bar-fill" style="width:50%"></div><div id="rep-bar-mid"></div><div id="rep-text">0</div></div>
-      <span class="label" id="rep-max-label" style="color:var(--green);font-weight:bold;font-size:.8rem">30</span>
+  <div id="pc-top-bar">
+    <div class="pc-stat"><span class="pc-label">Round</span><span class="pc-val" id="pc-round">1</span><span class="pc-label">/15</span></div>
+    <div class="pc-stat"><span class="pc-label">Gold</span><span class="pc-val" id="pc-gold">0</span></div>
+    <div class="pc-stat"><span class="pc-label">Rep</span><span class="pc-val" id="pc-rep">0</span><span class="pc-label">/30</span></div>
+    <div class="pc-stat" id="pc-phase-tag">Shop</div>
+    <div class="pc-stat" id="pc-diff-tag">Normal</div>
+    <div style="margin-left:auto;display:flex;gap:.4rem">
+      <button class="btn btn-sm btn-ghost" onclick="pcQuit()">Quit</button>
     </div>
   </div>
-  <div id="shop-side-panel">
-    <div class="ssp-title">Your Shop</div>
-    <div class="ssp-row"><span class="ssp-label">Round</span><span class="ssp-val"><span id="ssp-round">1</span>/15</span></div>
-    <div class="ssp-row"><span class="ssp-label">Tier</span><span class="ssp-val" id="ssp-tier">1</span></div>
-    <div class="ssp-row"><span class="ssp-label">Gold</span><span class="ssp-val" id="ssp-gold">0</span></div>
-    <div class="ssp-row"><span class="ssp-label">Rep</span><span class="ssp-val" id="ssp-rep">0</span></div>
-    <div class="ssp-row"><span class="ssp-label">Goal</span><span class="ssp-val" id="ssp-goal">30</span></div>
-    <button class="ssp-settings" onclick="openSettingsFromShop()">⚙ Settings</button>
-  </div>
-  <div id="game-area">
-    <div id="phase-label"></div>
-    <div id="start-battle-top"><button class="btn" onclick="startBattle()">Start Battle!</button></div>
-    <div class="board-section" id="opp-section" style="display:none"><div class="board-title">Opponent's Hirelings</div><div class="board-slots" id="opp-board"></div></div>
-    <div id="customer-area" style="display:none">
-      <div class="cust-emoji" id="cust-emoji"></div><div class="cust-name" id="cust-name"></div><div class="cust-want" id="cust-want"></div>
-      <div class="sat-bars">
-        <div class="sat-bar-group"><div class="sat-label">Your Sales</div><div class="sat-bar-outer"><div class="sat-bar-inner player-bar" id="player-sat" style="width:0%"></div><div class="sat-bar-text" id="player-sat-text">0</div></div></div>
-        <div class="sat-bar-group"><div class="sat-label">Opponent's Sales</div><div class="sat-bar-outer"><div class="sat-bar-inner opp-bar" id="opp-sat" style="width:0%"></div><div class="sat-bar-text" id="opp-sat-text">0</div></div></div>
-      </div>
-      <div id="customer-result"></div><div id="customer-queue"></div>
+
+  <div id="pc-flash"></div>
+
+  <div id="pc-game-main">
+    <!-- Opponent strip (hidden during shop phase) -->
+    <div id="pc-opp-section" style="display:none">
+      <div class="pc-section-title">Opponent's Board</div>
+      <div class="pc-board" id="pc-opp-board"></div>
     </div>
-    <div class="board-section" id="player-section"><div class="board-title">Your Hirelings</div><div class="board-slots" id="player-board"></div></div>
-    <div id="battle-log" style="display:none"></div>
-    <div id="potion-panel" style="display:none"><div class="panel-title">Your Potions</div><table class="potion-table"><thead><tr><th>Hireling</th><th>Potion</th><th>Potency</th><th>Stock</th><th>Price</th></tr></thead><tbody id="potion-table-body"></tbody></table></div>
-    <div id="hand-area" style="display:none"><div class="hand-title">Your Hand (spells — click to cast)</div><div id="hand-cards"></div></div>
-    <div id="shop-area"><div class="shop-title">Fairy Godmother's Shop</div><div id="shop-cards"></div><div id="shop-btns">
-      <button class="btn btn-sm" onclick="refreshShop()">Refresh (1 gold)</button>
-      <button class="btn btn-sm" id="report-btn" style="display:none" onclick="openReport()">Last Round</button>
-    </div></div>
-    <div id="round-end"><h2 id="round-end-title"></h2><div class="results" id="round-end-results"></div><button class="btn" id="round-end-btn" onclick="nextRound()">Next Round</button></div>
-    <div id="game-over">
-      <h1 id="go-title"></h1>
-      <div class="go-sub" id="go-sub"></div>
-      <div id="go-name-input">
-        <label>Enter your name for the Leaderboard!</label>
-        <input id="go-name" type="text" placeholder="Your name..." maxlength="20">
-        <button class="btn btn-sm" onclick="saveVictory()">Save to Leaderboard</button>
+
+    <!-- Customers (shown during action phase) -->
+    <div id="pc-customers-section" style="display:none">
+      <div class="pc-section-title">Customers <span id="pc-elapsed"></span></div>
+      <div id="pc-customers"></div>
+    </div>
+
+    <!-- Player board -->
+    <div id="pc-player-section">
+      <div class="pc-section-title">Your Board <span class="pc-hint">(click to sell a bought hireling)</span></div>
+      <div class="pc-board" id="pc-player-board"></div>
+    </div>
+
+    <!-- Pricing panel (shop only) -->
+    <div id="pc-pricing-section">
+      <div class="pc-section-title">Pricing Panel</div>
+      <div id="pc-pricing"></div>
+    </div>
+
+    <!-- Payday (when due) -->
+    <div id="pc-payday-section" style="display:none">
+      <div class="pc-section-title">Payday! Pay or sell each hireling.</div>
+      <div id="pc-payday-list"></div>
+    </div>
+
+    <!-- Shop offering -->
+    <div id="pc-shop-section">
+      <div class="pc-section-title">Fairy Godmother's Shop</div>
+      <div id="pc-offering"></div>
+      <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="pcRefresh()">Refresh (1g)</button>
+        <button class="btn" onclick="pcStartBattle()">Start Battle</button>
       </div>
-      <div style="margin-top:1rem"><button class="btn" onclick="showScreen('title-screen')">Play Again</button></div>
+    </div>
+
+    <!-- Hand -->
+    <div id="pc-hand-section">
+      <div class="pc-section-title">Your Hand <span class="pc-hint">(click a hireling to play it; spells cast immediately)</span></div>
+      <div id="pc-hand"></div>
+    </div>
+
+    <!-- Action log (battle phase) -->
+    <div id="pc-log-section" style="display:none">
+      <div class="pc-section-title">Action Log</div>
+      <div id="pc-log"></div>
+    </div>
+
+    <!-- Round-end / game-over -->
+    <div id="pc-round-end" style="display:none">
+      <h2 id="pc-round-end-title"></h2>
+      <div id="pc-round-end-body"></div>
+      <button class="btn" onclick="pcAdvanceFromRoundEnd()">Continue</button>
+    </div>
+  </div>
+
+  <!-- Lucky Charm target-pick overlay -->
+  <div id="pc-target-overlay" style="display:none" onclick="pcCancelTarget()">
+    <div id="pc-target-box" onclick="event.stopPropagation()">
+      <div id="pc-target-msg"></div>
+      <button class="btn btn-sm btn-ghost" onclick="pcCancelTarget()">Cancel</button>
     </div>
   </div>
 </div>
+
+<style>
+/* Engine-driven game-screen styles */
+#game-screen{padding:.5rem .75rem;gap:.5rem}
+#pc-top-bar{display:flex;gap:1rem;align-items:center;padding:.5rem .75rem;background:rgba(0,0,0,.25);border:1px solid var(--gold-dim);border-radius:8px;flex-wrap:wrap}
+.pc-stat{display:flex;gap:.35rem;align-items:baseline;font-size:.95rem}
+.pc-label{color:var(--parch-d);font-size:.8rem}
+.pc-val{color:var(--gold);font-weight:bold;font-size:1.1rem}
+#pc-phase-tag,#pc-diff-tag{background:var(--purple);color:var(--parch);padding:.2rem .6rem;border-radius:1rem;font-size:.75rem;letter-spacing:.05em;text-transform:uppercase}
+#pc-flash{position:fixed;top:3.5rem;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:var(--gold);padding:.6rem 1.25rem;border-radius:6px;border:1px solid var(--gold-dim);z-index:100;opacity:0;transition:opacity .25s;pointer-events:none;font-size:.95rem}
+#pc-flash.show{opacity:1}
+#pc-game-main{display:flex;flex-direction:column;gap:.75rem;flex:1}
+.pc-section-title{color:var(--gold);font-size:.9rem;font-weight:bold;margin-bottom:.35rem;letter-spacing:.04em;text-transform:uppercase}
+.pc-hint{color:var(--parch-d);font-weight:normal;text-transform:none;letter-spacing:0;font-size:.75rem;font-style:italic}
+.pc-board{display:grid;grid-template-columns:repeat(7,1fr);gap:.35rem;padding:.5rem;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--gold-dim)}
+.pc-slot{min-height:5rem;background:var(--parch);color:var(--deep);border-radius:6px;padding:.4rem;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:transform .1s}
+.pc-slot:hover:not(.pc-empty){transform:scale(1.03)}
+.pc-slot.pc-bench{opacity:.55;background:var(--parch-d)}
+.pc-slot.pc-empty{background:rgba(255,255,255,.08);border:1px dashed var(--gold-dim);cursor:default;color:var(--parch-d);align-items:center;justify-content:center}
+.pc-slot.pc-charmed{box-shadow:0 0 15px rgba(255,215,0,.7);border:2px solid gold;animation:pc-sparkle 1.5s ease-in-out infinite}
+@keyframes pc-sparkle{0%,100%{box-shadow:0 0 12px rgba(255,215,0,.5)}50%{box-shadow:0 0 22px rgba(255,215,0,.9)}}
+.pc-slot-name{font-weight:bold;font-size:.8rem;line-height:1.1}
+.pc-slot-potion{font-size:1.2rem;text-align:center;margin:.15rem 0}
+.pc-slot-stats{display:flex;gap:.3rem;font-size:.7rem;justify-content:space-between}
+.pc-slot-keys{font-size:.65rem;color:var(--purple);margin-top:.15rem}
+.pc-slot-cast{font-size:.7rem;color:var(--deep);font-style:italic}
+#pc-pricing{display:flex;gap:.4rem;flex-wrap:wrap;padding:.5rem;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--gold-dim)}
+.pc-price-card{background:var(--parch);color:var(--deep);border-radius:6px;padding:.5rem .6rem;min-width:11rem;display:flex;flex-direction:column;gap:.2rem}
+.pc-price-top{display:flex;align-items:center;gap:.3rem}
+.pc-price-icon{font-size:1.3rem}
+.pc-price-name{font-weight:bold;font-size:.85rem;flex:1}
+.pc-price-stats{font-size:.72rem;color:var(--purple)}
+.pc-price-controls{display:flex;align-items:center;gap:.3rem;margin-top:.2rem}
+.pc-price-btn{width:1.6rem;height:1.6rem;border:none;background:var(--gold);color:var(--deep);border-radius:3px;font-weight:bold;cursor:pointer}
+.pc-price-btn:disabled{opacity:.35;cursor:not-allowed}
+.pc-price-current{flex:1;text-align:center;font-weight:bold;font-size:1rem}
+.pc-price-status{font-size:.7rem;font-style:italic;color:var(--purple)}
+#pc-offering{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.4rem;padding:.5rem;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--gold-dim);min-height:6rem}
+.pc-shop-card{background:var(--parch);color:var(--deep);border-radius:6px;padding:.5rem;cursor:pointer;display:flex;flex-direction:column;gap:.15rem;transition:transform .1s,box-shadow .1s}
+.pc-shop-card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
+.pc-shop-card.pc-disabled{opacity:.45;cursor:not-allowed}
+.pc-shop-card.pc-spell{background:#c9a3e0}
+.pc-shop-head{display:flex;justify-content:space-between;align-items:center}
+.pc-shop-name{font-weight:bold;font-size:.85rem}
+.pc-shop-cost{color:var(--gold-dim);font-weight:bold;font-size:.85rem}
+.pc-shop-meta{font-size:.7rem;color:var(--purple)}
+.pc-shop-ability{font-size:.7rem;color:var(--deep);font-style:italic;margin-top:.2rem}
+#pc-hand{display:flex;gap:.4rem;flex-wrap:wrap;padding:.5rem;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--gold-dim);min-height:4rem}
+.pc-hand-card{background:var(--parch);color:var(--deep);border-radius:6px;padding:.45rem .55rem;min-width:9rem;cursor:pointer;transition:transform .1s}
+.pc-hand-card:hover{transform:translateY(-2px)}
+.pc-hand-card.pc-spell{background:#c9a3e0}
+.pc-hand-card.pc-charmed{box-shadow:0 0 10px rgba(255,215,0,.6);border:1px solid gold}
+#pc-customers{display:flex;flex-wrap:wrap;gap:.4rem;padding:.5rem;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--gold-dim);min-height:4rem}
+.pc-customer-card{background:var(--parch);color:var(--deep);border-radius:6px;padding:.5rem;min-width:12rem;display:flex;flex-direction:column;gap:.2rem}
+.pc-customer-card.pc-won{background:#8fd68f}
+.pc-customer-card.pc-lost{background:#e68585}
+.pc-customer-card.pc-nosale{background:var(--parch-d);opacity:.7}
+.pc-cust-head{display:flex;justify-content:space-between;align-items:center;font-weight:bold;font-size:.8rem}
+.pc-cust-meta{font-size:.7rem;color:var(--purple)}
+.pc-cust-bars{display:flex;flex-direction:column;gap:.1rem;margin-top:.2rem}
+.pc-cust-bar{display:flex;align-items:center;gap:.3rem;font-size:.65rem}
+.pc-cust-bar-label{width:3rem;color:var(--deep)}
+.pc-cust-bar-track{flex:1;height:.4rem;background:rgba(0,0,0,.1);border-radius:2px;position:relative;overflow:hidden}
+.pc-cust-bar-p,.pc-cust-bar-o{position:absolute;top:0;bottom:0}
+.pc-cust-bar-p{left:0;background:var(--green)}
+.pc-cust-bar-o{right:0;background:var(--red)}
+#pc-payday-list{display:flex;flex-direction:column;gap:.3rem;padding:.5rem;background:rgba(0,0,0,.25);border:1px solid var(--red);border-radius:8px}
+.pc-payday-row{display:flex;justify-content:space-between;align-items:center;background:var(--parch);color:var(--deep);padding:.4rem .6rem;border-radius:4px}
+.pc-payday-row .pc-pay-name{font-weight:bold;font-size:.85rem}
+.pc-payday-row .pc-pay-wage{color:var(--red);font-weight:bold;font-size:.85rem}
+.pc-payday-row .pc-pay-btns{display:flex;gap:.3rem}
+#pc-log{background:rgba(0,0,0,.35);padding:.5rem;border-radius:6px;font-family:monospace;font-size:.72rem;max-height:10rem;overflow-y:auto;color:var(--parch-d);white-space:pre-wrap}
+#pc-round-end{padding:1rem;background:rgba(0,0,0,.3);border:1px solid var(--gold);border-radius:8px;text-align:center}
+#pc-round-end h2{color:var(--gold);margin-bottom:.75rem}
+#pc-round-end-body{margin-bottom:1rem;color:var(--parch)}
+#pc-target-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center}
+#pc-target-box{background:var(--deep);padding:1.5rem 2rem;border:2px solid var(--gold);border-radius:10px;color:var(--parch);max-width:26rem;text-align:center}
+#pc-target-msg{margin-bottom:.75rem;font-size:1rem}
+.pc-slot.pc-targetable{outline:3px solid gold;cursor:pointer}
+</style>
 
 <div id="cust-sidebar"></div>
 
@@ -493,532 +601,121 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 <div class="tooltip" id="tooltip"></div>
 <div class="modal-overlay" id="report-overlay" onclick="closeReport()"><div class="modal-box" onclick="event.stopPropagation()"><h2>Last Round Report</h2><div id="report-content"></div><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div></div></div>
 <div class="modal-overlay" id="modal-overlay" onclick="cancelModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="cancelModal()">Cancel</button></div></div>
+<script src="engine.js"></script>
 <script>
-// ============================================================
-// CARD DEFINITIONS
-// ============================================================
-const GINGERBREAD_MAN={id:'gingerbread-man',name:'Gingerbread Man',emoji:'🍪',tribe:'culinary',tier:1,desc:'A small cookie with a big heart. Not very strong, but free! "You can\'t catch me!"',pros:['Free (0 gold)','Gets you started'],cons:['Lowest stats in the game','Only 1 stock'],potions:[{name:'Cookie Crumb Potion',stock:1,potency:1,price:1}],castTime:4,transformable:false,cost:0};
-const HIRELINGS_SHOP=[
-  {id:'hag',name:'Hag',emoji:'🧙‍♀️',tribe:'mischief',tier:1,desc:'A crooked old hag with dubious potions. Transformable with Wishing Star.',pros:['Transformable into powerful tier-2','Cheap to buy'],cons:['Low potency','Only 1 potion type'],potions:[{name:'Murky Brew',stock:2,potency:1,price:1}],castTime:3,transformable:true,cost:2},
-  {id:'frog',name:'Frog',emoji:'🐸',tribe:'woodland',tier:1,desc:'A small frog hoping for a kiss. Transformable with Wishing Star.',pros:['Fast 2s cast','Transformable into tier-2'],cons:['Low stock','Low potency'],potions:[{name:'Swamp Sip',stock:2,potency:1,price:1}],castTime:2,transformable:true,cost:2},
-  {id:'hidden-princess',name:'Hidden Princess',emoji:'👸',tribe:'royalty',tier:1,desc:'A princess in disguise. Transformable with Wishing Star.',pros:['Transformable — Snow White or Master Pie Maker','Royalty tribe synergy'],cons:['Slow 4s cast','Low stats until transformed'],potions:[{name:'Secret Elixir',stock:2,potency:1,price:1}],castTime:4,transformable:true,cost:2},
-  {id:'little-piggy',name:'Little Piggy',emoji:'🐷',tribe:'culinary',tier:1,desc:'Sniffs out the finest ingredients. Buy 3 to upgrade!',pros:['Good stock (3)','Fast 2s cast','3x upgrades to Big Bad Wolf'],cons:['Low potency','Needs 3 copies to shine'],potions:[{name:'Truffle Tonic',stock:3,potency:1,price:1}],castTime:2,transformable:false,cost:2},
-  {id:'teacups',name:'Teacups',emoji:'🫖',tribe:'enchanted',tier:1,desc:'Pours enchanted tea. Buy 3 to upgrade!',pros:['Highest stock (4)','3x upgrades to Madame Teapot'],cons:['Low potency','Average cast speed'],potions:[{name:'Tea Brew',stock:4,potency:1,price:1}],castTime:3,transformable:false,cost:2},
-  {id:'pumpkin-mouse',name:'Pumpkin Mouse',emoji:'🐭',tribe:'woodland',tier:1,desc:'A quick little brewer with surprisingly potent pumpkin potions.',pros:['2x potency — best tier-1 damage','Woodland tribe synergy'],cons:['Low stock (2)','Costs 3 gold — most expensive tier-1'],potions:[{name:'Pumpkin Juice',stock:2,potency:2,price:1}],castTime:3,transformable:false,cost:3},
-];
-const HIRELINGS_ALL=[GINGERBREAD_MAN,...HIRELINGS_SHOP,
-  {id:'evil-royal',name:'Evil Royal',emoji:'👑',tribe:'royalty',tier:2,desc:'A royal with a wicked streak and potent poisons.',pros:['High potency (3)','Two potion types'],cons:['Average cast speed'],potions:[{name:'Royal Venom',stock:3,potency:3,price:2},{name:'Crown Toxin',stock:2,potency:2,price:2}],castTime:3,transformable:false,cost:5},
-  {id:'poison-queen',name:'Poison Queen',emoji:'🍎',tribe:'mischief',tier:2,desc:'She brews the deadliest draughts in the realm.',pros:['Highest single potency (4)','Good total output'],cons:['Slow 4s cast'],potions:[{name:"Queen's Bane",stock:2,potency:4,price:2},{name:'Apple Extract',stock:3,potency:2,price:2}],castTime:4,transformable:false,cost:5},
-  {id:'royal-fly-catch',name:'Royal Fly Catch',emoji:'🐸',tribe:'woodland',tier:2,desc:'A regal amphibian with a lightning-fast tongue.',pros:['Fastest cast (1s) — sells constantly','Great sustained output'],cons:['Moderate potency per sale'],potions:[{name:'Fly Fizz',stock:4,potency:2,price:2},{name:'Tongue Tonic',stock:2,potency:3,price:2}],castTime:1,transformable:false,cost:5},
-  {id:'wart-covered-prince',name:'Wart Covered Prince',emoji:'🤴',tribe:'royalty',tier:2,desc:'A prince cursed with warts but blessed with charm.',pros:['Balanced stats','Royalty synergy'],cons:['Nothing exceptional'],potions:[{name:'Wartbrew',stock:3,potency:2,price:2},{name:"Prince's Perfume",stock:2,potency:3,price:2}],castTime:3,transformable:false,cost:5},
-  {id:'snow-white',name:'Snow White',emoji:'❄️',tribe:'royalty',tier:2,desc:'Fairest of them all, her potions enchant every customer.',pros:['Excellent balanced stats (3/3 on both)','High total output'],cons:['Average cast speed'],potions:[{name:'Mirror Mist',stock:3,potency:3,price:2},{name:'Apple Blossom Dew',stock:3,potency:3,price:2}],castTime:3,transformable:false,cost:5},
-  {id:'master-pie-maker',name:'Master Pie Maker',emoji:'🥧',tribe:'culinary',tier:2,desc:'Bakes potions into irresistible pies.',pros:['Fast 2s cast','High stock (4+3)','Great sustained output'],cons:['Moderate potency'],potions:[{name:'Pie Potion',stock:4,potency:2,price:2},{name:'Crust Elixir',stock:3,potency:2,price:2}],castTime:2,transformable:false,cost:5},
-  {id:'big-bad-wolf',name:'Big Bad Wolf',emoji:'🐺',tribe:'culinary',tier:2,desc:'Huffs, puffs, and brews the strongest potions.',pros:['High potency (3/3)','Fast 2s cast','Massive total output'],cons:['Requires 3 Little Piggys to obtain'],potions:[{name:'Huff Brew',stock:4,potency:3,price:2},{name:'Puff Potion',stock:3,potency:3,price:2}],castTime:2,transformable:false,cost:6},
-  {id:'madame-teapot',name:'Madame Teapot',emoji:'🫖',tribe:'enchanted',tier:2,desc:'Pours potions with elegance and precision.',pros:['Highest stock (5+4)','Fast 2s cast','Never runs out'],cons:['Requires 3 Teacups to obtain'],potions:[{name:'Grand Tea',stock:5,potency:3,price:2},{name:'Earl Elixir',stock:4,potency:2,price:2}],castTime:2,transformable:false,cost:6},
-];
-const SPELLS=[
-  {id:'wishing-star',name:'Wishing Star',emoji:'⭐',desc:'Transform a transformable hireling into one of two powerful tier-2 forms. Target must have the Transformable trait.',cost:2,kind:'transform',pros:['Instant tier-2 upgrade','Choose between 2 options'],cons:['Only works on transformable hirelings','Costs 2 gold']},
-  {id:'potency-boost',name:'Potency Boost',emoji:'💪',desc:'Permanently increase all potion potency on a hireling by +1.',cost:1,kind:'potency',pros:['Permanent buff','Affects all potions','Cheap (1 gold)'],cons:['Small incremental gain']},
-  {id:'quick-brew',name:'Quick Brew',emoji:'⚡',desc:'Permanently reduce a hireling cast time by 1 second (min 1s).',cost:1,kind:'speed',pros:['More sales per battle','Permanent buff','Cheap (1 gold)'],cons:['Cannot go below 1s']},
-];
-const TRANSFORMATIONS={'hag':[{id:'evil-royal',name:'Evil Royal',emoji:'👑',tribe:'royalty',tier:2,potions:[{name:'Royal Venom',stock:3,potency:3,price:2},{name:'Crown Toxin',stock:2,potency:2,price:2}],castTime:3},{id:'poison-queen',name:'Poison Queen',emoji:'🍎',tribe:'mischief',tier:2,potions:[{name:"Queen's Bane",stock:2,potency:4,price:2},{name:'Apple Extract',stock:3,potency:2,price:2}],castTime:4}],'frog':[{id:'royal-fly-catch',name:'Royal Fly Catch',emoji:'🐸',tribe:'woodland',tier:2,potions:[{name:'Fly Fizz',stock:4,potency:2,price:2},{name:'Tongue Tonic',stock:2,potency:3,price:2}],castTime:1},{id:'wart-covered-prince',name:'Wart Covered Prince',emoji:'🤴',tribe:'royalty',tier:2,potions:[{name:'Wartbrew',stock:3,potency:2,price:2},{name:"Prince's Perfume",stock:2,potency:3,price:2}],castTime:3}],'hidden-princess':[{id:'snow-white',name:'Snow White',emoji:'❄️',tribe:'royalty',tier:2,potions:[{name:'Mirror Mist',stock:3,potency:3,price:2},{name:'Apple Blossom Dew',stock:3,potency:3,price:2}],castTime:3},{id:'master-pie-maker',name:'Master Pie Maker',emoji:'🥧',tribe:'culinary',tier:2,potions:[{name:'Pie Potion',stock:4,potency:2,price:2},{name:'Crust Elixir',stock:3,potency:2,price:2}],castTime:2}]};
-const UPGRADES={'little-piggy':{id:'big-bad-wolf',name:'Big Bad Wolf',emoji:'🐺',tribe:'culinary',tier:2,potions:[{name:'Huff Brew',stock:4,potency:3,price:2},{name:'Puff Potion',stock:3,potency:3,price:2}],castTime:2,transformable:false,cost:6},'teacups':{id:'madame-teapot',name:'Madame Teapot',emoji:'🫖',tribe:'enchanted',tier:2,potions:[{name:'Grand Tea',stock:5,potency:3,price:2},{name:'Earl Elixir',stock:4,potency:2,price:2}],castTime:2,transformable:false,cost:6}};
-const _VX={id:'nyl-thraxil',name:"Nyl'Thraxil",emoji:'👁️',tribe:'mischief',tier:3,desc:'The void eldritch god stirs. Reality bends around its presence. Those who dared to summon it whisper in tongues.',pros:['Devastating potency (10 / 8)','Nearly instant casting (0.1s)','Massive stock — never runs dry','The game trembles before it'],cons:['Only the most dedicated brewers can summon it'],potions:[{name:'Void Wrath',stock:5,potency:10,price:3},{name:"Vyx'alith",stock:7,potency:8,price:3}],castTime:0.1,transformable:false,cost:999};
-const CUSTOMERS=[{name:'Gretel',emoji:'👧',threshold:3,gold:2,rep:3,budget:2},{name:'Jack',emoji:'🧑',threshold:4,gold:3,rep:4,budget:2},{name:'Red Riding Hood',emoji:'🧣',threshold:2,gold:1,rep:2,budget:1},{name:'Goldilocks',emoji:'👱‍♀️',threshold:5,gold:3,rep:5,budget:3},{name:'Rapunzel',emoji:'👩‍🦰',threshold:3,gold:2,rep:3,budget:2},{name:'Hansel',emoji:'👦',threshold:3,gold:2,rep:3,budget:1},{name:'Cinderella',emoji:'💃',threshold:4,gold:3,rep:4,budget:3},{name:'The Baker',emoji:'👨‍🍳',threshold:6,gold:4,rep:5,budget:2},{name:'Pied Piper',emoji:'🎵',threshold:4,gold:3,rep:4,budget:2},{name:'Old King Cole',emoji:'🤴',threshold:5,gold:4,rep:5,budget:3}];
-const NPC_NAMES=['Fairy Godmother','Rumpelstiltskin','Wicked Witch','Gingerbread Man','Snow Queen','Big Bad Wolf','Pied Piper','Little Mermaid','Sleeping Beauty','Jack Frost','Mother Goose','Puss in Boots','Robin Hood','Lady of the Lake','Enchanted Fox'];
+"use strict";
+// ==============================================================
+// Engine-driven game UI (Phase 12 wiring — chunk A scaffold).
+// ==============================================================
+const E = window.PriceCharming;
 
-// ============================================================
-// STATE & SETTINGS
-// ============================================================
-let soundEnabled=true;
-let G={};
-function resetState(){G={phase:'title',round:1,gold:0,reputation:0,repMax:30,difficulty:'normal',board:[],shop:[],hand:[],opp:{board:[]},customers:[],custIdx:0,playerSat:0,oppSat:0,battleTimer:null,battleSpeed:100,roundGold:0,roundRep:0,custWins:0,custLosses:0,pendingSpell:null,pendingHandSpell:null,custResults:[],lastReport:null}}
-resetState();
-function getTier(r){return r<=3?1:r<=6?2:3}
-function deepCopyCard(c){return{...c,potions:c.potions.map(p=>({...p}))}}
-function diffMultiplier(){if(G.difficulty==='tutorial')return TUT.forceWin===false?1.8:0.5;return{easy:0.7,normal:1,hard:1.3,insane:1.7}[G.difficulty]||1}
-const isTouch='ontouchstart' in window||navigator.maxTouchPoints>0;
+// --- module-level state -----------------------------------------------
+let pcGame = null;                 // GameState from the engine
+let pcDifficulty = "normal";
+let pcRng = null;                  // seeded RNG shared across the game
+let pcOpponent = null;             // opponent's own pool / gold / board (pre-snapshot)
+let pcBattleTimer = null;
+let pcCustomerQueue = [];
+let pcCustomerSpawnIdx = 0;
+let pcTargetPick = null;           // active target-picker (Lucky / Bottle / Polish)
 
-// ============================================================
-// SCREENS
-// ============================================================
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='leader-screen')renderLeaderboard();if(id==='settings-screen')renderSettings();if(id==='sandbox-screen')renderSandbox()}
-
-// ============================================================
-// AUDIO
-// ============================================================
-const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioCtx=null;
-function ensureAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
-function sfx(type,freq,dur,vol){if(!soundEnabled)return;ensureAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type=type;o.frequency.setValueAtTime(freq,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(freq*1.5,audioCtx.currentTime+dur);g.gain.setValueAtTime(vol||.1,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);o.start();o.stop(audioCtx.currentTime+dur)}
-function playBuy(){sfx('triangle',600,.2,.15)}
-function playSell(){sfx('sine',400,.15,.12)}
-function playPotionSell(){sfx('sine',500+Math.random()*200,.12,.08)}
-function playRefresh(){sfx('sine',800,.15,.1)}
-function playCustomerWin(){if(!soundEnabled)return;ensureAudio();[0,.1,.2].forEach((d,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='triangle';o.frequency.setValueAtTime([523,659,784][i],audioCtx.currentTime+d);g.gain.setValueAtTime(.12,audioCtx.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d+.2);o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+.2)})}
-function playCustomerLose(){sfx('sawtooth',300,.3,.08)}
-function playSpellCast(){if(!soundEnabled)return;ensureAudio();[0,.05,.1,.15].forEach((d,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='sine';o.frequency.setValueAtTime(600+i*150,audioCtx.currentTime+d);g.gain.setValueAtTime(.1,audioCtx.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d+.15);o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+.15)})}
-function playUpgrade(){if(!soundEnabled)return;ensureAudio();[0,.08,.16,.24,.32].forEach((d,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='triangle';o.frequency.setValueAtTime([523,659,784,988,1175][i],audioCtx.currentTime+d);g.gain.setValueAtTime(.12,audioCtx.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d+.25);o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+.25)})}
-
-// ============================================================
-// UPGRADE
-// ============================================================
-function checkUpgrade(cardId){
-  if(cardId==='hag'){
-    const hc=G.board.filter(h=>h.id==='hag').length;
-    if(hc>=5){
-      let r=0;G.board=G.board.filter(h=>{if(h.id==='hag'&&r<5){r++;return false}return true});
-      const c={..._VX,type:'hireling',potions:_VX.potions.map(p=>({...p}))};
-      c._timer=c.castTime;G.board.push(c);
-      playVoidAwakening();
-      showFloat(document.getElementById('player-board'),"⚡ NYL'THRAXIL HAS AWAKENED ⚡",'#a06bff');
-      return;
-    }
-  }
-  const m=G.board.filter(h=>h.id===cardId);if(m.length<3)return;const u=UPGRADES[cardId];if(!u)return;
-  let r=0;G.board=G.board.filter(h=>{if(h.id===cardId&&r<3){r++;return false}return true});
-  const c=deepCopyCard({...u,type:'hireling'});c._timer=c.castTime;G.board.push(c);
-  playUpgrade();showFloat(document.getElementById('player-board'),'UPGRADE! '+u.name+'!','var(--gold)')
-}
-function playVoidAwakening(){if(!soundEnabled)return;ensureAudio();[0,.15,.3,.45,.6,.75,.9].forEach((d,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='sawtooth';o.frequency.setValueAtTime(80-i*8,audioCtx.currentTime+d);g.gain.setValueAtTime(.2,audioCtx.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d+.4);o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+.4)});const o2=audioCtx.createOscillator(),g2=audioCtx.createGain();o2.connect(g2);g2.connect(audioCtx.destination);o2.type='sine';o2.frequency.setValueAtTime(40,audioCtx.currentTime);o2.frequency.exponentialRampToValueAtTime(1200,audioCtx.currentTime+1.2);g2.gain.setValueAtTime(.15,audioCtx.currentTime);g2.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+1.2);o2.start();o2.stop(audioCtx.currentTime+1.2)}
-
-// ============================================================
-// GAME FLOW
-// ============================================================
-function startGame(diff){
-  resetState();G.difficulty=diff;G.gold=3;
-  showScreen('game-screen');enterShopping();
-}
-function enterShopping(){G.phase='shopping';if(G.round>1)G.gold+=G.round;generateShop();renderAll()}
-function generateShop(){const t=getTier(G.round);const pool=HIRELINGS_SHOP.filter(h=>h.tier<=t);G.shop=[];if(G.round===1){const gb=deepCopyCard(GINGERBREAD_MAN);gb.type='hireling';G.shop.push(gb)}for(let i=G.shop.length;i<4;i++){if(Math.random()<.3){G.shop.push({...SPELLS[Math.floor(Math.random()*SPELLS.length)],type:'spell'})}else{const h=deepCopyCard(pool[Math.floor(Math.random()*pool.length)]);h.type='hireling';G.shop.push(h)}}}
-function refreshShop(){if(G.gold<1){showFloat(document.getElementById('shop-btns'),'No gold!','var(--red)');return}G.gold--;playRefresh();generateShop();updateTopBar();renderShop();renderPotionPanel()}
-function buyCard(idx){const item=G.shop[idx];if(!item)return;if(G.gold<item.cost){showFloat(document.getElementById('shop-cards'),'Not enough gold!','var(--red)');return}if(item.type==='spell'){if(G.hand.length>=5){showFloat(document.getElementById('shop-cards'),'Hand full!','var(--red)');return}G.gold-=item.cost;G.shop[idx]=null;G.hand.push({...item});playBuy();updateTopBar();renderAll();return}if(G.board.length>=5){showFloat(document.getElementById('shop-cards'),'Board full!','var(--red)');return}G.gold-=item.cost;const c=deepCopyCard(item);c._timer=c.castTime;G.board.push(c);G.shop[idx]=null;playBuy();checkUpgrade(c.id);updateTopBar();renderAll()}
-function sellCard(idx){if(G.phase!=='shopping')return;G.board.splice(idx,1);G.gold++;playSell();updateTopBar();renderAll()}
-function playHandSpell(i){if(G.phase!=='shopping')return;const s=G.hand[i];if(!s)return;G.hand.splice(i,1);G.pendingHandSpell=s;handleSpell(s);renderAll()}
-function adjustPrice(bi,pi,d){const h=G.board[bi];if(!h)return;const p=h.potions[pi];if(!p)return;p.price=Math.max(0,Math.min(5,(p.price||1)+d));renderPotionPanel()}
-
-// ============================================================
-// SPELLS
-// ============================================================
-function handleSpell(spell){if(G.board.length===0){showFloat(document.getElementById('shop-cards'),'No hirelings!','var(--red)');returnSpellToHand();return}G.pendingSpell=spell;if(spell.kind==='transform'){const t=G.board.filter(h=>h.transformable);if(!t.length){showFloat(document.getElementById('shop-cards'),'No transformable!','var(--red)');returnSpellToHand();return}openTargetModal('Transform',G.board.filter(h=>h.transformable),doTransform)}else if(spell.kind==='potency'){openTargetModal('Boost Potency',G.board,doPotencyBoost)}else if(spell.kind==='speed'){const v=G.board.filter(h=>h.castTime>1);if(!v.length){showFloat(document.getElementById('shop-cards'),'All at min!','var(--red)');returnSpellToHand();return}openTargetModal('Speed Up',v,doSpeedBoost)}}
-function returnSpellToHand(){if(G.pendingHandSpell){G.hand.push(G.pendingHandSpell);G.pendingHandSpell=null}G.pendingSpell=null;renderAll()}
-function doTransform(h){document.getElementById('modal-overlay').style.display='none';const p=TRANSFORMATIONS[h.id];if(!p){returnSpellToHand();return}const el=document.getElementById('modal-choices');el.innerHTML='';document.getElementById('modal-title').textContent='Choose Transformation';document.getElementById('modal-desc').textContent=h.name+' transforms into...';p.forEach(opt=>{const c=document.createElement('div');c.className='card clickable';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${opt.emoji}</div><div class="c-name">${opt.name}</div><div style="text-align:center"><span class="c-tribe">${opt.tribe}</span></div><div class="c-info">${opt.potions.map(p=>p.name+' '+p.potency+'✦x'+p.stock).join('<br>')}<br>Cast:${opt.castTime}s</div>`;c.onclick=()=>{const i=G.board.findIndex(x=>x===h);if(i===-1)return;const nc=deepCopyCard({...opt,type:'hireling',transformable:false,cost:5});nc._timer=nc.castTime;G.board[i]=nc;G.pendingSpell=null;G.pendingHandSpell=null;playSpellCast();closeModal();renderAll()};el.appendChild(c)});document.getElementById('modal-overlay').style.display='flex'}
-function doPotencyBoost(h){h.potions.forEach(p=>p.potency++);G.pendingSpell=null;G.pendingHandSpell=null;playSpellCast();closeModal();renderAll()}
-function doSpeedBoost(h){h.castTime=Math.max(1,h.castTime-1);G.pendingSpell=null;G.pendingHandSpell=null;playSpellCast();closeModal();renderAll()}
-function openTargetModal(title,targets,cb){document.getElementById('modal-title').textContent=title;document.getElementById('modal-desc').textContent='Click a hireling:';const el=document.getElementById('modal-choices');el.innerHTML='';targets.forEach(h=>{const c=document.createElement('div');c.className='card clickable';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${h.emoji}</div><div class="c-name">${h.name}</div><div class="c-info">${h.potions.map(p=>p.name+' '+p.potency+'✦').join(', ')}<br>Cast:${h.castTime}s</div>`;c.onclick=()=>cb(h);el.appendChild(c)});document.getElementById('modal-overlay').style.display='flex'}
-function closeModal(){document.getElementById('modal-overlay').style.display='none'}
-function cancelModal(){closeModal();returnSpellToHand()}
-
-// ============================================================
-// BATTLE
-// ============================================================
-function startBattle(){if(!G.board.length){showFloat(document.getElementById('start-battle-top'),'Hire first!','var(--red)');return}
-  const timerSecs={easy:3,normal:3,hard:3,insane:0,tutorial:3}[G.difficulty]||3;
-  if(timerSecs>0){showRoundTimer(timerSecs,()=>launchBattle())}else{launchBattle()}}
-function launchBattle(){G.phase='battle';generateOpponent();generateCustomers();G.custIdx=0;G.roundGold=0;G.roundRep=0;G.custWins=0;G.custLosses=0;G.custResults=[];G.board.forEach(h=>{h._timer=h.castTime});G.opp.board.forEach(h=>{h._timer=h.castTime});renderAll();loadNextCustomer();setTimeout(()=>{const ca=document.getElementById('customer-area');if(ca)ca.scrollIntoView({behavior:'smooth',block:'center'})},50)}
-function generateOpponent(){const t=getTier(G.round);const pool=HIRELINGS_SHOP.filter(h=>h.tier<=t);const ps=G.board.reduce((s,h)=>s+h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0),0);const dm=diffMultiplier();const count=Math.min(5,Math.max(G.board.length,Math.floor(G.round/2)+1+Math.floor(Math.random()*2)));G.opp.board=[];const target=ps*(0.85+G.round*0.04+Math.random()*0.2)*dm;let os=0;for(let i=0;i<count;i++){const h=deepCopyCard(pool[Math.floor(Math.random()*pool.length)]);h.type='hireling';h._timer=h.castTime;const pb=Math.floor(G.round/4*dm);const sb=Math.floor(G.round/5*dm);h.potions.forEach(p=>{p.potency+=pb;p.stock+=sb;if(!p.price)p.price=1});G.opp.board.push(h);os+=h.potions.reduce((ps,p)=>ps+p.potency*p.stock,0)}if(os<target&&G.opp.board.length>0){const def=target-os;G.opp.board.forEach(h=>{const mp=h.potions[0];if(mp)mp.potency+=Math.ceil(def/G.opp.board.length/Math.max(1,mp.stock))})}}
-function generateCustomers(){const c=3+Math.floor(G.round/3);const s=[...CUSTOMERS].sort(()=>Math.random()-.5);G.customers=s.slice(0,Math.min(c,s.length)).map(c=>({...c}))}
-function loadNextCustomer(){if(G.custIdx>=G.customers.length){endBattle();return}G.playerSat=0;G.oppSat=0;document.getElementById('customer-result').textContent='';renderAll();G.battleTimer=setInterval(battleTick,G.battleSpeed)}
-function battleTick(){if(G.phase!=='battle')return;const cust=G.customers[G.custIdx];if(!cust)return;const dt=G.battleSpeed/1000;G.board.forEach(h=>{if(isExhausted(h))return;h._timer-=dt;if(h._timer<=0){const pot=getNextPotion(h);if(pot){const pm=(pot.price||1)<=cust.budget?1:Math.max(.3,1-(pot.price-cust.budget)*.25);const ep=Math.max(1,Math.round(pot.potency*pm));pot.stock--;G.playerSat+=ep;addLog(`<span class="log-player">Your ${h.name}</span> sold ${pot.name} (+${ep})`);flashCard(h.id,'player');playPotionSell()}h._timer=h.castTime}});G.opp.board.forEach(h=>{if(isExhausted(h))return;h._timer-=dt;if(h._timer<=0){const pot=getNextPotion(h);if(pot){pot.stock--;G.oppSat+=pot.potency;addLog(`<span class="log-opp">Opp ${h.name}</span> sold ${pot.name} (+${pot.potency})`);flashCard(h.id,'opp')}h._timer=h.castTime}});renderBattle();if(G.playerSat>=cust.threshold&&G.oppSat>=cust.threshold)customerDone(G.playerSat>=G.oppSat?'player':'opp',cust);else if(G.playerSat>=cust.threshold)customerDone('player',cust);else if(G.oppSat>=cust.threshold)customerDone('opp',cust);else if(allExhausted(G.board)&&allExhausted(G.opp.board))customerDone(G.playerSat>=G.oppSat?'player':'opp',cust)}
-function getNextPotion(h){for(let i=0;i<h.potions.length;i++)if(h.potions[i].stock>0)return h.potions[i];return null}
-function isExhausted(h){return!h.potions.some(p=>p.stock>0)}
-function allExhausted(b){return b.every(isExhausted)}
-function customerDone(w,cust){clearInterval(G.battleTimer);const res=document.getElementById('customer-result');let ge=0;if(w==='player'){const ap=G.board.length>0?G.board.reduce((s,h)=>s+h.potions.reduce((ps,p)=>ps+(p.price||1),0),0)/G.board.reduce((s,h)=>s+h.potions.length,0):1;ge=Math.round(cust.gold*Math.min(1.5,ap));G.roundGold+=ge;G.roundRep+=cust.rep;G.custWins++;G.gold+=ge;res.innerHTML=`<span style="color:var(--green)">You won ${cust.name}! +${ge}g, +${cust.rep} rep</span>`;addLog(`<span class="log-gold">Won ${cust.name}: +${ge}g, +${cust.rep} rep</span>`);playCustomerWin()}else{G.roundRep-=Math.ceil(cust.rep/2);G.custLosses++;res.innerHTML=`<span style="color:var(--red)">Opponent won ${cust.name}! -${Math.ceil(cust.rep/2)} rep</span>`;addLog(`<span class="log-opp">Lost ${cust.name}: -${Math.ceil(cust.rep/2)} rep</span>`);playCustomerLose()}G.custResults.push({customer:{...cust},winner:w,playerSat:G.playerSat,oppSat:G.oppSat,goldEarned:ge,repChange:w==='player'?cust.rep:-Math.ceil(cust.rep/2)});renderCustSidebar();updateTopBar();setTimeout(()=>{G.custIdx++;if(G.custIdx<G.customers.length)loadNextCustomer();else endBattle()},1500)}
-function endBattle(){clearInterval(G.battleTimer);G.phase='round_end';G.reputation+=G.roundRep;G.lastReport={round:G.round,custResults:[...G.custResults],custWins:G.custWins,custLosses:G.custLosses,roundGold:G.roundGold,roundRep:G.roundRep,board:G.board.map(h=>({name:h.name,emoji:h.emoji,tribe:h.tribe,tier:h.tier,potions:h.potions.map(p=>({...p})),castTime:h.castTime})),oppBoard:G.opp.board.map(h=>({name:h.name,emoji:h.emoji,tribe:h.tribe,tier:h.tier,potions:h.potions.map(p=>({...p})),castTime:h.castTime}))};G.board.forEach(h=>h.potions.forEach(p=>{const o=HIRELINGS_ALL.find(x=>x.id===h.id)||(h.id===_VX.id?_VX:null);if(o){const op=o.potions.find(x=>x.name===p.name);if(op)p.stock=op.stock}else p.stock=Math.max(p.stock,2)}));updateTopBar();renderAll();autoSave()}
-function nextRound(){
-  if(G.reputation>=G.repMax){gameOver(true);return}
-  if(G.reputation<=-G.repMax){gameOver(false);return}
-  G.round++;if(G.round>15){gameOver(G.reputation>0);return}
-  if(G.round===13)G.repMax=25;if(G.round===14)G.repMax=20;if(G.round===15)G.repMax=15;
-  if(G.reputation<-G.repMax)G.reputation=-G.repMax;
-  if(G.reputation>G.repMax)G.reputation=G.repMax;
-  enterShopping();
+// --- generic helpers -------------------------------------------------
+function $(id){ return document.getElementById(id); }
+function pcFlash(msg){
+  const el = $("pc-flash");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(pcFlash._t);
+  pcFlash._t = setTimeout(()=>el.classList.remove("show"), 2200);
 }
 
-// ============================================================
-// ROUND TRANSITION TIMER
-// ============================================================
-function showRoundTimer(secs,callback){
-  const ov=document.getElementById('round-timer-overlay');
-  const num=document.getElementById('round-timer-num');
-  ov.style.display='flex';let remaining=secs;
-  function tick(){
-    num.textContent=remaining;num.style.animation='none';
-    void num.offsetWidth;num.style.animation='countZoom 1s forwards';
-    if(soundEnabled){sfx('triangle',300+remaining*50,.15,.1)}
-    if(remaining<=0){ov.style.display='none';callback();return}
-    remaining--;setTimeout(tick,1000);
-  }
-  tick();
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  const target = document.getElementById(id);
+  if (target) target.classList.add("active");
+  window.scrollTo(0,0);
 }
-function gameOver(won){G.phase='gameover';renderAll();const t=document.getElementById('go-title'),s=document.getElementById('go-sub'),ni=document.getElementById('go-name-input');if(won){t.className='victory-title';t.innerHTML='✨ VICTORY! ✨';s.innerHTML='You have conquered the enchanted marketplace!<br>Round '+G.round+' · Reputation '+G.reputation+' · '+G.difficulty.toUpperCase()+' mode';ni.style.display='block';document.getElementById('go-name').value='';launchConfetti();playVictoryFanfare()}else{t.className='';t.style.color='var(--red)';t.textContent='Defeat';s.innerHTML='The competition was too fierce.<br>Round '+G.round+' · Rep '+G.reputation;ni.style.display='none'}}
-function launchConfetti(){
-  const emojis=['⭐','✨','🎉','🎊','💰','👑','🌟','💫','🏆','💎','🔮','🎇','🎆','🌠'];
-  const colors=['#d4a843','#ffd700','#ff6b6b','#4ecdc4','#a06bff','#ff9ff3','#54a0ff','#5f27cd'];
-  // Multiple waves of confetti
-  function spawnWave(count,delayOffset){
-    for(let i=0;i<count;i++){
-      setTimeout(()=>{
-        const c=document.createElement('div');
-        const burst=(i%3)+1;
-        c.className='confetti burst-'+burst;
-        c.textContent=emojis[Math.floor(Math.random()*emojis.length)];
-        c.style.left=Math.random()*100+'%';
-        c.style.fontSize=(1.8+Math.random()*2)+'rem';
-        c.style.animationDuration=(4.5+Math.random()*2.5)+'s';
-        c.style.animationDelay=(Math.random()*.3)+'s';
-        document.body.appendChild(c);
-        setTimeout(()=>c.remove(),8000);
-      },delayOffset+i*40);
-    }
-  }
-  // Three waves for sustained celebration
-  spawnWave(60,0);
-  spawnWave(50,800);
-  spawnWave(40,1800);
-  // Firework bursts
-  function launchFirework(x,y,color){
-    for(let i=0;i<12;i++){
-      const f=document.createElement('div');
-      f.className='firework';
-      f.style.left=x+'%';
-      f.style.top=y+'%';
-      f.style.background='radial-gradient(circle,'+color+',transparent)';
-      f.style.boxShadow='0 0 20px '+color+',0 0 40px '+color;
-      document.body.appendChild(f);
-      setTimeout(()=>f.remove(),1500);
-    }
-  }
-  [0,400,800,1200,1600,2000].forEach(delay=>{
-    setTimeout(()=>{
-      launchFirework(20+Math.random()*60,20+Math.random()*40,colors[Math.floor(Math.random()*colors.length)]);
-    },delay);
-  });
-}
-function playVictoryFanfare(){if(!soundEnabled)return;ensureAudio();const notes=[523,659,784,1047,784,1047,1319];notes.forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='triangle';o.frequency.setValueAtTime(f,audioCtx.currentTime+i*.15);g.gain.setValueAtTime(.15,audioCtx.currentTime+i*.15);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+i*.15+.4);o.start(audioCtx.currentTime+i*.15);o.stop(audioCtx.currentTime+i*.15+.4)})}
-function saveVictory(){const name=document.getElementById('go-name').value.trim()||'Anonymous Brewer';updateLeaderboard(G.reputation,G.round,name);document.getElementById('go-name-input').style.display='none';showFloat(document.getElementById('game-over'),'Saved to leaderboard!','var(--green)')}
+window.showScreen = showScreen;
 
-// ============================================================
-// RENDERING
-// ============================================================
-function renderAll(){const sa=document.getElementById('shop-area'),os=document.getElementById('opp-section'),ca=document.getElementById('customer-area'),bl=document.getElementById('battle-log'),re=document.getElementById('round-end'),go=document.getElementById('game-over'),ps=document.getElementById('player-section'),pl=document.getElementById('phase-label'),ha=document.getElementById('hand-area'),pp=document.getElementById('potion-panel'),sb=document.getElementById('cust-sidebar');const sbt=document.getElementById('start-battle-top');const ssp=document.getElementById('shop-side-panel');sa.style.display='none';os.style.display='none';ca.style.display='none';bl.style.display='none';re.style.display='none';go.style.display='none';ps.style.display='block';ha.style.display='none';pp.style.display='none';sb.style.display='none';sbt.style.display='none';ssp.style.display='none';if(G.phase==='shopping'){pl.textContent='Shopping Phase — Round '+G.round;sa.style.display='block';sbt.style.display='block';ssp.style.display='block';if(G.hand.length>0)ha.style.display='block';if(G.board.length>0)pp.style.display='block';document.getElementById('report-btn').style.display=G.lastReport?'inline-block':'none';renderBoard('player-board',G.board,true);renderShop();renderHand();renderPotionPanel()}else if(G.phase==='battle'){pl.textContent='Battle — Round '+G.round;os.style.display='block';ca.style.display='block';bl.style.display='block';sb.style.display='flex';renderBoard('player-board',G.board,false);renderBoard('opp-board',G.opp.board,false);renderBattle();renderCustSidebar()}else if(G.phase==='round_end'){pl.textContent='Round '+G.round+' Complete';re.style.display='block';ps.style.display='none';const t=document.getElementById('round-end-title'),r=document.getElementById('round-end-results');t.textContent=G.custWins>G.custLosses?'Good Round!':G.custWins===G.custLosses?'Close Round':'Tough Round';r.innerHTML=`Won: <strong style="color:var(--green)">${G.custWins}</strong> · Lost: <strong style="color:var(--red)">${G.custLosses}</strong><br>Gold: <strong style="color:var(--gold)">${G.roundGold}</strong><br>Rep: <strong style="color:${G.roundRep>=0?'var(--green)':'var(--red)'}">${G.roundRep>=0?'+':''}${G.roundRep}</strong><br>Total: <strong>${G.reputation}</strong> / ${G.repMax}`;const btn=document.getElementById('round-end-btn');if(G.reputation>=G.repMax){btn.textContent='Victory!';btn.onclick=()=>gameOver(true)}else if(G.reputation<=-G.repMax){btn.textContent='Defeat...';btn.onclick=()=>gameOver(false)}else if(G.round>=15){btn.textContent=G.reputation>0?'Victory!':'Defeat...';btn.onclick=()=>gameOver(G.reputation>0)}else{btn.textContent='Next Round';btn.onclick=nextRound}}else if(G.phase==='gameover'){pl.textContent='';ps.style.display='none';go.style.display='block'}updateTopBar()}
+// --- safe stubs for legacy handlers referenced in existing HTML -----
+// (The old inline script is gone; these no-ops keep click handlers
+// from throwing if the user clicks a legacy button.)
+window.openSettingsFromShop = function(){ showScreen("settings-screen"); };
+window.closeReport = function(){ const o = $("report-overlay"); if (o) o.style.display = "none"; };
+window.cancelModal  = function(){ const o = $("modal-overlay");  if (o) o.style.display = "none"; };
+window.openReport   = function(){};
+window.startTutorial = function(){ pcFlash("Tutorial not available in this build."); };
+window.saveVictory  = function(){ /* wired in chunk F */ };
 
-function renderBoard(cid,board,showSell){const el=document.getElementById(cid);el.innerHTML='';const isShop=G.phase==='shopping',isP=cid==='player-board';if(isShop&&isP&&!isTouch){el.ondragover=e=>{e.preventDefault();el.classList.add('drop-hover')};el.ondragleave=()=>el.classList.remove('drop-hover');el.ondrop=e=>{e.preventDefault();el.classList.remove('drop-hover');handleDrop(e)}}for(let i=0;i<5;i++){if(i<board.length){const h=board[i];const c=document.createElement('div');c.className='card'+(isExhausted(h)?' exhausted':'')+(isShop&&isP&&!isTouch?' draggable':'');c.id=cid+'-card-'+i;c.dataset.cardId=h.id;const pi=h.potions.map(p=>`${p.name}:${p.potency}✦x${p.stock}`).join('<br>');const tp=G.phase==='battle'?Math.max(0,Math.min(100,(1-h._timer/h.castTime)*100)):0;c.innerHTML=`<div class="emoji">${h.emoji}</div><div class="c-name">${h.name}</div><div style="text-align:center"><span class="c-tribe">${h.tribe}·T${h.tier||1}</span></div><div class="c-info">${pi}<br>Cast:${h.castTime}s</div>${G.phase==='battle'?`<div class="c-timer-bar"><div class="c-timer-fill" style="width:${tp}%"></div></div>`:''}${showSell?`<button class="sell-btn" onclick="event.stopPropagation();sellCard(${i})">Sell 1g</button>`:''}`;if(isShop&&isP&&!isTouch){c.draggable=true;c.ondragstart=e=>{e.dataTransfer.setData('text/plain',JSON.stringify({source:'board',idx:i}));c.classList.add('dragging')};c.ondragend=()=>c.classList.remove('dragging')}setupTooltip(c,h);el.appendChild(c)}else{const e=document.createElement('div');e.className='empty-slot';e.textContent='Empty';el.appendChild(e)}}}
-
-function renderShop(){const el=document.getElementById('shop-cards');el.innerHTML='';G.shop.forEach((item,i)=>{if(!item){const e=document.createElement('div');e.className='empty-slot';e.textContent='Sold';el.appendChild(e);return}const c=document.createElement('div');if(item.type==='spell'){c.className='card spell-card'+(isTouch?'':' draggable');c.innerHTML=`<div class="c-cost">${item.cost}g</div><div class="emoji">${item.emoji}</div><div class="c-name">${item.name}</div><div style="text-align:center"><span class="c-tribe" style="background:#7a5aaa;color:var(--parch)">Spell</span></div><div class="c-info">${item.desc.split('.')[0]}.</div>`}else{c.className='card'+(isTouch?'':' draggable');c.innerHTML=`<div class="c-cost">${item.cost}g</div><div class="emoji">${item.emoji}</div><div class="c-name">${item.name}</div><div style="text-align:center"><span class="c-tribe">${item.tribe}·T${item.tier}</span></div><div class="c-info">${item.potions.map(p=>`${p.name}:${p.potency}✦x${p.stock}`).join('<br>')}<br>Cast:${item.castTime}s</div>${item.transformable?'<div style="text-align:center;margin-top:2px"><span style="font-size:.6rem;color:#b090d0">✦ Transformable</span></div>':''}`}if(!isTouch){c.draggable=true;c.ondragstart=e=>{e.dataTransfer.setData('text/plain',JSON.stringify({source:'shop',idx:i}));c.classList.add('dragging')};c.ondragend=()=>c.classList.remove('dragging')}c.onclick=()=>buyCard(i);setupTooltip(c,item);el.appendChild(c)})}
-function renderHand(){const el=document.getElementById('hand-cards');el.innerHTML='';G.hand.forEach((s,i)=>{const c=document.createElement('div');c.className='card spell-card';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${s.emoji}</div><div class="c-name">${s.name}</div><div class="c-info">${s.desc.split('.')[0]}.</div><button class="sell-btn" onclick="event.stopPropagation();sellHandSpell(${i})">Sell 1g</button>`;c.onclick=()=>playHandSpell(i);setupTooltip(c,s);el.appendChild(c)})}
-function sellHandSpell(i){if(G.phase!=='shopping')return;G.hand.splice(i,1);G.gold++;playSell();updateTopBar();renderAll()}
-function renderPotionPanel(){const tb=document.getElementById('potion-table-body');tb.innerHTML='';G.board.forEach((h,bi)=>{h.potions.forEach((p,pi)=>{const tr=document.createElement('tr');const pc=(p.price||1)<=1?'var(--green)':(p.price||1)<=2?'var(--gold)':'var(--red)';tr.innerHTML=`<td style="color:var(--gold);font-size:.7rem">${h.emoji} ${h.name}</td><td style="color:var(--parch)">${p.name}</td><td>${p.potency}✦</td><td>x${p.stock}</td><td><div class="price-ctrl"><button onclick="adjustPrice(${bi},${pi},-1)">-</button><span style="color:${pc}">${p.price||1}g</span><button onclick="adjustPrice(${bi},${pi},1)">+</button></div></td>`;tb.appendChild(tr)})})}
-function renderBattle(){const c=G.customers[G.custIdx];if(!c)return;document.getElementById('cust-emoji').textContent=c.emoji;document.getElementById('cust-name').textContent=c.name;document.getElementById('cust-want').textContent=`Wants ${c.threshold} potion points — Pays ${c.gold}g, ${c.rep} rep — Budget: ${c.budget}g/potion`;const pp=Math.min(100,G.playerSat/c.threshold*100),op=Math.min(100,G.oppSat/c.threshold*100);document.getElementById('player-sat').style.width=pp+'%';document.getElementById('player-sat-text').textContent=G.playerSat+'/'+c.threshold;document.getElementById('opp-sat').style.width=op+'%';document.getElementById('opp-sat-text').textContent=G.oppSat+'/'+c.threshold;document.getElementById('customer-queue').textContent=`Customer ${G.custIdx+1} of ${G.customers.length}`;G.board.forEach((h,i)=>{const f=document.querySelector(`#player-board-card-${i} .c-timer-fill`);if(f)f.style.width=Math.max(0,Math.min(100,(1-h._timer/h.castTime)*100))+'%'});G.opp.board.forEach((h,i)=>{const f=document.querySelector(`#opp-board-card-${i} .c-timer-fill`);if(f)f.style.width=Math.max(0,Math.min(100,(1-h._timer/h.castTime)*100))+'%'})}
-function updateTopBar(){document.getElementById('round-num').textContent=G.round;document.getElementById('tier-num').textContent=getTier(G.round);document.getElementById('gold-num').textContent=G.gold;const rp=((G.reputation+G.repMax)/(2*G.repMax))*100;document.getElementById('rep-bar-fill').style.width=Math.max(2,Math.min(98,rp))+'%';document.getElementById('rep-text').textContent=G.reputation+' / '+G.repMax;document.getElementById('rep-min').textContent='-'+G.repMax;document.getElementById('rep-max-label').textContent=G.repMax;document.getElementById('ssp-round').textContent=G.round;document.getElementById('ssp-tier').textContent=getTier(G.round);document.getElementById('ssp-gold').textContent=G.gold;const repEl=document.getElementById('ssp-rep');repEl.textContent=(G.reputation>=0?'+':'')+G.reputation;repEl.className='ssp-val '+(G.reputation>=0?'ssp-rep-pos':'ssp-rep-neg');document.getElementById('ssp-goal').textContent=G.repMax}
-function openSettingsFromShop(){G._returnToGame=true;showScreen('settings-screen')}
-function leaveSettings(){if(G._returnToGame){G._returnToGame=false;showScreen('game-screen')}else{showScreen('title-screen')}}
-
-// ============================================================
-// RICH TOOLTIPS (mouse + mobile long-press)
-// ============================================================
-const tooltipEl=document.getElementById('tooltip');let tooltipVisible=false;let longPressTimer=null;
-
-function setupTooltip(el,data){
-  // Mouse
-  el.addEventListener('mouseenter',e=>showTooltip(e,data));
-  el.addEventListener('mousemove',e=>moveTooltip(e));
-  el.addEventListener('mouseleave',hideTooltip);
-  // Mobile long-press
-  el.addEventListener('touchstart',e=>{longPressTimer=setTimeout(()=>{e.preventDefault();showTooltip(e.touches[0],data);tooltipEl.style.pointerEvents='auto'},500)},{passive:false});
-  el.addEventListener('touchend',()=>{clearTimeout(longPressTimer);if(tooltipVisible){setTimeout(hideTooltip,100)}});
-  el.addEventListener('touchmove',()=>clearTimeout(longPressTimer));
-}
-
-function showTooltip(e,data){
-  let html='';
-  if(data.type==='spell'||data.kind){
-    html=`<div class="tt-header"><span class="tt-emoji">${data.emoji||''}</span><span class="tt-name">${data.name}</span><span class="tt-tier">SPELL</span></div><div class="tt-body">`;
-    html+=`<div class="tt-desc">${data.desc}</div>`;
-    html+=`<div class="tt-section"><div class="tt-stat-row"><span class="tt-stat-label">Cost</span><span class="tt-stat-val" style="color:var(--gold)">${data.cost}g</span></div></div>`;
-    if(data.pros){html+=`<div class="tt-pros">`;data.pros.forEach(p=>{html+=`<div class="tt-pro">${p}</div>`});if(data.cons)data.cons.forEach(c=>{html+=`<div class="tt-con">${c}</div>`});html+=`</div>`}
-    html+=`</div>`;
-  } else {
-    const isShop=!!HIRELINGS_SHOP.find(x=>x.id===data.id);
-    html=`<div class="tt-header"><span class="tt-emoji">${data.emoji||''}</span><span class="tt-name">${data.name}</span><span class="tt-tier">T${data.tier||1} ${(data.tribe||'').toUpperCase()}</span></div><div class="tt-body">`;
-    if(data.tribe)html+=`<span class="tt-tribe">${data.tribe}</span> `;
-    html+=`<div class="tt-desc">${data.desc||''}</div>`;
-    html+=`<div class="tt-section"><div class="tt-section-title">Potions</div>`;
-    (data.potions||[]).forEach(p=>{
-      html+=`<div class="tt-potion"><span class="tp-name">${p.name}</span><span class="tp-stats"><span class="tt-pot-stat tp-potency">${p.potency}✦</span><span class="tt-pot-stat tp-stock">x${p.stock}</span><span class="tt-pot-stat tp-price">${p.price||1}g</span></span></div>`;
-    });
-    html+=`</div>`;
-    const totalOut=(data.potions||[]).reduce((s,p)=>s+p.potency*p.stock,0);
-    html+=`<div class="tt-section"><div class="tt-stat-row"><span class="tt-stat-label">Cast Speed</span><span class="tt-stat-val">${data.castTime}s</span></div><div class="tt-stat-row"><span class="tt-stat-label">Total Output</span><span class="tt-stat-val">${totalOut} pts</span></div><div class="tt-stat-row"><span class="tt-stat-label">Cost</span><span class="tt-stat-val" style="color:var(--gold)">${data.cost||'—'}g</span></div></div>`;
-    if(data.pros){html+=`<div class="tt-pros">`;data.pros.forEach(p=>{html+=`<div class="tt-pro">${p}</div>`});if(data.cons)data.cons.forEach(c=>{html+=`<div class="tt-con">${c}</div>`});html+=`</div>`}
-    if(data.transformable)html+=`<div class="tt-special tt-transform">✦ Transformable with Wishing Star</div>`;
-    const u=UPGRADES[data.id];if(u)html+=`<div class="tt-special tt-upgrade">✦ Buy 3 to upgrade into ${u.name}</div>`;
-    html+=`</div>`;
-  }
-  tooltipEl.innerHTML=html;tooltipEl.style.display='block';tooltipVisible=true;moveTooltip(e);
-}
-
-function moveTooltip(e){if(!tooltipVisible)return;let x=(e.clientX||e.pageX)+15,y=(e.clientY||e.pageY)+15;const tw=260,th=tooltipEl.offsetHeight;if(x+tw>window.innerWidth)x=(e.clientX||e.pageX)-tw-10;if(y+th>window.innerHeight)y=(e.clientY||e.pageY)-th-10;tooltipEl.style.left=Math.max(0,x)+'px';tooltipEl.style.top=Math.max(0,y)+'px'}
-function hideTooltip(){tooltipEl.style.display='none';tooltipVisible=false;tooltipEl.style.pointerEvents='none'}
-
-// Close tooltip on tap anywhere (mobile)
-document.addEventListener('touchstart',e=>{if(tooltipVisible&&!tooltipEl.contains(e.target))hideTooltip()},{passive:true});
-
-// ============================================================
-// CUSTOMER SIDEBAR & REPORT
-// ============================================================
-function renderCustSidebar(){const el=document.getElementById('cust-sidebar');el.innerHTML='';G.customers.forEach((c,i)=>{const ic=document.createElement('div');const r=G.custResults[i];ic.className='cust-icon '+(r?(r.winner==='player'?'cust-won':'cust-lost'):'cust-pending');ic.textContent=c.emoji;if(r)setupCustTooltip(ic,r);el.appendChild(ic)})}
-function setupCustTooltip(el,r){el.addEventListener('mouseenter',e=>{const c=r.customer;let h=`<div class="tt-header"><span class="tt-emoji">${c.emoji}</span><span class="tt-name">${c.name}</span><span class="tt-tier">${r.winner==='player'?'WON':'LOST'}</span></div><div class="tt-body">`;h+=`<div class="tt-stat-row"><span class="tt-stat-label">Your Sales</span><span class="tt-stat-val">${r.playerSat}/${c.threshold}</span></div>`;h+=`<div class="tt-stat-row"><span class="tt-stat-label">Opponent</span><span class="tt-stat-val">${r.oppSat}/${c.threshold}</span></div>`;if(r.winner==='player')h+=`<div class="tt-stat-row"><span class="tt-stat-label">Gold</span><span class="tt-stat-val" style="color:var(--gold)">+${r.goldEarned}g</span></div>`;h+=`<div class="tt-stat-row"><span class="tt-stat-label">Rep</span><span class="tt-stat-val" style="color:${r.repChange>=0?'var(--green)':'var(--red)'}">${r.repChange>=0?'+':''}${r.repChange}</span></div>`;h+=`<div class="tt-stat-row"><span class="tt-stat-label">Budget</span><span class="tt-stat-val">${c.budget}g</span></div></div>`;tooltipEl.innerHTML=h;tooltipEl.style.display='block';tooltipVisible=true;moveTooltip(e)});el.addEventListener('mousemove',e=>moveTooltip(e));el.addEventListener('mouseleave',hideTooltip)}
-function openReport(){if(!G.lastReport)return;const r=G.lastReport;let h=`<div class="report-section"><h3>Round ${r.round} Summary</h3><div style="color:var(--parch-d);font-size:.85rem;margin-bottom:.5rem">Won: <strong style="color:var(--green)">${r.custWins}</strong> · Lost: <strong style="color:var(--red)">${r.custLosses}</strong> · Gold: <strong style="color:var(--gold)">${r.roundGold}</strong> · Rep: <strong style="color:${r.roundRep>=0?'var(--green)':'var(--red)'}">${r.roundRep>=0?'+':''}${r.roundRep}</strong></div></div>`;h+=`<div class="report-section"><h3>Customers</h3>`;r.custResults.forEach(cr=>{const c=cr.customer;const w=cr.winner==='player';h+=`<div class="report-cust ${w?'rpt-won':'rpt-lost'}"><span class="rpt-emoji">${c.emoji}</span><span class="rpt-name">${c.name}</span><span class="rpt-detail">You:${cr.playerSat}/${c.threshold} Opp:${cr.oppSat}/${c.threshold} ${w?'+'+cr.goldEarned+'g,+'+c.rep+'rep':cr.repChange+'rep'}</span></div>`});h+=`</div>`;h+=`<div class="report-section"><h3>Your Board</h3><div class="report-board">`;r.board.forEach(x=>{h+=`<div class="rpt-card"><div class="rpt-card-name">${x.emoji} ${x.name}</div><div class="rpt-card-stat">${x.tribe}·T${x.tier}·${x.castTime}s</div>${x.potions.map(p=>`<div class="rpt-card-stat">${p.name}:${p.potency}✦x${p.stock}@${p.price||1}g</div>`).join('')}</div>`});h+=`</div></div>`;h+=`<div class="report-section"><h3>Opponent</h3><div class="report-board">`;r.oppBoard.forEach(x=>{h+=`<div class="rpt-card"><div class="rpt-card-name">${x.emoji} ${x.name}</div><div class="rpt-card-stat">${x.tribe}·T${x.tier}·${x.castTime}s</div>${x.potions.map(p=>`<div class="rpt-card-stat">${p.name}:${p.potency}✦x${p.stock}</div>`).join('')}</div>`});h+=`</div></div>`;document.getElementById('report-content').innerHTML=h;document.getElementById('report-overlay').style.display='flex'}
-function closeReport(){document.getElementById('report-overlay').style.display='none'}
-
-// ============================================================
-// DRAG & DROP
-// ============================================================
-function handleDrop(e){try{const d=JSON.parse(e.dataTransfer.getData('text/plain'));if(d.source==='shop')buyCard(d.idx)}catch(ex){}}
-document.addEventListener('dragover',e=>e.preventDefault());
-document.addEventListener('drop',e=>{try{const d=JSON.parse(e.dataTransfer.getData('text/plain'));if(d.source==='board'){const b=document.getElementById('player-board').getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)sellCard(d.idx)}}catch(ex){}});
-
-// ============================================================
-// TUTORIAL MODE
-// ============================================================
-let TUT={step:0,queue:[],round:0,forcedShop:null,forcedOpp:null,forceWin:null};
-
-const TUT_POOL={
-  welcome:[
-    {icon:'👑',title:'Welcome to Price Charming!',body:'You are a <strong>potion shop owner</strong> in a fairy-tale marketplace. Your goal: brew potions, sell them to customers, and build your <strong>reputation</strong> to win!<br><br>This tutorial will guide you through your first 5 rounds. Each time you play this tutorial, the experience will be a little different!'},
-    {icon:'🏰',title:'Welcome, Apprentice Brewer!',body:'The enchanted marketplace awaits! You run a travelling potion shop, competing against rival shopkeepers.<br><br><strong>Hire magical creatures</strong> to brew potions, <strong>sell to customers</strong> to earn gold and reputation. Max out your reputation bar to win!'},
-    {icon:'✨',title:'Your Journey Begins!',body:'In Price Charming, you build a team of <strong>hirelings</strong> — magical creatures who brew and sell potions automatically during battle.<br><br>Think of it like assembling a dream team of fairy-tale baristas. Let\'s learn how!'},
-  ],
-  goldExplain:[
-    {icon:'💰',title:'Gold — Your Currency',body:'You earn <strong class="tut-highlight">gold</strong> each round and from winning customers.<br><br>Spend gold to:<br>• <strong>Buy hirelings</strong> from the shop (they join your board)<br>• <strong>Buy spells</strong> (they go to your hand for later use)<br>• <strong>Refresh the shop</strong> (1 gold for new cards)<br><br>You currently have <strong class="tut-green">3 gold</strong>. Spend wisely!'},
-    {icon:'💰',title:'Managing Your Gold',body:'Gold is everything! You get <strong>more gold each round</strong> (round number = bonus gold).<br><br><span class="tut-highlight">Buy cards</span> from the Fairy Godmother\'s Shop below. Hirelings cost 2-3 gold. Spells cost 1-2 gold.<br><br>You can also <strong>sell hirelings</strong> back for 1 gold each.'},
-  ],
-  shopExplain:[
-    {icon:'🧚',title:'The Fairy Godmother\'s Shop',body:'The shop shows <strong>4 cards</strong> each round — a mix of hirelings and spells.<br><br><strong>Hirelings</strong> (the ones with tribes like "mischief" or "woodland") go on your board and sell potions during battle.<br><br><strong>Spells</strong> (purple cards) go to your hand. Play them anytime during the shop phase!<br><br><strong>Drag a card</strong> to your board, or <strong>click it</strong> to buy.'},
-    {icon:'🧚',title:'Shopping Phase',body:'Each round starts with shopping. The shop offers <strong>4 random cards</strong>.<br><br>• <strong class="tut-green">Hirelings</strong> — your potion sellers (max 5 on board)<br>• <strong class="tut-blue">Spells</strong> — instant effects or saved for later<br><br>Don\'t like what you see? <strong>Refresh</strong> for 1 gold to get new options!<br><br>Try buying a hireling now.'},
-  ],
-  hirelingExplain:[
-    {icon:'🧙‍♀️',title:'Understanding Hirelings',body:'Each hireling card shows:<br><br>• <strong class="tut-blue">Potency (✦)</strong> — how many satisfaction points per sale<br>• <strong class="tut-green">Stock (x)</strong> — how many times they can sell per battle<br>• <strong>Cast Time</strong> — seconds between each sale<br>• <strong class="tut-highlight">Price</strong> — what you charge per potion<br><br>Higher potency = stronger sales. Higher stock = more sales. Lower cast time = faster selling.<br><br><strong>Hover any card</strong> (or long-press on mobile) to see full details!'},
-    {icon:'🐸',title:'Your Hirelings',body:'Hirelings are your workers. During battle, they <strong>automatically sell potions</strong> on a timer.<br><br>Key stats on each card:<br>• <span class="tut-blue">✦ Potency</span> — satisfaction per sale (higher = better)<br>• <span class="tut-green">x Stock</span> — total sales before exhausted<br>• <strong>Cast Time</strong> — how fast they sell<br><br>A hireling with 2✦ potency and x3 stock can contribute <strong>6 total satisfaction</strong> points.'},
-  ],
-  potionPrice:[
-    {icon:'💎',title:'Potion Pricing Strategy',body:'In the <strong>Potion Panel</strong> below your board, you can adjust each potion\'s price from 0-5 gold.<br><br>Each customer has a <strong>budget</strong> — the max price they\'re comfortable paying.<br><br>• <span class="tut-green">Price ≤ budget</span> — full potency, normal gold<br>• <span class="tut-red">Price > budget</span> — reduced effectiveness! But more gold if you win<br><br>Start with low prices and raise them once you\'re winning consistently.'},
-  ],
-  battleExplain:[
-    {icon:'⚔️',title:'Battle Phase — How It Works',body:'When you click <strong>"Start Battle"</strong>, your hirelings face off against an opponent\'s team to win <strong>customers</strong>.<br><br>Each customer has a <span class="tut-highlight">satisfaction threshold</span>. Your hirelings sell potions automatically, filling the satisfaction bar. <strong>First side to fill it wins the customer!</strong><br><br>Win customers → earn gold + reputation<br>Lose customers → lose reputation<br><br>Ready? Let\'s battle!'},
-    {icon:'⚔️',title:'Time to Battle!',body:'The battle phase is <strong>automatic</strong> — just watch your hirelings work!<br><br>• Each hireling counts down their cast timer<br>• When it hits 0, they sell a potion<br>• Potency points fill the customer\'s satisfaction bar<br>• <span class="tut-green">You</span> vs <span class="tut-red">Opponent</span> — first to fill the bar wins!<br><br>Watch the <strong>sidebar icons</strong> on the right to track customer results.'},
-  ],
-  customerExplain:[
-    {icon:'👧',title:'Customers',body:'Customers are fairy-tale characters who visit your shop each battle round.<br><br>Each customer has:<br>• <strong>Threshold</strong> — satisfaction points needed to win them<br>• <strong>Gold reward</strong> — gold you earn if you win<br>• <strong>Rep reward</strong> — reputation gained (or lost!)<br>• <strong>Budget</strong> — max potion price they\'ll pay happily<br><br>3-6 customers visit per round. Win more than you lose!'},
-  ],
-  repExplain:[
-    {icon:'📊',title:'Reputation — Your Score',body:'The <strong>reputation bar</strong> at the top tracks your progress.<br><br>• Starts at <strong>0</strong>, range is <strong>-30 to 30</strong><br>• <span class="tut-green">Win customers → gain rep</span><br>• <span class="tut-red">Lose customers → lose rep</span><br>• <strong>Max out reputation (30) = YOU WIN!</strong><br>• <strong>Hit -30 = Game Over</strong><br><br>In rounds 13-15, the bar <strong>crunches</strong> (shrinks), making every sale count more!'},
-  ],
-  round1Win:[
-    {icon:'🎉',title:'Round 1 — Victory!',body:'Great job! You won your first round!<br><br>Check the <strong>Last Round</strong> button in the shop to review what happened — which customers you won or lost, and why.<br><br>Now let\'s make your team stronger for Round 2!'},
-    {icon:'🌟',title:'Excellent Start!',body:'You\'ve won Round 1! Your reputation is climbing.<br><br>Tips for next round:<br>• You\'ll have <strong>more gold</strong> — buy another hireling or a spell<br>• Consider <strong>Potency Boost</strong> spell to power up a hireling<br>• Or <strong>Quick Brew</strong> to make one sell faster<br><br>Let\'s keep going!'},
-  ],
-  spellExplain:[
-    {icon:'⭐',title:'Spells — Powerful Upgrades',body:'There are 3 spells in the shop:<br><br>• <span class="tut-highlight">⭐ Wishing Star</span> — transforms a hireling into a tier-2 powerhouse! (Choose from 2 options)<br>• <span class="tut-highlight">💪 Potency Boost</span> — +1 potency on ALL potions of a hireling<br>• <span class="tut-highlight">⚡ Quick Brew</span> — reduces cast time by 1s (min 1s)<br><br>Spells go to your <strong>hand</strong> (max 5) and can be played anytime during shopping. Look for a Wishing Star if you have a Hag, Frog, or Hidden Princess!'},
-  ],
-  upgradeExplain:[
-    {icon:'🐺',title:'Upgrades — Triple Power!',body:'If you buy <strong>3 of the same hireling</strong>, they automatically <strong>merge into a powerful upgrade</strong>!<br><br>• <strong>Little Piggy x3</strong> → 🐺 Big Bad Wolf<br>• <strong>Teacups x3</strong> → 🫖 Madame Teapot<br><br>These upgraded cards are <strong>tier 2</strong> with much better stats. Keep an eye out for triples!'},
-  ],
-  round2Win:[
-    {icon:'💪',title:'Round 2 Complete!',body:'Two rounds down! Your board is getting stronger.<br><br>Notice how you get more gold each round — <strong>round number = bonus gold</strong>. Use this to build up your team before harder customers arrive!'},
-  ],
-  round3Win:[
-    {icon:'🏆',title:'Round 3 — Tier Change Coming!',body:'After Round 3, the shop will start offering <strong>Tier 2 hirelings</strong> — these have better stats but cost more.<br><br>Your current hirelings will still work, but consider upgrading via <strong>spells</strong> or <strong>triple merges</strong> to keep up!'},
-  ],
-  round4Lose:[
-    {icon:'😰',title:'Round 4 — A Tough Loss',body:'That round was rough! The opponent had <strong>stronger hirelings</strong> and you lost reputation.<br><br>Here\'s what went wrong:<br>• The opponent may have had <strong>higher potency</strong> — they filled customer needs faster<br>• Your hirelings might have <strong>run out of stock</strong> before winning enough customers<br><br>Don\'t worry — this is how the game teaches you to <strong>adapt and improve</strong> your strategy!'},
-    {icon:'📉',title:'A Setback!',body:'You lost Round 4. It happens to every brewer!<br><br>Common reasons for losing:<br>• <span class="tut-red">Not enough hirelings</span> — more sellers = more potions<br>• <span class="tut-red">Low potency</span> — use Potency Boost spells<br>• <span class="tut-red">Slow cast times</span> — Quick Brew helps<br>• <span class="tut-red">Overpriced potions</span> — customers won\'t pay above budget<br><br>Let\'s bounce back in Round 5!'},
-  ],
-  round5Win:[
-    {icon:'🎊',title:'Victory! Tutorial Complete!',body:'<strong>Congratulations!</strong> You\'ve completed the tutorial!<br><br>You\'ve learned:<br>• ✅ How to buy hirelings and spells<br>• ✅ How battles and customers work<br>• ✅ Reputation and winning<br>• ✅ Potion pricing strategy<br>• ✅ Spells, upgrades, and transformations<br><br>Now try <strong>Easy mode</strong> for a gentle challenge, or jump into <strong>Normal</strong> if you\'re feeling bold!'},
-    {icon:'👑',title:'The Apprentice Graduates!',body:'You did it! Tutorial complete!<br><br>Key takeaways:<br>• <strong>More hirelings = more potions</strong><br>• <strong>Spells make the difference</strong> in later rounds<br>• <strong>Watch customer budgets</strong> when setting prices<br>• <strong>Triple merges</strong> create powerful upgrades<br><br>The enchanted marketplace awaits. Go forth and charm those prices!'},
-  ],
+// --- Play-button flow: landed on difficulty card --------------------
+window.startGame = function(diff){
+  pcStartGame(diff);
 };
 
-function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
-
-function startTutorial(){
-  resetState();G.difficulty='tutorial';G.gold=3;
-  TUT={step:0,queue:[],round:0};
-  // Build tutorial script — pick random variants for replayability
-  TUT.queue=[
-    pick(TUT_POOL.welcome),
-    pick(TUT_POOL.goldExplain),
-    pick(TUT_POOL.shopExplain),
-    {action:'enterRound',round:1},
-    pick(TUT_POOL.hirelingExplain),
-    pick(TUT_POOL.potionPrice),
-    {action:'waitForBuy'},
-    pick(TUT_POOL.battleExplain),
-    pick(TUT_POOL.customerExplain),
-    {action:'waitForBattle',forceWin:true},
-    pick(TUT_POOL.round1Win),
-    pick(TUT_POOL.repExplain),
-    {action:'enterRound',round:2},
-    pick(TUT_POOL.spellExplain),
-    {action:'waitForBuy'},
-    {action:'waitForBattle',forceWin:true},
-    pick(TUT_POOL.round2Win),
-    {action:'enterRound',round:3},
-    pick(TUT_POOL.upgradeExplain),
-    {action:'waitForBuy'},
-    {action:'waitForBattle',forceWin:true},
-    pick(TUT_POOL.round3Win),
-    {action:'enterRound',round:4},
-    {action:'waitForBuy'},
-    {action:'waitForBattle',forceWin:false},
-    pick(TUT_POOL.round4Lose),
-    {action:'enterRound',round:5},
-    {action:'waitForBuy'},
-    {action:'waitForBattle',forceWin:true},
-    pick(TUT_POOL.round5Win),
-    {action:'endTutorial'},
-  ];
-  TUT.step=0;
-  showScreen('game-screen');
-  tutProcess();
+function pcStartGame(diff){
+  pcDifficulty = diff || "normal";
+  pcRng = E.mulberry32((Date.now() ^ Math.floor(Math.random()*0xffffffff)) >>> 0);
+  pcGame = E.createGame({ rng: pcRng });
+  // Opponent stub in chunk D; for now we leave pcGame.opponent null so
+  // the action phase has no ghost. Chunks after C will fill this in.
+  pcOpponent = null;
+  // Open the first shop so the scaffold has something to render.
+  pcGame = E.startShopPhase(pcGame, pcRng);
+  showScreen("game-screen");
+  pcRender();
 }
 
-function tutProcess(){
-  if(TUT.step>=TUT.queue.length)return;
-  const item=TUT.queue[TUT.step];
-  if(item.action){
-    if(item.action==='enterRound'){
-      G.round=item.round;enterShopping();TUT.step++;tutProcess();
-    } else if(item.action==='waitForBuy'){
-      TUT.step++;// Just advance; player interacts freely, next tutProcess called after battle
-    } else if(item.action==='waitForBattle'){
-      TUT.forceWin=item.forceWin;TUT.step++;
-    } else if(item.action==='endTutorial'){
-      showScreen('title-screen');
+function pcQuit(){
+  if (pcBattleTimer) { clearInterval(pcBattleTimer); pcBattleTimer = null; }
+  pcGame = null;
+  showScreen("title-screen");
+}
+window.pcQuit = pcQuit;
+
+// --- render (placeholder until chunk B) -----------------------------
+function pcRender(){
+  if (!pcGame) return;
+  const round = $("pc-round"); if (round) round.textContent = pcGame.round;
+  const gold = $("pc-gold"); if (gold) gold.textContent = pcGame.gold;
+  const rep = $("pc-rep"); if (rep) rep.textContent = pcGame.reputation;
+  const phaseTag = $("pc-phase-tag");
+  if (phaseTag) phaseTag.textContent = pcGame.phase === "action" ? "Battle" : pcGame.phase === "game-over" ? "Over" : "Shop";
+  const diffTag = $("pc-diff-tag");
+  if (diffTag) diffTag.textContent = pcDifficulty.charAt(0).toUpperCase() + pcDifficulty.slice(1);
+}
+
+// --- stub handlers for buttons referenced in the new game-screen ---
+window.pcRefresh     = function(){ pcFlash("Shop actions wired in chunk C."); };
+window.pcStartBattle = function(){ pcFlash("Battle wired in chunk E."); };
+window.pcAdvanceFromRoundEnd = function(){};
+window.pcCancelTarget = function(){
+  const o = $("pc-target-overlay"); if (o) o.style.display = "none";
+  pcTargetPick = null;
+};
+
+// --- patch notes loader (preserves the title-screen banner) ---------
+(async function loadPatchNotes(){
+  try {
+    const res = await fetch("patch-notes.json");
+    if (!res.ok) return;
+    const notes = await res.json();
+    const latest = notes[0]; if (!latest) return;
+    const tv = $("tp-ver"); if (tv) tv.textContent = latest.version;
+    const td = $("tp-date"); if (td) td.textContent = latest.date;
+    const tt = $("tp-title"); if (tt) tt.textContent = latest.title;
+    const tl = $("tp-list");
+    if (tl) {
+      tl.innerHTML = "";
+      for (const change of latest.changes.slice(0,4)) {
+        const li = document.createElement("li");
+        li.textContent = change;
+        tl.appendChild(li);
+      }
     }
-  } else {
-    showTutBox(item);
-  }
-}
-
-function showTutBox(item){
-  document.getElementById('tut-icon').textContent=item.icon||'📜';
-  document.getElementById('tut-title').textContent=item.title||'';
-  document.getElementById('tut-body').innerHTML=item.body||'';
-  const totalSteps=TUT.queue.filter(q=>!q.action).length;
-  const currentStep=TUT.queue.slice(0,TUT.step+1).filter(q=>!q.action).length;
-  document.getElementById('tut-step').textContent=`Step ${currentStep} of ${totalSteps}`;
-  document.getElementById('tut-overlay').style.display='flex';
-}
-
-function tutNext(){
-  document.getElementById('tut-overlay').style.display='none';
-  TUT.step++;tutProcess();
-}
-
-// Override battle result in tutorial
-const _origCustomerDone=customerDone;
-customerDone=function(winner,cust){
-  if(G.difficulty==='tutorial'&&TUT.forceWin!==undefined){
-    // Force the outcome
-    if(TUT.forceWin&&winner==='opp'){winner='player';G.playerSat=cust.threshold}
-    if(!TUT.forceWin&&winner==='player'&&G.custIdx>=G.customers.length-1){winner='opp';G.oppSat=cust.threshold}
-  }
-  _origCustomerDone(winner,cust);
-};
-
-// Hook into endBattle to show tutorial boxes after battle
-const _origEndBattle=endBattle;
-endBattle=function(){
-  _origEndBattle();
-  if(G.difficulty==='tutorial'){
-    // Advance to next tutorial step (should be the post-round message)
-    setTimeout(()=>{
-      // Skip the round-end screen in tutorial, go straight to tutorial message
-      tutProcess();
-    },500);
-  }
-};
-
-// Hook into nextRound for tutorial
-const _origNextRound=nextRound;
-nextRound=function(){
-  if(G.difficulty==='tutorial'){
-    // In tutorial, tutProcess handles round advancement
-    tutProcess();return;
-  }
-  _origNextRound();
-};
-
-// ============================================================
-// LEADERBOARD
-// ============================================================
-function getLeaderboard(){const lb=JSON.parse(localStorage.getItem('pc_leaderboard')||'null');if(lb)return lb;const def=NPC_NAMES.map((n,i)=>({name:n,score:30-i*2,round:15-Math.floor(i/3),diff:'normal'}));localStorage.setItem('pc_leaderboard',JSON.stringify(def));return def}
-function updateLeaderboard(score,round,name){const lb=getLeaderboard();lb.push({name:name||'Anonymous Brewer',score,round,diff:G.difficulty});lb.sort((a,b)=>b.score-a.score||b.round-a.round);if(lb.length>15)lb.length=15;localStorage.setItem('pc_leaderboard',JSON.stringify(lb))}
-function renderLeaderboard(){const lb=getLeaderboard();const t=document.getElementById('lb-table');t.innerHTML='<thead><tr><th>#</th><th>Name</th><th>Score</th><th>Round</th></tr></thead><tbody>';lb.forEach((e,i)=>{t.innerHTML+=`<tr><td class="lb-rank">${i+1}</td><td class="lb-name">${e.name}</td><td class="lb-score">${e.score}</td><td class="lb-score">R${e.round}</td></tr>`});t.innerHTML+='</tbody>'}
-
-// ============================================================
-// SETTINGS
-// ============================================================
-function toggleSound(){soundEnabled=!soundEnabled;const t=document.getElementById('snd-toggle');t.classList.toggle('on',soundEnabled);localStorage.setItem('pc_sound',soundEnabled?'1':'0')}
-let currentFontSize='medium';
-function setFontSize(size){const sizes={small:13,medium:16,large:19,xl:22};document.documentElement.style.fontSize=sizes[size]+'px';currentFontSize=size;localStorage.setItem('pc_fontsize',size);document.querySelectorAll('#font-size-btns button').forEach(b=>{b.classList.toggle('active',b.dataset.size===size)})}
-function renderSettings(){const s=document.getElementById('snd-toggle');s.classList.toggle('on',soundEnabled);document.querySelectorAll('#font-size-btns button').forEach(b=>{b.classList.toggle('active',b.dataset.size===currentFontSize)});const sl=document.getElementById('save-slots');sl.innerHTML='';const hasGame=G.phase!=='title'&&G.phase!=='gameover';for(let i=0;i<3;i++){let info=null;try{const raw=localStorage.getItem('pc_save_'+i);if(raw)info=JSON.parse(raw)}catch(e){}const div=document.createElement('div');div.className='sett-save-slot';if(info){let btns=`<button class="btn btn-sm" onclick="loadSave(${i})">Load</button> <button class="btn btn-sm btn-danger" onclick="deleteSave(${i})">Del</button>`;if(hasGame)btns+=` <button class="btn btn-sm btn-blue" onclick="saveCurrent(${i})">Overwrite</button>`;div.innerHTML=`<span>Slot ${i+1}: R${info.round}, ${info.gold||0}g, Rep ${info.reputation||0} (${info.difficulty||'?'})</span><div>${btns}</div>`}else{div.innerHTML=`<span>Slot ${i+1}: Empty</span>${hasGame?`<button class="btn btn-sm" onclick="saveCurrent(${i})">Save</button>`:'<span style="opacity:.4">Start a game first</span>'}`}sl.appendChild(div)}}
-function saveCurrent(slot){if(G.phase==='title')return;const save={round:G.round,gold:G.gold,reputation:G.reputation,repMax:G.repMax,difficulty:G.difficulty,board:G.board.map(h=>{const c=deepCopyCard(h);c.type=h.type||'hireling';return c}),hand:G.hand.map(s=>({...s})),lastReport:G.lastReport};try{localStorage.setItem('pc_save_'+slot,JSON.stringify(save));renderSettings();showFloat(document.getElementById('save-slots'),'Saved!','var(--green)')}catch(e){showFloat(document.getElementById('save-slots'),'Save failed!','var(--red)')}}
-function loadSave(slot){try{const raw=localStorage.getItem('pc_save_'+slot);if(!raw)return;const save=JSON.parse(raw);resetState();G.round=save.round||1;G.gold=save.gold||0;G.reputation=save.reputation||0;G.repMax=save.repMax||30;G.difficulty=save.difficulty||'normal';G.board=(save.board||[]).map(h=>{const c=deepCopyCard(h);c.type=c.type||'hireling';c._timer=c.castTime||3;return c});G.hand=(save.hand||[]).map(s=>({...s}));G.lastReport=save.lastReport||null;G.phase='shopping';showScreen('game-screen');generateShop();renderAll()}catch(e){showFloat(document.getElementById('save-slots'),'Load failed!','var(--red)')}}
-function deleteSave(slot){localStorage.removeItem('pc_save_'+slot);renderSettings()}
-function autoSave(){if(G.phase==='round_end')saveCurrent(0)}
-function resetAllData(){if(confirm('Delete all saves and leaderboard data?')){localStorage.removeItem('pc_leaderboard');for(let i=0;i<3;i++)localStorage.removeItem('pc_save_'+i);renderSettings();renderLeaderboard()}}
-
-// ============================================================
-// SANDBOX
-// ============================================================
-let sbDeck=[];
-function renderSandbox(){const pool=document.getElementById('sb-pool');pool.innerHTML='';[...HIRELINGS_SHOP,...HIRELINGS_ALL.filter(h=>!HIRELINGS_SHOP.find(s=>s.id===h.id))].forEach(h=>{const c=document.createElement('div');c.className='card';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${h.emoji}</div><div class="c-name">${h.name}</div><div style="text-align:center"><span class="c-tribe">${h.tribe}·T${h.tier}</span></div><div class="c-info">${h.potions.map(p=>p.name+':'+p.potency+'✦x'+p.stock).join('<br>')}<br>Cast:${h.castTime}s</div>`;c.onclick=()=>{if(sbDeck.length>=5)return;sbDeck.push(deepCopyCard(h));renderSbBoard()};setupTooltip(c,h);pool.appendChild(c)});SPELLS.forEach(s=>{const c=document.createElement('div');c.className='card spell-card';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${s.emoji}</div><div class="c-name">${s.name}</div><div class="c-info">${s.desc.split('.')[0]}.</div>`;setupTooltip(c,s);pool.appendChild(c)});renderSbBoard()}
-function renderSbBoard(){const el=document.getElementById('sb-board');el.innerHTML='';sbDeck.forEach((h,i)=>{const c=document.createElement('div');c.className='card';c.style.cursor='pointer';c.innerHTML=`<div class="emoji">${h.emoji}</div><div class="c-name">${h.name}</div><div class="c-info">${h.potions.map(p=>p.potency+'✦x'+p.stock).join(', ')}</div>`;c.onclick=()=>{sbDeck.splice(i,1);renderSbBoard()};setupTooltip(c,h);el.appendChild(c)});for(let i=sbDeck.length;i<5;i++){const e=document.createElement('div');e.className='empty-slot';e.textContent='Empty';el.appendChild(e)}}
-function sbClear(){sbDeck=[];renderSbBoard()}
-function sbTestBattle(){if(!sbDeck.length)return;resetState();G.difficulty='normal';G.gold=10;G.board=sbDeck.map(h=>{const c=deepCopyCard(h);c.type='hireling';c._timer=c.castTime;return c});showScreen('game-screen');G.phase='shopping';generateShop();renderAll()}
-
-// ============================================================
-// UTILITIES
-// ============================================================
-function addLog(h){const el=document.getElementById('battle-log');const l=document.createElement('div');l.innerHTML=h;el.appendChild(l);el.scrollTop=el.scrollHeight}
-function flashCard(id,side){document.querySelectorAll(`#${side==='player'?'player-board':'opp-board'} .card`).forEach(c=>{if(c.dataset.cardId===id){c.classList.add('selling');setTimeout(()=>c.classList.remove('selling'),300)}})}
-function showFloat(p,t,c){const el=document.createElement('div');el.className='float-text';el.textContent=t;el.style.color=c||'var(--gold)';el.style.left='50%';el.style.top='50%';el.style.transform='translate(-50%,-50%)';p.style.position='relative';p.appendChild(el);setTimeout(()=>el.remove(),800)}
-
-// Init sound pref
-if(localStorage.getItem('pc_sound')==='0')soundEnabled=false;
-const savedFont=localStorage.getItem('pc_fontsize');if(savedFont)setFontSize(savedFont);else setFontSize('medium');
-
-// ============================================================
-// FETCH PATCH NOTES (auto-updated from src/patch-notes.ts via pre-commit hook)
-// ============================================================
-function renderPatchNotes(notes){
-  if(!notes||!notes.length)return;
-  const latest=notes[0];
-  document.getElementById('title-ver').textContent=latest.version;
-  document.getElementById('tp-ver').textContent=latest.version;
-  document.getElementById('tp-date').textContent=latest.date;
-  document.getElementById('tp-title').textContent=latest.title;
-  const ul=document.getElementById('tp-list');
-  ul.innerHTML='';
-  latest.changes.forEach(c=>{
-    const li=document.createElement('li');
-    li.textContent=c;
-    ul.appendChild(li);
-  });
-}
-
-fetch('patch-notes.json',{cache:'no-store'})
-  .then(r=>r.ok?r.json():Promise.reject())
-  .then(renderPatchNotes)
-  .catch(()=>{
-    // Fallback: show a notice if fetch fails (e.g. file:// protocol)
-    document.getElementById('tp-ver').textContent='V0.1.0-alpha';
-    document.getElementById('tp-title').textContent='Patch notes unavailable';
-    document.getElementById('tp-list').innerHTML='<li>Open via a web server to view live notes.</li>';
-  });
+    const ver = $("title-ver"); if (ver) ver.textContent = latest.version;
+  } catch (_) { /* offline: leave the placeholders */ }
+})();
 </script>
 </body>
 </html>
