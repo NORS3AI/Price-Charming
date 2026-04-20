@@ -203,11 +203,14 @@ function findInstance(
 /**
  * Fire a single cast for one hireling: applies Quickcraft (if any),
  * increments castsSoFar, and reschedules the next cast (or marks the
- * hireling as stopped).
+ * hireling as stopped). `atSeconds` is the exact in-round time the
+ * cast fires — callers must pass the true moment (pre-tick time plus
+ * however much of the tick had elapsed when the timer hit 0).
  */
 function fireCast(
   state: ActionState,
   instanceId: string,
+  atSeconds: number,
   rng: RNG
 ): ActionState {
   const prev = state.hirelingStates.get(instanceId);
@@ -221,7 +224,7 @@ function fireCast(
     {
       kind: "cast",
       instanceId,
-      atSeconds: state.elapsedSeconds,
+      atSeconds,
       castNumber,
     },
   ];
@@ -234,7 +237,7 @@ function fireCast(
     log.push({
       kind: "quickcraft",
       instanceId,
-      atSeconds: state.elapsedSeconds,
+      atSeconds,
       stockAdded: qc,
       temporaryStockAfter: temporaryStock,
     });
@@ -246,11 +249,8 @@ function fireCast(
     log.push({
       kind: "stopped",
       instanceId,
-      atSeconds: state.elapsedSeconds,
-      reason:
-        inst.card.castTime.kind === "passive"
-          ? "passive"
-          : "decreasing-zero",
+      atSeconds,
+      reason: "decreasing-zero",
     });
   }
 
@@ -297,31 +297,32 @@ export function tick(
     elapsedSeconds: state.elapsedSeconds + deltaSeconds,
   };
 
-  // 1. Advance cast timers and fire casts.
+  // 1. Advance cast timers and fire casts. fireCast is called with the
+  // true in-round time of firing (pre-tick elapsed + seconds consumed
+  // so far within this tick), not the end-of-tick timestamp.
   for (const [instanceId, hs] of state.hirelingStates) {
     if (hs.nextCastIn === null) continue;
 
-    let cur: HirelingActionState = {
-      ...hs,
-      nextCastIn: hs.nextCastIn - deltaSeconds,
-    };
-    let states = new Map(working.hirelingStates);
-    states.set(instanceId, cur);
-    working = { ...working, hirelingStates: states };
+    let remainingDt = deltaSeconds;
+    let timeConsumed = 0;
+    let currentTimer: number | null = hs.nextCastIn;
 
-    while (cur.nextCastIn !== null && cur.nextCastIn <= 0) {
-      working = fireCast(working, instanceId, rng);
-      const after = working.hirelingStates.get(instanceId)!;
-      if (after.nextCastIn === null) break;
-      const overshoot = -(cur.nextCastIn);
-      const rescheduled: HirelingActionState = {
-        ...after,
-        nextCastIn: after.nextCastIn - overshoot,
-      };
-      states = new Map(working.hirelingStates);
-      states.set(instanceId, rescheduled);
+    while (currentTimer !== null && currentTimer <= remainingDt) {
+      const fireAt = state.elapsedSeconds + timeConsumed + currentTimer;
+      remainingDt -= currentTimer;
+      timeConsumed += currentTimer;
+      working = fireCast(working, instanceId, fireAt, rng);
+      currentTimer = working.hirelingStates.get(instanceId)!.nextCastIn;
+    }
+
+    // Decrement the (possibly rescheduled) timer by whatever dt remains.
+    if (currentTimer !== null) {
+      const states = new Map(working.hirelingStates);
+      states.set(instanceId, {
+        ...working.hirelingStates.get(instanceId)!,
+        nextCastIn: currentTimer - remainingDt,
+      });
       working = { ...working, hirelingStates: states };
-      cur = rescheduled;
     }
   }
 
@@ -378,12 +379,16 @@ function advanceCustomers(
     }
 
     let next = cs;
+    // Customers only absorb contributions while they're still waiting —
+    // don't over-apply during the slice of the tick after their patience
+    // would have expired.
+    const activeDt = Math.min(deltaSeconds, next.patienceRemaining);
     for (const h of hirelings) {
       const price =
         (h.potionType && priceByType.get(h.potionType)) ?? MIN_PRICE;
       const contrib = computePassiveContribution(h, price, next.customer);
       for (const axis of AXES) {
-        const amount = contrib[axis] * deltaSeconds;
+        const amount = contrib[axis] * activeDt;
         if (amount > 0) {
           next = applyContribution(next, axis, "player", amount);
         }

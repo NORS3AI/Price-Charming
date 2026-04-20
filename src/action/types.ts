@@ -49,7 +49,7 @@ export type ActionLogEntry =
       kind: "stopped";
       instanceId: string;
       atSeconds: number;
-      reason: "decreasing-zero" | "passive";
+      reason: "decreasing-zero";
     }
   | {
       kind: "customer-arrived";

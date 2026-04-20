@@ -238,6 +238,26 @@ describe("sale execution", () => {
     expect(hs.permanentStockGainedThisRound).toBe(1);
   });
 
+  test("passive contributions cap at patience remaining (no over-application mid-tick)", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Pantry Stocker", "love"); // potency 3, stock 2
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // Customer has 2s patience. If the tick is 10s, we should only
+    // apply 2s of contributions before expiring, not 10s.
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 2, qualityThreshold: 3 })
+    );
+    s = tick(s, 10, mulberry32(1));
+    const cs = s.customers[0];
+    expect(cs.resolvedFor).toBe("player");
+    // Quality axis: 3 potency × 1.0/s × 2s = 6 (cap at 100). If we had
+    // over-applied, playerFill would be 30 instead.
+    expect(cs.axes.quality.playerFill).toBeCloseTo(6);
+  });
+
   test("no sale happens when no hireling of matching type has stock", () => {
     let b = createBoard();
     // Wrong-type hireling — cannot sell.

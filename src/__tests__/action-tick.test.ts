@@ -161,6 +161,27 @@ describe("tick", () => {
     expect(s.log.filter((e) => e.kind === "cast").length).toBe(0);
   });
 
+  test("cast atSeconds reflects the true fire time, not end-of-tick", () => {
+    let b = createBoard();
+    // Burnt Batch: 3s cast time, Quickcraft x2.
+    b = placeAt(b, 3, "Burnt Batch");
+    let s = initializeActionState(
+      b,
+      defaultPriceMap([]),
+      [],
+      mulberry32(1)
+    );
+    // One 10-second tick should fire three casts at t=3, 6, 9 — not 10.
+    s = tick(s, 10, mulberry32(1));
+    const castTimes = s.log
+      .filter(
+        (e): e is Extract<ActionLogEntry, { kind: "cast" }> =>
+          e.kind === "cast"
+      )
+      .map((e) => e.atSeconds);
+    expect(castTimes).toEqual([3, 6, 9]);
+  });
+
   test("determinism under a seeded RNG for random cast times", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Royal Advisor"); // 1-8s random
