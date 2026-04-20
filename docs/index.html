@@ -656,7 +656,7 @@ window.closeReport = function(){ const o = $("report-overlay"); if (o) o.style.d
 window.cancelModal  = function(){ const o = $("modal-overlay");  if (o) o.style.display = "none"; };
 window.openReport   = function(){};
 window.startTutorial = function(){ pcFlash("Tutorial not available in this build."); };
-window.saveVictory  = function(){ /* wired in chunk F */ };
+window.saveVictory  = function(){ /* redirected later to pcSaveToLeaderboard */ };
 
 // --- Play-button flow: landed on difficulty card --------------------
 window.startGame = function(diff){
@@ -666,6 +666,14 @@ window.startGame = function(diff){
 function pcStartGame(diff){
   pcDifficulty = diff || "normal";
   if (!PC_DIFF[pcDifficulty]) pcDifficulty = "normal";
+  // Clean up any stale state from a prior game (esp. battle tick) so
+  // rapid Play→Title→Play cycling can't double-tick.
+  if (pcBattleTimer) { clearInterval(pcBattleTimer); pcBattleTimer = null; }
+  pcRoundSummary = null;
+  pcTargetPick = null;
+  const overlay = $("pc-target-overlay");
+  if (overlay) overlay.style.display = "none";
+
   pcRng = E.mulberry32((Date.now() ^ Math.floor(Math.random()*0xffffffff)) >>> 0);
   pcGame = E.createGame({ rng: pcRng });
   pcInitOpponent();
@@ -1166,8 +1174,8 @@ function pcPlayHand(handIdx){
     } catch (err) { pcFlash(err.message); }
     return;
   }
-  // Spells — chunk G will add Lucky / Bottle / Polish targeting.
-  // Tip Jar + Second Chance + Spring Cleaning work right now.
+  // Targeted spells route through pcEnterTargetMode instead of casting
+  // immediately, so the player picks which board hireling is affected.
   const id = card.card.id;
   try {
     if (id === "tip-jar-charm") {
@@ -1331,6 +1339,10 @@ function pcStartBattle(){
 }
 window.pcStartBattle = pcStartBattle;
 
+// Safety cap: sum(patience) + spawn spread gives a comfortable bound —
+// 60 sim-seconds is enough even for the Insane 8-customer schedule.
+const PC_MAX_BATTLE_SECONDS = 60;
+
 function pcBattleTick(){
   if (!pcGame || pcGame.phase !== "action" || !pcGame.action) {
     clearInterval(pcBattleTimer); pcBattleTimer = null; return;
@@ -1349,8 +1361,14 @@ function pcBattleTick(){
 
   const allSpawned = pcCustomerSpawnIdx >= pcCustomerQueue.length;
   const allResolved = pcGame.action.customers.every(c => c.resolvedFor !== null);
-  if (allSpawned && allResolved) {
+  const timedOut = pcGame.action.elapsedSeconds >= PC_MAX_BATTLE_SECONDS;
+  if ((allSpawned && allResolved) || timedOut) {
     clearInterval(pcBattleTimer); pcBattleTimer = null;
+    if (timedOut && !allResolved) {
+      // finalizeRound inside endRound will force-resolve stragglers,
+      // so the loop never hangs even if the simulation stalls.
+      pcFlash("Battle timed out — forcing resolution.");
+    }
     pcFinishRound();
   }
 }
