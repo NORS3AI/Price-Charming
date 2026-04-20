@@ -265,3 +265,13 @@ export type { OpponentSnapshot } from "./opponent/snapshot";
 export { captureSnapshot } from "./opponent/snapshot";
 export type { RoundResult } from "./opponent/settlement";
 export { settleRound } from "./opponent/settlement";
+
+// Charmed Hirelings (Phase 9)
+export type { CharmableTriple } from "./charmed/merge";
+export {
+  CHARM_MERGE_COUNT,
+  buildCharmedInstance,
+  findCharmableTriple,
+  mergeCharmableTriple,
+  mergeIfCharmable,
+} from "./charmed/merge";

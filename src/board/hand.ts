@@ -10,19 +10,26 @@ export const MAX_HAND_SIZE = 8;
  * Wrap a HirelingCard in a playable instance: fresh wage tracker derived
  * from the card's wage tier, plus a caller-supplied unique id. Shop
  * purchases and Charmed-merge results should use this rather than
- * hand-rolling the shape. `potionType` defaults to null; pool draws
- * will pass the already-assigned potion through.
+ * hand-rolling the shape. Optional bonuses default to 0 / not-charmed.
  */
 export function createHirelingInstance(
   card: HirelingCard,
   id: string,
-  potionType: PotionTypeId | null = null
+  potionType: PotionTypeId | null = null,
+  options: {
+    permanentStockBonus?: number;
+    permanentPotencyBonus?: number;
+    charmed?: boolean;
+  } = {}
 ): HirelingInstance {
   return {
     id,
     card,
     wageTracker: createWageTracker(card.wageTier),
     potionType,
+    permanentStockBonus: options.permanentStockBonus ?? 0,
+    permanentPotencyBonus: options.permanentPotencyBonus ?? 0,
+    charmed: options.charmed ?? false,
   };
 }
 

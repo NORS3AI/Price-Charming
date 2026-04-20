@@ -82,7 +82,7 @@ function freshHirelingState(
   };
 }
 
-/** Base stock from the CSV + this round's permanent gains - units sold + temp stock. */
+/** Base stock + cross-round permanent bonus + this round's gains - sold + temp. */
 function effectiveStock(
   inst: HirelingInstance,
   hs: HirelingActionState
@@ -90,19 +90,22 @@ function effectiveStock(
   const base = inst.card.potions[0]?.stock ?? 0;
   return (
     base +
+    inst.permanentStockBonus +
     hs.permanentStockGainedThisRound +
     hs.temporaryStock -
     hs.unitsSoldThisRound
   );
 }
 
-/** Effective potency = base + this round's potency buff gains. */
+/** Base potency + cross-round permanent bonus + this round's gains. */
 function effectivePotency(
   inst: HirelingInstance,
   hs: HirelingActionState
 ): number {
   const base = inst.card.potions[0]?.potency ?? 0;
-  return base + hs.permanentPotencyGainedThisRound;
+  return (
+    base + inst.permanentPotencyBonus + hs.permanentPotencyGainedThisRound
+  );
 }
 
 function hasKeyword(inst: HirelingInstance, name: string): boolean {

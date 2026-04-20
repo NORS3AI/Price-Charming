@@ -17,6 +17,12 @@ export interface HirelingInstance {
    * yet assigned (e.g. fresh from the factory before potion reshuffle).
    */
   potionType: PotionTypeId | null;
+  /** Stock bonus that persists across rounds (Knockoff, Charmed merge, …). */
+  permanentStockBonus: number;
+  /** Potency bonus that persists across rounds (Lucky Charm, Charmed merge, …). */
+  permanentPotencyBonus: number;
+  /** True for Charmed hirelings produced by a 3-copy merge. */
+  charmed: boolean;
 }
 
 /** A spell instance in the hand. Spells are consumed on use. */

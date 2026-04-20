@@ -25,7 +25,7 @@ export function combinedPotencyForType(
   for (const h of hirelings) {
     if (h.potionType !== type) continue;
     const [slot] = h.card.potions;
-    if (slot) total += slot.potency;
+    if (slot) total += slot.potency + h.permanentPotencyBonus;
   }
   return total;
 }
