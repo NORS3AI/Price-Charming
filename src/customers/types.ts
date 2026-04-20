@@ -51,6 +51,15 @@ export interface Customer {
   patienceSeconds: number;
   /** Length-4 permutation of AXES, most important first. */
   axisPriority: readonly AxisKind[];
+  /**
+   * How many potions this customer wants to buy in one sale. Defaults to 1
+   * when omitted. At sale time the actual units sold is
+   * `min(stockAvailable, max(desiredUnits, rollUnitsPerInteraction))`, so
+   * the customer buys at least `desiredUnits` (if stock allows) and up to
+   * whatever the stock bracket rolls. Lets the game scale potion demand
+   * with the round.
+   */
+  desiredUnits?: number;
 }
 
 /** A single axis's current fill on both sides. */

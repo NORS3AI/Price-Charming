@@ -43,6 +43,10 @@ export function paydayLineItems(state: GameState): BoardPaydayLineItem[] {
   return allHirelings(state.board)
     .filter((h) => !isExemptFromPayday(h.wageTracker))
     .filter((h) => h.wageTracker.paydaysSurvived < idx)
+    // Hirelings acquired ON the current payday round skip this payday:
+    // they weren't on the board yet when wages were assessed, and a
+    // fresh hireling needs to survive a full payday cycle first.
+    .filter((h) => h.acquiredAtRound === 0 || h.acquiredAtRound < state.round)
     .map((h) => {
       const wage = currentWageDemand(h.wageTracker);
       return {

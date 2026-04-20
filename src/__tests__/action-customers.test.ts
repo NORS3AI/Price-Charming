@@ -258,6 +258,31 @@ describe("sale execution", () => {
     expect(cs.axes.quality.playerFill).toBeCloseTo(6);
   });
 
+  test("customer desiredUnits raises the sale floor when stock allows (regression)", () => {
+    let b = createBoard();
+    // Pantry Stocker has 2 base stock; customer wants 2 units.
+    b = placeAt(b, 3, "Pantry Stocker", "love");
+    let prices = setPrice(defaultPriceMap(ACTIVE), "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({
+        patienceSeconds: 3,
+        reputationStars: 3,
+        budget: 20,
+        qualityThreshold: 1,
+        desiredUnits: 2,
+      })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const sale = s.log.find(
+      (e): e is Extract<ActionLogEntry, { kind: "sale" }> => e.kind === "sale"
+    );
+    expect(sale).toBeDefined();
+    expect(sale!.unitsSold).toBe(2);
+    expect(sale!.goldEarned).toBe(2);
+  });
+
   test("no sale happens when no hireling of matching type has stock", () => {
     let b = createBoard();
     // Wrong-type hireling — cannot sell.

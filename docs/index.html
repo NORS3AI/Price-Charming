@@ -1266,9 +1266,25 @@ function pcRender(){
 }
 
 // --- shop actions ---------------------------------------------------
+// Stamp any board hireling whose acquiredAtRound is still 0 (freshly
+// placed) with the current round, so the payday filter can skip
+// hirelings that just landed this round.
+function pcStampAcquiredRound(state){
+  let changed = false;
+  const slots = state.board.slots.map((h) => {
+    if (!h) return h;
+    if (h.acquiredAtRound !== 0) return h;
+    changed = true;
+    return { ...h, acquiredAtRound: state.round };
+  });
+  return changed ? { ...state, board: { slots } } : state;
+}
+
 function pcAfterChange(){
-  // Auto-detect a Charmed merge. If one fires, announce it and render.
   if (pcGame && pcGame.phase === "shop") {
+    // Tag newly-placed hirelings with this round BEFORE merge detection
+    // so any resulting Charmed instance inherits a consistent tag.
+    pcGame = pcStampAcquiredRound(pcGame);
     const res = E.mergeIfCharmable({
       board: pcGame.board, hand: pcGame.hand, pool: pcGame.pool
     });
@@ -1618,22 +1634,29 @@ function pcShuffleAxes(rng){
   return out;
 }
 
-// Build the customer schedule for the current round — count scales with
-// difficulty and patience/quality scale with round so later rounds are
-// harder even at Easy.
+// Build the customer schedule for the current round.
+//   - Count: difficulty base + (round − 1), so every action round has
+//     one more customer than the previous one (per spec).
+//   - Stars: low rounds give low reputation. Range [minStars, maxStars]
+//     grows with round so high rounds produce 3–5 star customers.
+//   - Desired units: customers at high rounds want multiple potions.
+//   - Patience / quality also scale with round.
 function pcBuildCustomerSchedule(){
   const diff = PC_DIFF[pcDifficulty];
   const round = pcGame.round;
-  const count = diff.customerCount;
+  const count = diff.customerCount + Math.max(0, round - 1);
+  const minStars = Math.min(5, 1 + Math.floor((round - 1) / 4));
+  const maxStars = Math.min(5, 2 + Math.floor((round - 1) / 3));
+  const desiredUnits = Math.min(5, 1 + Math.floor((round - 1) / 3));
   const queue = [];
   for (let i = 0; i < count; i++) {
     const type = pcGame.activePotionTypes[Math.floor(pcRng() * pcGame.activePotionTypes.length)];
-    const budget = 2 + Math.floor(pcRng() * 4) + Math.min(2, Math.floor(round / 5)); // 2..5 + round boost
+    const budget = 2 + Math.floor(pcRng() * 4) + Math.min(2, Math.floor(round / 5));
     const quality = 1 + Math.floor(pcRng() * Math.min(8, round + 1));
-    const stars = 1 + Math.floor(pcRng() * 5);
+    const stars = minStars + Math.floor(pcRng() * (maxStars - minStars + 1));
     const patience = Math.max(5, 9 - Math.floor(round / 4));
     queue.push({
-      spawnAt: i * 2.5, // one customer every 2.5 simulated seconds
+      spawnAt: i * 2.5,
       customer: {
         id: `cust-r${round}-${i}`,
         desiredType: type,
@@ -1642,6 +1665,7 @@ function pcBuildCustomerSchedule(){
         reputationStars: stars,
         patienceSeconds: patience,
         axisPriority: pcShuffleAxes(pcRng),
+        desiredUnits,
       },
     });
   }

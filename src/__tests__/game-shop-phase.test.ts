@@ -69,6 +69,27 @@ describe("paydayLineItems", () => {
     expect(items.find((i) => i.hireling.id === "bench-d")).toBeDefined();
   });
 
+  test("hirelings acquired on the current payday round skip that payday (regression)", () => {
+    let g = createGame({ rng: mulberry32(1), startingGold: 10 });
+    const card = ALL_HIRELINGS.find((h) => h.name === "Doughboy")!;
+    // Fresh hireling placed on round 5 — acquiredAtRound = 5.
+    const justBought = createHirelingInstance(card, "brand-new", g.activePotionTypes[0], {
+      acquiredAtRound: 5,
+    });
+    // An older hireling acquired on round 3 — should still owe.
+    const veteran = createHirelingInstance(card, "veteran", g.activePotionTypes[0], {
+      acquiredAtRound: 3,
+    });
+    g = {
+      ...g,
+      round: 5,
+      board: placeHireling(placeHireling(g.board, 2, justBought), 4, veteran),
+    };
+    const ids = paydayLineItems(g).map((i) => i.hireling.id);
+    expect(ids).toContain("veteran");
+    expect(ids).not.toContain("brand-new");
+  });
+
   test("excludes hirelings already paid this payday (regression)", () => {
     let g = createGame({ rng: mulberry32(1), startingGold: 10 });
     g = withBoardHireling(g, "Doughboy", "d1", 2);

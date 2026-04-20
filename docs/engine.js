@@ -750,7 +750,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   // src/board/hand.ts
   var MAX_HAND_SIZE = 8;
   function createHirelingInstance(card, id, potionType = null, options = {}) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     return {
       id,
       card,
@@ -758,7 +758,8 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       potionType,
       permanentStockBonus: (_a = options.permanentStockBonus) != null ? _a : 0,
       permanentPotencyBonus: (_b = options.permanentPotencyBonus) != null ? _b : 0,
-      charmed: (_c = options.charmed) != null ? _c : false
+      charmed: (_c = options.charmed) != null ? _c : false,
+      acquiredAtRound: (_d = options.acquiredAtRound) != null ? _d : 0
     };
   }
   function createSpellInstance(card, id) {
@@ -1937,14 +1938,16 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     return best;
   }
   function executeSale(state, customerState, priceByType, rng) {
-    var _a;
+    var _a, _b;
     const hireling = pickSalesHireling(state, customerState.customer.desiredType);
     if (!hireling) return state;
     const hs = state.hirelingStates.get(hireling.id);
     const available = effectiveStock(hireling, hs);
-    const units = rollUnitsPerInteraction(available, rng);
+    const desired = (_a = customerState.customer.desiredUnits) != null ? _a : 1;
+    const rolled = rollUnitsPerInteraction(available, rng);
+    const units = Math.min(available, Math.max(desired, rolled));
     if (units <= 0) return state;
-    const basePrice = (_a = priceByType.get(hireling.potionType)) != null ? _a : MIN_PRICE;
+    const basePrice = (_b = priceByType.get(hireling.potionType)) != null ? _b : MIN_PRICE;
     const haggled = hasKeyword(hireling, "Haggle");
     const pricePerUnit = applyHaggle(basePrice, hireling);
     const goldEarned = units * pricePerUnit;
@@ -2277,7 +2280,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   function paydayLineItems(state) {
     const idx = paydayIndex(state.round);
     if (idx === null) return [];
-    return allHirelings(state.board).filter((h) => !isExemptFromPayday(h.wageTracker)).filter((h) => h.wageTracker.paydaysSurvived < idx).map((h) => {
+    return allHirelings(state.board).filter((h) => !isExemptFromPayday(h.wageTracker)).filter((h) => h.wageTracker.paydaysSurvived < idx).filter((h) => h.acquiredAtRound === 0 || h.acquiredAtRound < state.round).map((h) => {
       const wage = currentWageDemand(h.wageTracker);
       return {
         hireling: h,

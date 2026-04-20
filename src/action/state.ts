@@ -566,7 +566,12 @@ function executeSale(
 
   const hs = state.hirelingStates.get(hireling.id)!;
   const available = effectiveStock(hireling, hs);
-  const units = rollUnitsPerInteraction(available, rng);
+  const desired = customerState.customer.desiredUnits ?? 1;
+  const rolled = rollUnitsPerInteraction(available, rng);
+  // Customer buys at least their desiredUnits (if stock allows), and up
+  // to whatever the stock bracket rolls on top of that. Lets customer
+  // demand scale with round without ignoring stock brackets.
+  const units = Math.min(available, Math.max(desired, rolled));
   if (units <= 0) return state;
 
   const basePrice = priceByType.get(hireling.potionType!) ?? MIN_PRICE;

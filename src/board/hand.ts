@@ -20,6 +20,7 @@ export function createHirelingInstance(
     permanentStockBonus?: number;
     permanentPotencyBonus?: number;
     charmed?: boolean;
+    acquiredAtRound?: number;
   } = {}
 ): HirelingInstance {
   return {
@@ -30,6 +31,7 @@ export function createHirelingInstance(
     permanentStockBonus: options.permanentStockBonus ?? 0,
     permanentPotencyBonus: options.permanentPotencyBonus ?? 0,
     charmed: options.charmed ?? false,
+    acquiredAtRound: options.acquiredAtRound ?? 0,
   };
 }
 

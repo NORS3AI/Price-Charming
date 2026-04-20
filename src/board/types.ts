@@ -23,6 +23,14 @@ export interface HirelingInstance {
   permanentPotencyBonus: number;
   /** True for Charmed hirelings produced by a 3-copy merge. */
   charmed: boolean;
+  /**
+   * Round on which this specific instance first landed on the player's
+   * board. Used by the payday filter so a hireling acquired on a
+   * payday round skips that round's wage and only starts owing on the
+   * next payday (spec: a fresh hireling hasn't "survived" a payday).
+   * 0 = legacy / uninitialised (pre-game or not-yet-placed instance).
+   */
+  acquiredAtRound: number;
 }
 
 /** A spell instance in the hand. Spells are consumed on use. */
