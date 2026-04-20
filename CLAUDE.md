@@ -63,7 +63,10 @@ src/
     weather.ts      — Weather placeholder with duration decay
   opponent/
     snapshot.ts     — OpponentSnapshot + captureSnapshot (async ghost recording)
-    settlement.ts   — finalizeRound + settleRound + RoundResult tally
+    settlement.ts   — settleRound + RoundResult tally
+  charmed/
+    merge.ts        — findCharmableTriple + mergeCharmableTriple (3-of-a-kind merge)
+    charms.ts       — playCharmed grants a random Charm; cast helpers for the 3 charms
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

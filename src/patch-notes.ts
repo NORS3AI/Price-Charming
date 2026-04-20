@@ -13,6 +13,17 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.2.5-alpha",
+    date: "2026-04-20",
+    title: "Phase 9 — Charmed Hirelings + Charm Cards",
+    changes: [
+      "9A HirelingInstance gains permanentStockBonus, permanentPotencyBonus, charmed (defaults 0/0/false). createHirelingInstance accepts an options bag; pricing/potency.ts and action/state.ts effective* helpers now factor in cross-round bonuses so Knockoff promotions, Charmed merges, and Lucky Charm all flow through pricing and sales math.",
+      "9A src/charmed/merge.ts: CHARM_MERGE_COUNT=3, findCharmableTriple walks board+hand for 3 instances of the same card.id sharing the same non-null potionType (skips Charmed and unassigned). buildCharmedInstance sums effective stats from all 3 (base × 3 + Σ bonuses), keeps card / cast time / potion type, fresh wage tracker, charmed: true. mergeCharmableTriple swaps the 3 sources out of board/hand, drops the matching pool instances permanently, and lands the new Charmed in the player's hand. mergeIfCharmable convenience wrapper.",
+      "9B src/charmed/charms.ts: CHARM_SPELL_IDS + CHARM_SPELL_CARDS resolve the three Charm spells from the loader. playCharmed wraps playHirelingFromHand and grants a random Charm (via pickRandomCharm) when the played hireling is Charmed. castTipJarCharm adds +3 gold; castSecondChanceCharm refreshes the shop without spending gold; castLuckyCharm grants +3 permanent potency to a friendly board hireling. All consume the spell from the hand.",
+      "All exported from src/index.ts. 25 new Jest tests (314 total) — merge detection edge cases, summed-stats math, Charmed-don't-re-merge, Charm card grant on Charmed play, cast effects for each Charm. dist smoke-tested: 3 Doughboys merge to Charmed (+8 potency bonus), playing it grants Tip Jar Charm, Lucky Charm buffs Pantry Stocker by +3 potency.",
+    ],
+  },
+  {
     version: "V0.2.4-alpha",
     date: "2026-04-20",
     title: "Phase 8 — Opponent System (async ghost)",
