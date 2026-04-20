@@ -48,6 +48,11 @@ src/
     offering.ts     — rollShop / refreshShop / takeFromOffering (≤1 spell per roll)
     purchase.ts     — buy/sell wiring with gold and hand/board state
     spring-cleaning.ts — Cast effect: removes a wage tier from the pool; base upgrades itself
+  pricing/
+    brackets.ts     — PRICE_BRACKETS table, maxPriceForPotency, potencyToNextBracket
+    potency.ts      — combinedPotencyByType across active-slot hirelings
+    panel.ts        — PriceMap + PricingPanelEntry + buildPricingPanel + applyHaggle
+    stock.ts        — unitsRange / rollUnitsPerInteraction (stock → units sold)
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

@@ -179,3 +179,29 @@ export {
   castSpringCleaning,
   isSpringCleaningId,
 } from "./shop/spring-cleaning";
+
+// Pricing (Phase 5)
+export type { PriceBracket } from "./pricing/brackets";
+export {
+  CAP_POTENCY,
+  MAX_PRICE,
+  MIN_PRICE,
+  PRICE_BRACKETS,
+  maxPriceForPotency,
+  potencyToNextBracket,
+} from "./pricing/brackets";
+export {
+  combinedPotencyForType,
+  combinedPotencyFromBoard,
+  combinedPotencyMap,
+} from "./pricing/potency";
+export type { PriceMap, PricingPanelEntry, PricingStatus } from "./pricing/panel";
+export {
+  applyHaggle,
+  buildPricingPanel,
+  defaultPriceMap,
+  priceFor,
+  setPrice,
+} from "./pricing/panel";
+export type { UnitsRange } from "./pricing/stock";
+export { rollUnitsPerInteraction, unitsRange } from "./pricing/stock";

@@ -1,0 +1,55 @@
+import { activeHirelings } from "../board/board";
+import { Board, HirelingInstance } from "../board/types";
+import { PotionTypeId } from "../potions/types";
+
+/**
+ * Sum of potency across all active-slot hirelings that currently sell a
+ * given potion type. Bench hirelings are excluded per the spec —
+ * they don't cast or contribute passively during the action phase.
+ *
+ * A hireling contributes the potency of the CSV potion slot that
+ * matches its assigned `potionType`. Two-potion hirelings only
+ * contribute the slot that corresponds to their assigned type.
+ *
+ * NOTE: cards.csv doesn't tag individual potion slots with type ids —
+ * the spec treats each hireling as selling a single active potion type.
+ * Until multi-potion hirelings ship, we sum the first potion slot's
+ * potency for simplicity. Two-slot hirelings will need richer modeling
+ * when per-slot type assignment lands.
+ */
+export function combinedPotencyForType(
+  hirelings: readonly HirelingInstance[],
+  type: PotionTypeId
+): number {
+  let total = 0;
+  for (const h of hirelings) {
+    if (h.potionType !== type) continue;
+    const [slot] = h.card.potions;
+    if (slot) total += slot.potency;
+  }
+  return total;
+}
+
+/** Convenience: combined potency per type across the active slots only. */
+export function combinedPotencyFromBoard(
+  board: Board,
+  type: PotionTypeId
+): number {
+  return combinedPotencyForType(activeHirelings(board), type);
+}
+
+/**
+ * Shorthand: a map of every active type to its combined potency on the
+ * board's active slots. Types with zero contributing hirelings map to 0.
+ */
+export function combinedPotencyMap(
+  board: Board,
+  activeTypes: readonly PotionTypeId[]
+): Map<PotionTypeId, number> {
+  const hirelings = activeHirelings(board);
+  const result = new Map<PotionTypeId, number>();
+  for (const type of activeTypes) {
+    result.set(type, combinedPotencyForType(hirelings, type));
+  }
+  return result;
+}

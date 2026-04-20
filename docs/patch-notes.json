@@ -1,5 +1,18 @@
 [
   {
+    "version": "V0.2.1-alpha",
+    "date": "2026-04-20",
+    "title": "Phase 5 — Potion Pricing",
+    "changes": [
+      "src/pricing/brackets.ts: PRICE_BRACKETS table matches the spec exactly (1-8→1g, 9-16→2g, ..., 63+→8g cap). maxPriceForPotency(combinedPotency) and potencyToNextBracket(combinedPotency) drive the panel's max-price and 'X potency to next tier' messaging. MIN_PRICE=1, MAX_PRICE=8, CAP_POTENCY=63. Frozen at runtime.",
+      "src/pricing/potency.ts: combinedPotencyForType / combinedPotencyFromBoard / combinedPotencyMap sum potency across ACTIVE-slot hirelings (bench excluded per spec) whose potionType matches. Hirelings with null potionType contribute nothing.",
+      "src/pricing/panel.ts: PriceMap stores per-active-type prices; defaultPriceMap initializes everything at 1g; setPrice clamps to [MIN_PRICE, maxAllowed] and rejects non-integers. buildPricingPanel returns one PricingPanelEntry per active type with combinedPotency, storedPrice, effectivePrice (clamped), currentMax, and a PricingStatus tag (no-stock / below-cap with potencyToNextTier / at-cap).",
+      "applyHaggle(panelPrice, hireling): per-hireling +3g modifier (not in the panel). Used by Phase 6/7 when a Haggle hireling rings up a sale.",
+      "src/pricing/stock.ts: unitsRange(stock) maps stock to {min,max} units per customer interaction (1-5→1, 6-15→1-2, 16-30→2-3, 31+→3-4). rollUnitsPerInteraction(stock, rng) draws a value in that range, capped by remaining stock.",
+      "All exported from src/index.ts. 33 new Jest tests across brackets, combined potency, panel state and clamping, Haggle modifier, and stock brackets (214 total). dist smoke-tested end-to-end."
+    ]
+  },
+  {
     "version": "V0.2.0-alpha",
     "date": "2026-04-20",
     "title": "Phase 4 — Shop System (pool, potions, Spring Cleaning)",
