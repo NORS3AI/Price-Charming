@@ -6,7 +6,7 @@ import {
   currentWageDemand,
   survivePayday,
 } from "../economy/wages";
-import { isPaydayRound } from "../economy/payday";
+import { isPaydayRound, paydayIndex } from "../economy/payday";
 import { SELL_VALUE } from "../economy/gold";
 import { sellHirelingFromBoardToPool } from "../shop/purchase";
 import { assignPotionsToPool } from "../shop/assignment";
@@ -31,12 +31,18 @@ export function paydayDueNow(state: GameState): boolean {
 
 /**
  * Build payday line items for every non-exempt board hireling (active +
- * bench). Dusty Broom is filtered out automatically via
- * isExemptFromPayday. `canPay` is computed against the current gold.
+ * bench) that hasn't already been paid for this payday. Dusty Broom is
+ * filtered out automatically via isExemptFromPayday. Once a hireling is
+ * paid, survivePayday bumps their paydaysSurvived to the current payday
+ * index, so they vanish from this list until the next payday round.
+ * `canPay` is computed against the current gold.
  */
 export function paydayLineItems(state: GameState): BoardPaydayLineItem[] {
+  const idx = paydayIndex(state.round);
+  if (idx === null) return [];
   return allHirelings(state.board)
     .filter((h) => !isExemptFromPayday(h.wageTracker))
+    .filter((h) => h.wageTracker.paydaysSurvived < idx)
     .map((h) => {
       const wage = currentWageDemand(h.wageTracker);
       return {

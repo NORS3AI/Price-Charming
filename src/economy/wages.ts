@@ -1,7 +1,7 @@
 import { WageTier } from "../cards/types";
 
 /** Maximum payday number reachable in a full 15-round game. */
-export const MAX_PAYDAYS = 5;
+export const MAX_PAYDAYS = 4;
 
 /**
  * Per-tier wage demanded at each payday (1-indexed). Starter hirelings with

@@ -12,8 +12,8 @@ import { MAX_PAYDAYS, createWageTracker, survivePayday } from "../economy/wages"
 
 describe("payday schedule", () => {
   test("payday rounds match spec", () => {
-    expect([...PAYDAY_ROUNDS]).toEqual([3, 6, 9, 12, 15]);
-    expect([...GLOW_ROUNDS]).toEqual([2, 5, 8, 11, 14]);
+    expect([...PAYDAY_ROUNDS]).toEqual([5, 8, 11, 14]);
+    expect([...GLOW_ROUNDS]).toEqual([4, 7, 10, 13]);
   });
 
   test("PAYDAY_ROUNDS count equals MAX_PAYDAYS", () => {
@@ -44,18 +44,17 @@ describe("payday schedule", () => {
   });
 
   test("non-payday non-glow rounds are neither", () => {
-    for (const r of [1, 4, 7, 10, 13]) {
+    for (const r of [1, 2, 3, 6, 9, 12, 15]) {
       expect(isPaydayRound(r)).toBe(false);
       expect(isGlowRound(r)).toBe(false);
     }
   });
 
-  test("paydayIndex returns 1..5 for payday rounds, null otherwise", () => {
-    expect(paydayIndex(3)).toBe(1);
-    expect(paydayIndex(6)).toBe(2);
-    expect(paydayIndex(9)).toBe(3);
-    expect(paydayIndex(12)).toBe(4);
-    expect(paydayIndex(15)).toBe(5);
+  test("paydayIndex returns 1..4 for payday rounds, null otherwise", () => {
+    expect(paydayIndex(5)).toBe(1);
+    expect(paydayIndex(8)).toBe(2);
+    expect(paydayIndex(11)).toBe(3);
+    expect(paydayIndex(14)).toBe(4);
     expect(paydayIndex(4)).toBeNull();
     expect(paydayIndex(1)).toBeNull();
     expect(paydayIndex(16)).toBeNull();
@@ -64,19 +63,19 @@ describe("payday schedule", () => {
 
 describe("nextPaydayRound / roundsUntilPayday", () => {
   test("counts down toward the next payday", () => {
-    expect(nextPaydayRound(1)).toBe(3);
-    expect(roundsUntilPayday(1)).toBe(2);
-    expect(nextPaydayRound(2)).toBe(3);
-    expect(roundsUntilPayday(2)).toBe(1);
-    expect(nextPaydayRound(3)).toBe(3);
-    expect(roundsUntilPayday(3)).toBe(0);
-    expect(nextPaydayRound(4)).toBe(6);
-    expect(roundsUntilPayday(4)).toBe(2);
+    expect(nextPaydayRound(1)).toBe(5);
+    expect(roundsUntilPayday(1)).toBe(4);
+    expect(nextPaydayRound(4)).toBe(5);
+    expect(roundsUntilPayday(4)).toBe(1);
+    expect(nextPaydayRound(5)).toBe(5);
+    expect(roundsUntilPayday(5)).toBe(0);
+    expect(nextPaydayRound(6)).toBe(8);
+    expect(roundsUntilPayday(6)).toBe(2);
   });
 
   test("returns null once all paydays are behind us", () => {
-    expect(nextPaydayRound(16)).toBeNull();
-    expect(roundsUntilPayday(16)).toBeNull();
+    expect(nextPaydayRound(15)).toBeNull();
+    expect(roundsUntilPayday(15)).toBeNull();
   });
 });
 

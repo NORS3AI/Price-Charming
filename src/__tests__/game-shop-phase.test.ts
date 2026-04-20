@@ -24,16 +24,16 @@ function withBoardHireling(
 }
 
 describe("paydayDueNow", () => {
-  test("true on rounds 3, 6, 9, 12, 15", () => {
+  test("true on rounds 5, 8, 11, 14", () => {
     const g0 = createGame({ rng: mulberry32(1) });
-    for (const round of [3, 6, 9, 12, 15]) {
+    for (const round of [5, 8, 11, 14]) {
       expect(paydayDueNow({ ...g0, round })).toBe(true);
     }
   });
 
   test("false on other rounds", () => {
     const g0 = createGame({ rng: mulberry32(1) });
-    for (const round of [1, 2, 4, 5, 7, 8, 10, 11, 13, 14]) {
+    for (const round of [1, 2, 3, 4, 6, 7, 9, 10, 12, 13, 15]) {
       expect(paydayDueNow({ ...g0, round })).toBe(false);
     }
   });
@@ -41,8 +41,9 @@ describe("paydayDueNow", () => {
 
 describe("paydayLineItems", () => {
   test("excludes Dusty Broom (payday exempt)", () => {
-    const g = createGame({ rng: mulberry32(1) });
-    // Dusty Broom is the only board hireling; since it's exempt, list is empty.
+    const g0 = createGame({ rng: mulberry32(1) });
+    // Move to a payday round so the filter doesn't mask the exclusion.
+    const g = { ...g0, round: 5 };
     expect(paydayLineItems(g)).toEqual([]);
   });
 
@@ -50,6 +51,7 @@ describe("paydayLineItems", () => {
     let g = createGame({ rng: mulberry32(1), startingGold: 3 });
     g = withBoardHireling(g, "Doughboy", "d-low", 2); // Low tier → 2g wage
     g = withBoardHireling(g, "Sugar Sprinkler", "s-medium", 4); // Medium → 4g wage
+    g = { ...g, round: 5 }; // first payday
 
     const items = paydayLineItems(g);
     const byId = new Map(items.map((i) => [i.hireling.id, i]));
@@ -62,8 +64,21 @@ describe("paydayLineItems", () => {
   test("includes bench hirelings per spec", () => {
     let g = createGame({ rng: mulberry32(1) });
     g = withBoardHireling(g, "Doughboy", "bench-d", 0); // slot 0 = bench
+    g = { ...g, round: 5 };
     const items = paydayLineItems(g);
     expect(items.find((i) => i.hireling.id === "bench-d")).toBeDefined();
+  });
+
+  test("excludes hirelings already paid this payday (regression)", () => {
+    let g = createGame({ rng: mulberry32(1), startingGold: 10 });
+    g = withBoardHireling(g, "Doughboy", "d1", 2);
+    g = { ...g, round: 5 };
+    expect(paydayLineItems(g).length).toBe(1);
+    g = payWage(g, "d1");
+    // After paying, the hireling's paydaysSurvived = 1, which is no
+    // longer < paydayIndex(5)=1, so it drops out of the list. This
+    // pins the "pays 2g, then immediately asks for 4g" bug fix.
+    expect(paydayLineItems(g).length).toBe(0);
   });
 });
 

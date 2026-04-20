@@ -18,7 +18,7 @@ describe("wage schedule", () => {
 
   test("wageFor returns the right cell for each tier and payday", () => {
     expect(wageFor("Low", 1)).toBe(2);
-    expect(wageFor("Low", 5)).toBe(10);
+    expect(wageFor("Low", 4)).toBe(8);
     expect(wageFor("Medium", 3)).toBe(8);
     expect(wageFor("High", 4)).toBe(12);
     expect(wageFor("None", 2)).toBe(0);
@@ -56,7 +56,7 @@ describe("wage tracker", () => {
     expect(original).not.toBe(next);
   });
 
-  test("surviving all 5 paydays caps; beyond that throws", () => {
+  test("surviving the full payday schedule caps; beyond that throws", () => {
     let t = createWageTracker("High");
     for (let i = 0; i < MAX_PAYDAYS; i++) t = survivePayday(t);
     expect(t.paydaysSurvived).toBe(MAX_PAYDAYS);

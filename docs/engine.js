@@ -669,7 +669,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   }
 
   // src/economy/wages.ts
-  var MAX_PAYDAYS = 5;
+  var MAX_PAYDAYS = 4;
   var WAGE_SCHEDULE = {
     Low: [2, 4, 6, 8, 10],
     Medium: [4, 6, 8, 10, 12],
@@ -704,18 +704,16 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
 
   // src/economy/payday.ts
   var PAYDAY_ROUNDS = Object.freeze([
-    3,
-    6,
-    9,
-    12,
-    15
-  ]);
-  var GLOW_ROUNDS = Object.freeze([
-    2,
     5,
     8,
     11,
     14
+  ]);
+  var GLOW_ROUNDS = Object.freeze([
+    4,
+    7,
+    10,
+    13
   ]);
   function isPaydayRound(round) {
     return PAYDAY_ROUNDS.includes(round);
@@ -2277,7 +2275,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     return isPaydayRound(state.round);
   }
   function paydayLineItems(state) {
-    return allHirelings(state.board).filter((h) => !isExemptFromPayday(h.wageTracker)).map((h) => {
+    const idx = paydayIndex(state.round);
+    if (idx === null) return [];
+    return allHirelings(state.board).filter((h) => !isExemptFromPayday(h.wageTracker)).filter((h) => h.wageTracker.paydaysSurvived < idx).map((h) => {
       const wage = currentWageDemand(h.wageTracker);
       return {
         hireling: h,

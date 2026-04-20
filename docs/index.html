@@ -594,6 +594,15 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 #pc-target-box{background:var(--deep);padding:1.5rem 2rem;border:2px solid var(--gold);border-radius:10px;color:var(--parch);max-width:26rem;text-align:center}
 #pc-target-msg{margin-bottom:.75rem;font-size:1rem}
 .pc-slot.pc-targetable{outline:3px solid gold;cursor:pointer}
+.pc-slot{position:relative}
+.pc-slot-tooltip{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:.35rem;z-index:120;width:15rem;background:var(--deep);color:var(--parch);border:1px solid var(--gold);border-radius:6px;padding:.5rem .6rem;box-shadow:0 6px 18px rgba(0,0,0,.5);text-align:left;pointer-events:none;font-size:.72rem;line-height:1.3}
+.pc-slot:hover .pc-slot-tooltip{display:block}
+.pc-tooltip-head{color:var(--gold);font-weight:bold;font-size:.8rem;margin-bottom:.15rem}
+.pc-tooltip-meta{color:var(--parch-d);font-style:italic;font-size:.65rem;margin-bottom:.3rem}
+.pc-tooltip-ability{margin:.25rem 0;color:var(--parch)}
+.pc-tooltip-cast{margin:.25rem 0;padding:.2rem .3rem;background:rgba(90,138,186,.25);border-left:2px solid var(--blue);border-radius:2px;color:var(--parch)}
+.pc-tooltip-kw{margin-top:.2rem;padding-top:.2rem;border-top:1px dashed rgba(212,168,67,.35)}
+.pc-tooltip-kw b{color:var(--gold)}
 body.pc-dragging .pc-slot:not(.pc-empty){cursor:move}
 body.pc-dragging #pc-shop-section{outline:2px dashed var(--gold-dim);outline-offset:4px;border-radius:8px}
 body.pc-dragging .pc-board{outline:2px dashed var(--gold);outline-offset:4px;border-radius:8px}
@@ -913,8 +922,40 @@ function pcBuildSlotCard(inst, slotIdx, isBench, opts){
     ${castBar}
     ${castText ? `<div class="pc-slot-cast">${castText}</div>` : ""}
     <div class="pc-slot-guild ${guildClass}">${inst.card.guild}</div>
+    ${pcTooltipHtml(inst, hs)}
   `;
   return d;
+}
+
+// Hoverable tooltip attached to each filled board slot. Shows the card's
+// ability text (so the player knows what the cast / keyword does) plus
+// every keyword's player-facing definition. During the action phase an
+// extra banner calls out the cast-in-progress.
+function pcTooltipHtml(inst, hs){
+  const casting = hs && hs.nextCastIn !== null && hs.nextCastIn >= 0;
+  const keywordDefs = inst.card.keywords
+    .map((k) => {
+      const def = E.getKeywordDefinition ? E.getKeywordDefinition(k.name) : null;
+      const label = k.count != null ? `${k.name} x${k.count}` : k.name;
+      const text = def && def.player ? def.player : "";
+      return `<div class="pc-tooltip-kw"><b>${label}:</b> ${text}</div>`;
+    })
+    .join("");
+  const castLine = casting
+    ? `<div class="pc-tooltip-cast">Casting in ${hs.nextCastIn.toFixed(1)}s — triggers ability${inst.card.keywords.length ? " + keywords" : ""}.</div>`
+    : "";
+  const ability = inst.card.abilityText
+    ? `<div class="pc-tooltip-ability">${inst.card.abilityText}</div>`
+    : "";
+  return `
+    <div class="pc-slot-tooltip">
+      <div class="pc-tooltip-head">${inst.card.name}${inst.charmed ? " ✨ (Charmed)" : ""}</div>
+      <div class="pc-tooltip-meta">${inst.card.guild} · ${inst.card.wageTier} tier · ${pcFormatCastTime(inst.card.castTime)}</div>
+      ${ability}
+      ${castLine}
+      ${keywordDefs}
+    </div>
+  `;
 }
 
 function pcRenderPlayerBoard(){

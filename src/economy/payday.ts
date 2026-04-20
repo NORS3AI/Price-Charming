@@ -7,12 +7,12 @@ import {
 
 /** Shop rounds at which payday resolves (before the shop phase opens). */
 export const PAYDAY_ROUNDS: readonly number[] = Object.freeze([
-  3, 6, 9, 12, 15,
+  5, 8, 11, 14,
 ]);
 
 /** Rounds where the payday indicator glows/pulses as a warning. */
 export const GLOW_ROUNDS: readonly number[] = Object.freeze([
-  2, 5, 8, 11, 14,
+  4, 7, 10, 13,
 ]);
 
 /** Returns true when the given round is a payday. */
