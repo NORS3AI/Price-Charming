@@ -112,3 +112,22 @@ export {
   createDustyBroomInstance,
   createStarterState,
 } from "./board/starter";
+
+// Potion types (Phase 4A)
+export type { PotionTypeId, PotionTypeMeta } from "./potions/types";
+export {
+  ACTIVE_POTION_COUNT,
+  POTION_TYPES,
+  getPotionMeta,
+} from "./potions/types";
+export { selectActivePotionTypes } from "./potions/selection";
+export type { PotionDiscovery } from "./potions/discovery";
+export {
+  createDiscovery,
+  discoveredCount,
+  isSeen,
+  markSeen,
+  markSeenMany,
+} from "./potions/discovery";
+export type { RNG } from "./potions/rng";
+export { defaultRng, mulberry32, pick, shuffle } from "./potions/rng";
