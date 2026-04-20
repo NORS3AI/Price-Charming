@@ -1,5 +1,19 @@
 [
   {
+    "version": "V0.2.4-alpha",
+    "date": "2026-04-20",
+    "title": "Phase 8 — Opponent System (async ghost)",
+    "changes": [
+      "src/opponent/snapshot.ts: OpponentSnapshot captures another player's build at a specific round — board, prices, activePotionTypes, reputation, plus a stable id for leaderboards. captureSnapshot validates the round is a positive integer.",
+      "ActionState now carries opponent: OpponentSnapshot | null; setOpponent installs the ghost.",
+      "tick() now applies per-second passive contributions from every active hireling on the opponent's snapshot to the opponent side of each customer's 4-axis tug-of-war, using the snapshot's own effective prices (built from its own board and price map). Opponent contributions share the same patience cap as the player's.",
+      "src/opponent/settlement.ts: finalizeRound force-resolves every straggling customer using their current fills. settleRound returns a RoundResult tallying gold, reputation delta, customersWon / customersLost / customersNoSale / customersUnresolved, plus playerWonRound (player won more customers than the opponent).",
+      "Dist smoke test: player starting with only Dusty Broom vs opponent with a Pantry Stocker selling the same type correctly resolves the customer for the opponent and settleRound.playerWonRound = false.",
+      "Deferred (not bugs): opponent casts, Quickcraft temp stock accrual, and cast-triggered keyword effects on the opponent side. Current model treats opponent hirelings as pure passive contributors — sufficient for 'async ghost' flavour, richer simulation can land in a future balance pass.",
+      "9 new Jest tests across captureSnapshot validation, opponent-stealing-customer, mirrored-boards tie → no-sale, setOpponent replacement, and finalizeRound / settleRound tallies. 289 tests total; tsc clean."
+    ]
+  },
+  {
     "version": "V0.2.3-alpha",
     "date": "2026-04-20",
     "title": "Phase 7 — Action Round (casts, customers, sales, weather)",

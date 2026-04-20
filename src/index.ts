@@ -252,8 +252,15 @@ export {
   firstCastDelay,
   initializeActionState,
   nextCastDelay,
+  setOpponent,
   setWeather,
   tick,
 } from "./action/state";
 export type { Weather, WeatherEffect } from "./action/weather";
 export { tickWeather } from "./action/weather";
+
+// Opponent system (Phase 8)
+export type { OpponentSnapshot } from "./opponent/snapshot";
+export { captureSnapshot } from "./opponent/snapshot";
+export type { RoundResult } from "./opponent/settlement";
+export { finalizeRound, settleRound } from "./opponent/settlement";

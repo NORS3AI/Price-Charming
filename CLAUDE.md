@@ -59,8 +59,11 @@ src/
     contributions.ts — passive per-second contribution per spec leans (stock→focus, etc.)
   action/
     types.ts        — ActionState, HirelingActionState, ActionLogEntry union
-    state.ts        — initializeActionState, addCustomer, setWeather, tick (cast + customer + weather)
+    state.ts        — initializeActionState, addCustomer, setWeather, setOpponent, tick
     weather.ts      — Weather placeholder with duration decay
+  opponent/
+    snapshot.ts     — OpponentSnapshot + captureSnapshot (async ghost recording)
+    settlement.ts   — finalizeRound + settleRound + RoundResult tally
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

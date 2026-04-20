@@ -16,6 +16,7 @@ import { PotionTypeId } from "../potions/types";
 import { MIN_PRICE } from "../pricing/brackets";
 import { PriceMap, applyHaggle, buildPricingPanel } from "../pricing/panel";
 import { rollUnitsPerInteraction } from "../pricing/stock";
+import { OpponentSnapshot } from "../opponent/snapshot";
 import {
   ActionLogEntry,
   ActionState,
@@ -139,8 +140,21 @@ export function initializeActionState(
     gold: startingGold,
     reputation: startingReputation,
     weather: null,
+    opponent: null,
     log: [],
   };
+}
+
+/**
+ * Install an async ghost opponent. The snapshot's board and prices are
+ * used during `tick` to apply per-second passive contributions to the
+ * opponent side of every customer's 4-axis tug-of-war.
+ */
+export function setOpponent(
+  state: ActionState,
+  snapshot: OpponentSnapshot
+): ActionState {
+  return { ...state, opponent: snapshot };
 }
 
 /**
@@ -369,6 +383,21 @@ function advanceCustomers(
   const priceByType = new Map(panel.map((e) => [e.potionType, e.effectivePrice]));
   const hirelings = activeHirelings(state.board);
 
+  // Opponent-side counterparts: the snapshot has its own board, active
+  // types, and prices, so we derive an independent effective-price map.
+  const oppHirelings = state.opponent
+    ? activeHirelings(state.opponent.board)
+    : [];
+  const oppPriceByType = state.opponent
+    ? new Map(
+        buildPricingPanel(
+          state.opponent.activePotionTypes,
+          state.opponent.board,
+          state.opponent.prices
+        ).map((e) => [e.potionType, e.effectivePrice])
+      )
+    : new Map<PotionTypeId, number>();
+
   const customersAfter: CustomerState[] = [];
   let working: ActionState = state;
 
@@ -391,6 +420,18 @@ function advanceCustomers(
         const amount = contrib[axis] * activeDt;
         if (amount > 0) {
           next = applyContribution(next, axis, "player", amount);
+        }
+      }
+    }
+    // Opponent-side passive contributions (ghost snapshot).
+    for (const h of oppHirelings) {
+      const price =
+        (h.potionType && oppPriceByType.get(h.potionType)) ?? MIN_PRICE;
+      const contrib = computePassiveContribution(h, price, next.customer);
+      for (const axis of AXES) {
+        const amount = contrib[axis] * activeDt;
+        if (amount > 0) {
+          next = applyContribution(next, axis, "opponent", amount);
         }
       }
     }

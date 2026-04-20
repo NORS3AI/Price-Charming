@@ -1,5 +1,6 @@
 import { Board } from "../board/types";
 import { Customer, CustomerState, Resolution } from "../customers/types";
+import { OpponentSnapshot } from "../opponent/snapshot";
 import { PriceMap } from "../pricing/panel";
 import { PotionTypeId } from "../potions/types";
 import { Weather } from "./weather";
@@ -115,6 +116,8 @@ export interface ActionState {
   reputation: number;
   /** Active weather event, or null if none. */
   weather: Weather | null;
+  /** Async ghost opponent for this round, or null in solo/sandbox modes. */
+  opponent: OpponentSnapshot | null;
   /** Append-only event log for tests and UI replay. */
   log: readonly ActionLogEntry[];
 }
