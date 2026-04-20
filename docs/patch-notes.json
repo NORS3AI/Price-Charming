@@ -1,5 +1,22 @@
 [
   {
+    "version": "V0.1.9-alpha",
+    "date": "2026-04-20",
+    "title": "Phase 3 — Board & Hand Layout",
+    "changes": [
+      "Added src/board/types.ts: HirelingInstance (wraps a HirelingCard with a WageTracker and a unique instance id), SpellInstance, HandCardInstance, Hand, and Board.",
+      "Added src/board/hand.ts: MAX_HAND_SIZE=8, createHand, handSize, isHandFull, addToHand (throws if full), removeFromHand, plus isHireling/isSpell narrowing helpers. Hand holds both hirelings and spells.",
+      "Added src/board/board.ts: BOARD_SIZE=7 with BENCH_SLOTS [0,6] (1-indexed slots 1 and 7) and ACTIVE_SLOTS [1,2,3,4,5] (1-indexed slots 2-6), STARTER_SLOT=3 (center active).",
+      "Board helpers: createBoard, isBenchSlot, isActiveSlot, isBoardFull, firstEmptySlot, activeHirelings, benchHirelings, allHirelings.",
+      "Play/sell/rearrange: placeHireling, playHirelingFromHand (throws if the hand card is a spell or the slot is occupied), sellHirelingFromBoard, sellHirelingFromHand (throws on spells per spec), rearrangeBoard (splice-insert — cards between shift to accommodate).",
+      "Added src/board/starter.ts: createDustyBroomInstance and createStarterState — places Dusty Broom at slot 3 (1-indexed slot 4) with a None-tier payday-exempt tracker.",
+      "Sell returns include SELL_VALUE so callers apply the gold delta; spells still cannot be sold.",
+      "BENCH_SLOTS and ACTIVE_SLOTS frozen at runtime for safety.",
+      "All new symbols exported from src/index.ts.",
+      "32 new Jest tests covering hand lifecycle, board placement, bench/active filters, play/sell/rearrange semantics, and starter setup. 103 tests total; dist smoke-tested."
+    ]
+  },
+  {
     "version": "V0.1.8-alpha",
     "date": "2026-04-20",
     "title": "Phase 2 — Economy, Wages, and Payday",

@@ -32,6 +32,11 @@ src/
     gold.ts         — Gold costs (starting, hireling, spell, refresh, sell)
     wages.ts        — Wage tier table + per-hireling WageTracker
     payday.ts       — Payday schedule (rounds 3/6/9/12/15) and line-item builder
+  board/
+    types.ts        — HirelingInstance, SpellInstance, Hand, Board
+    hand.ts         — Hand operations (max 8 cards, hirelings + spells)
+    board.ts        — 7-slot board with bench/active helpers, play/sell/rearrange
+    starter.ts      — Dusty Broom starter placement (center active slot)
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

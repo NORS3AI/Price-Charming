@@ -68,3 +68,45 @@ export {
   buildPaydayLineItems,
 } from "./economy/payday";
 export type { PaydayLineItem } from "./economy/payday";
+
+// Board & hand (Phase 3)
+export type {
+  Board,
+  Hand,
+  HandCardInstance,
+  HirelingInstance,
+  SpellInstance,
+} from "./board/types";
+export {
+  MAX_HAND_SIZE,
+  createHand,
+  handSize,
+  isHandFull,
+  addToHand,
+  removeFromHand,
+  isHireling,
+  isSpell,
+} from "./board/hand";
+export {
+  BOARD_SIZE,
+  BENCH_SLOTS,
+  ACTIVE_SLOTS,
+  STARTER_SLOT,
+  createBoard,
+  isBenchSlot,
+  isActiveSlot,
+  isBoardFull,
+  firstEmptySlot,
+  activeHirelings,
+  benchHirelings,
+  allHirelings,
+  placeHireling,
+  playHirelingFromHand,
+  sellHirelingFromBoard,
+  sellHirelingFromHand,
+  rearrangeBoard,
+} from "./board/board";
+export {
+  createDustyBroomInstance,
+  createStarterState,
+} from "./board/starter";
