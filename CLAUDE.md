@@ -72,6 +72,10 @@ src/
     state.ts        — createGame, clampReputation (round-1 setup)
     shop-phase.ts   — paydayLineItems, payWage, sellAtPayday, startShopPhase
     action-phase.ts — endShopPhase, tickAction, addActionCustomer, endRound, runActionToCompletion
+  export/
+    columns.ts      — EXPORT_COLUMNS (matches cards.csv header)
+    rows.ts         — cardToExportRow, toCsv, formatCastTime/Keywords, round-trip safe
+    download.ts     — downloadCardsExport (browser file trigger; returns CSV in Node)
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

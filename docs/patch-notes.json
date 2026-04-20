@@ -1,5 +1,18 @@
 [
   {
+    "version": "V0.2.7-alpha",
+    "date": "2026-04-20",
+    "title": "Phase 11 — Export to Excel (admin tool)",
+    "changes": [
+      "src/export/columns.ts: EXPORT_COLUMNS matches cards.csv header exactly so exports round-trip through the loader.",
+      "src/export/rows.ts: cardToExportRow serializes Card objects back to column-keyed rows with every CSV quirk preserved — Quickcraft hirelings get blank stock cells, star ratings become ⭐/⭐⭐, spells fill N/A in the non-applicable columns, hirelings without keywords render empty while spells without keywords render 'None'. formatCastTime covers all 4 variants (5s / Passive / 1-8s (random) / 7s (reduces by 1s per cast)). toCsv + exportAllCardsAsCsv write the full card dump with RFC-4180 quoting.",
+      "src/export/download.ts: downloadCardsExport(filename?) triggers a browser download via feature-detected globalThis (document + Blob + URL.createObjectURL). In Node it simply returns the CSV string so tests and tooling can still use it. Output includes a UTF-8 BOM so Excel renders ⭐ correctly. Default filename: price-charming-cards.csv.",
+      "Round-trip verified: parseCards(exportAllCardsAsCsv()) reproduces every keyword (including The Saboteur's Sabotage x2 / Knockoff x1), every cast-time variant (Grand Vizier decreasing, Royal Advisor random), and every spell N/A column.",
+      "All exported from src/index.ts. 17 new Jest tests (373 total); tsc clean; dist smoke-tested with a full write → read-back through the Node filesystem.",
+      "Phase 11 is the final phase of the 11-phase rollout — the engine surface is complete."
+    ]
+  },
+  {
     "version": "V0.2.6-alpha",
     "date": "2026-04-20",
     "title": "Phase 10 — Round Structure (full 15-round game loop)",

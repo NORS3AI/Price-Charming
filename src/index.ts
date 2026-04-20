@@ -319,3 +319,20 @@ export {
   runActionToCompletion,
   tickAction,
 } from "./game/action-phase";
+
+// Export-to-Excel admin tool (Phase 11)
+export type { ExportColumn } from "./export/columns";
+export { EXPORT_COLUMNS } from "./export/columns";
+export {
+  allExportRows,
+  cardToExportRow,
+  escapeCsvField,
+  exportAllCardsAsCsv,
+  formatCastTime,
+  formatKeywords,
+  toCsv,
+} from "./export/rows";
+export {
+  DEFAULT_EXPORT_FILENAME,
+  downloadCardsExport,
+} from "./export/download";
