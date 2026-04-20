@@ -165,3 +165,10 @@ export {
   rollShop,
   takeFromOffering,
 } from "./shop/offering";
+export {
+  buyHirelingFromShop,
+  buySpellFromShop,
+  refreshShopWithCost,
+  sellHirelingFromBoardToPool,
+  sellHirelingFromHandToPool,
+} from "./shop/purchase";
