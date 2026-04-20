@@ -618,6 +618,7 @@ let pcBattleTimer = null;
 let pcCustomerQueue = [];
 let pcCustomerSpawnIdx = 0;
 let pcTargetPick = null;           // active target-picker (Lucky / Bottle / Polish)
+let pcRoundSummary = null;         // populated between rounds so the UI can show a recap
 
 // Difficulty knobs — gold per round drives the opponent's board growth,
 // so their builds scale proportionally to the player's own pacing.
@@ -1059,23 +1060,30 @@ function pcRender(){
 
   const shopMode = pcGame.phase === "shop";
   const actionMode = pcGame.phase === "action";
-  $("pc-pricing-section").style.display = shopMode ? "" : "none";
-  $("pc-shop-section").style.display = shopMode ? "" : "none";
-  $("pc-hand-section").style.display = "";
+  const recapMode = !!pcRoundSummary;
+
+  // When a round has just ended (recap) or the game is over, collapse
+  // the active shop UI so the player focuses on the summary panel.
+  const showShopUi = shopMode && !recapMode;
+  $("pc-pricing-section").style.display = showShopUi ? "" : "none";
+  $("pc-shop-section").style.display = showShopUi ? "" : "none";
+  $("pc-hand-section").style.display = showShopUi ? "" : "none";
   $("pc-customers-section").style.display = actionMode ? "" : "none";
   $("pc-log-section").style.display = actionMode ? "" : "none";
   pcRenderOppSection();
+  pcRenderPayday();
+  pcRenderRoundEnd();
 
   pcRenderPlayerBoard();
-  if (shopMode) {
+  if (showShopUi) {
     pcRenderPricingPanel();
     pcRenderOffering();
+    pcRenderHand();
   }
   if (actionMode) {
     pcRenderCustomers();
     pcRenderLog();
   }
-  pcRenderHand();
 }
 
 // --- shop actions ---------------------------------------------------
@@ -1281,17 +1289,181 @@ function pcBattleTick(){
 }
 
 function pcFinishRound(){
+  const beforeGold = pcGame.gold;
+  const beforeRep = pcGame.reputation;
+  const roundPlayed = pcGame.round;
+  const action = pcGame.action; // snapshot for the recap
   try { pcGame = E.endRound(pcGame); }
   catch (err) { pcFlash(err.message); return; }
-  // Opponent plays their next shop before the player's new shop opens.
-  if (pcGame.phase === "shop") {
-    pcOpponentPlayRound(pcGame.round);
-    pcGame = E.startShopPhase(pcGame, pcRng);
+
+  const tally = { player: 0, opponent: 0, noSale: 0 };
+  if (action) {
+    for (const cs of action.customers) {
+      if (cs.resolvedFor === "player") tally.player++;
+      else if (cs.resolvedFor === "opponent") tally.opponent++;
+      else if (cs.resolvedFor === "no-sale") tally.noSale++;
+    }
   }
+  pcRoundSummary = {
+    round: roundPlayed,
+    goldDelta: pcGame.gold - beforeGold,
+    repDelta: pcGame.reputation - beforeRep,
+    finalGold: pcGame.gold,
+    finalRep: pcGame.reputation,
+    tally,
+    outcome: pcGame.outcome,
+  };
   pcRender();
 }
 
-window.pcAdvanceFromRoundEnd = function(){};
+window.pcAdvanceFromRoundEnd = function(){
+  if (!pcGame) return;
+  if (pcGame.phase === "game-over") {
+    showScreen("title-screen");
+    pcGame = null; pcRoundSummary = null;
+    return;
+  }
+  // Opponent plays their new shop phase, then we open the player's.
+  pcOpponentPlayRound(pcGame.round);
+  pcGame = E.startShopPhase(pcGame, pcRng);
+  pcRoundSummary = null;
+  pcRender();
+};
+
+// --- payday UI ------------------------------------------------------
+function pcRenderPayday(){
+  const sec = $("pc-payday-section"); if (!sec) return;
+  if (!pcGame || pcGame.phase !== "shop" || !E.paydayDueNow(pcGame)) {
+    sec.style.display = "none"; return;
+  }
+  const items = E.paydayLineItems(pcGame);
+  if (items.length === 0) { sec.style.display = "none"; return; }
+  sec.style.display = "";
+  const list = $("pc-payday-list"); if (!list) return;
+  list.innerHTML = "";
+  for (const item of items) {
+    const h = item.hireling;
+    const row = document.createElement("div");
+    row.className = "pc-payday-row";
+    row.innerHTML = `
+      <div>
+        <div class="pc-pay-name">${h.card.name}</div>
+        <div style="font-size:.7rem;color:var(--purple)">${h.card.guild} · ${h.card.wageTier} tier · survived ${h.wageTracker.paydaysSurvived} payday${h.wageTracker.paydaysSurvived === 1 ? "" : "s"}</div>
+      </div>
+      <div class="pc-pay-wage">Wage: ${item.wage}g</div>
+      <div class="pc-pay-btns"></div>
+    `;
+    const btns = row.querySelector(".pc-pay-btns");
+    const payBtn = document.createElement("button");
+    payBtn.className = "btn btn-sm";
+    payBtn.textContent = `Pay ${item.wage}g`;
+    payBtn.disabled = !item.canPay;
+    payBtn.onclick = () => {
+      try { pcGame = E.payWage(pcGame, h.id); pcRender(); }
+      catch (err) { pcFlash(err.message); }
+    };
+    const sellBtn = document.createElement("button");
+    sellBtn.className = "btn btn-sm btn-danger";
+    sellBtn.textContent = `Sell +${item.sellValue}g`;
+    sellBtn.onclick = () => {
+      try { pcGame = E.sellAtPayday(pcGame, h.id); pcRender(); }
+      catch (err) { pcFlash(err.message); }
+    };
+    btns.appendChild(payBtn);
+    btns.appendChild(sellBtn);
+    list.appendChild(row);
+  }
+}
+
+// --- round-end / game-over ------------------------------------------
+function pcRenderRoundEnd(){
+  const sec = $("pc-round-end"); if (!sec) return;
+  if (!pcRoundSummary) { sec.style.display = "none"; return; }
+  sec.style.display = "";
+  const title = $("pc-round-end-title");
+  const body = $("pc-round-end-body");
+  if (pcGame.phase === "game-over") {
+    title.textContent = pcGame.outcome === "win" ? "Victory!" : "Defeat";
+    body.innerHTML = `
+      <p>Round ${pcRoundSummary.round} · final reputation ${pcRoundSummary.finalRep}</p>
+      <p>Total gold: ${pcRoundSummary.finalGold}g · customers won/lost/walked: ${pcRoundSummary.tally.player}/${pcRoundSummary.tally.opponent}/${pcRoundSummary.tally.noSale}</p>
+      ${pcGame.outcome === "win"
+        ? `<div style="margin-top:.75rem">
+             <label>Save to leaderboard: </label>
+             <input id="pc-go-name" type="text" placeholder="Your name" maxlength="20" style="padding:.3rem .5rem;border-radius:4px;border:1px solid var(--gold-dim);background:var(--parch);color:var(--deep)"/>
+             <button class="btn btn-sm" onclick="pcSaveToLeaderboard()">Save</button>
+           </div>`
+        : ""}
+    `;
+    const btn = sec.querySelector("button.btn");
+    if (btn) btn.textContent = "Back to Title";
+  } else {
+    title.textContent = `Round ${pcRoundSummary.round} complete`;
+    const repDeltaLabel = pcRoundSummary.repDelta >= 0 ? `+${pcRoundSummary.repDelta}` : `${pcRoundSummary.repDelta}`;
+    body.innerHTML = `
+      <p>Gold earned: ${pcRoundSummary.goldDelta >= 0 ? "+" : ""}${pcRoundSummary.goldDelta}g · reputation ${repDeltaLabel}</p>
+      <p>Customers won: ${pcRoundSummary.tally.player} · lost: ${pcRoundSummary.tally.opponent} · walked away: ${pcRoundSummary.tally.noSale}</p>
+      <p>Advancing to round ${pcGame.round}${E.paydayDueNow(pcGame) ? " · payday is due" : ""}.</p>
+    `;
+    const btn = sec.querySelector("button.btn");
+    if (btn) btn.textContent = "Continue";
+  }
+}
+
+window.pcSaveToLeaderboard = function(){
+  const input = document.getElementById("pc-go-name");
+  const raw = input && input.value ? input.value.trim() : "";
+  const name = raw || "Anonymous";
+  try {
+    const stored = localStorage.getItem("pc_leaderboard");
+    const list = stored ? JSON.parse(stored) : [];
+    list.push({
+      name,
+      rep: pcGame ? pcGame.reputation : 0,
+      round: pcGame ? pcGame.round : 0,
+      difficulty: pcDifficulty,
+      when: Date.now(),
+    });
+    list.sort((a, b) => b.rep - a.rep || a.when - b.when);
+    localStorage.setItem("pc_leaderboard", JSON.stringify(list.slice(0, 50)));
+    pcFlash(`Saved ${name} to the leaderboard.`);
+    if (input) input.value = "";
+  } catch (e) { pcFlash("Couldn't save: " + e.message); }
+};
+
+// Redirect the legacy saveVictory handler.
+window.saveVictory = window.pcSaveToLeaderboard;
+
+// Populate the leaderboard table whenever that screen is shown.
+const pcOriginalShowScreen = window.showScreen;
+window.showScreen = function(id){
+  pcOriginalShowScreen(id);
+  if (id === "leader-screen") pcRenderLeaderboard();
+};
+
+function pcRenderLeaderboard(){
+  const table = document.getElementById("lb-table");
+  if (!table) return;
+  table.innerHTML = "<tr><th>#</th><th>Name</th><th>Rep</th><th>Round</th><th>Difficulty</th></tr>";
+  let list = [];
+  try {
+    const raw = localStorage.getItem("pc_leaderboard");
+    list = raw ? JSON.parse(raw) : [];
+  } catch (_) { list = []; }
+  list.sort((a, b) => b.rep - a.rep);
+  if (list.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="5" style="text-align:center;padding:1rem;font-style:italic">No runs yet — win a game to claim a spot.</td>';
+    table.appendChild(tr);
+    return;
+  }
+  for (let i = 0; i < Math.min(list.length, 15); i++) {
+    const row = list[i];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i + 1}</td><td>${row.name}</td><td>${row.rep}</td><td>${row.round}</td><td>${row.difficulty || "normal"}</td>`;
+    table.appendChild(tr);
+  }
+}
 window.pcCancelTarget = function(){
   const o = $("pc-target-overlay"); if (o) o.style.display = "none";
   pcTargetPick = null;
