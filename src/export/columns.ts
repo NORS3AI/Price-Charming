@@ -3,7 +3,7 @@
  * in `src/data/cards.csv` exactly so an exported file round-trips
  * through the loader.
  */
-export const EXPORT_COLUMNS = [
+export const EXPORT_COLUMNS = Object.freeze([
   "Guild",
   "Name",
   "Star Rating",
@@ -17,6 +17,6 @@ export const EXPORT_COLUMNS = [
   "Cast Time",
   "Keywords",
   "Ability Text",
-] as const;
+] as const);
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number];

@@ -34,4 +34,10 @@ describe("parseCsv", () => {
     const result = parseCsv("a,b,c\n1,2\n");
     expect(result.rows[0]).toEqual({ a: "1", b: "2", c: "" });
   });
+
+  test("strips a leading UTF-8 BOM so Excel-authored files parse cleanly", () => {
+    const result = parseCsv("\ufeffa,b\n1,2\n");
+    expect(result.headers).toEqual(["a", "b"]);
+    expect(result.rows).toEqual([{ a: "1", b: "2" }]);
+  });
 });

@@ -38,7 +38,10 @@ function tokenize(text: string): string[][] {
   let current: string[] = [];
   let field = "";
   let inQuotes = false;
-  let i = 0;
+  // Strip a leading UTF-8 BOM so CSVs authored by Excel / our own
+  // `downloadCardsExport` (which adds a BOM for Excel rendering) still
+  // round-trip through the loader cleanly.
+  let i = text.charCodeAt(0) === 0xfeff ? 1 : 0;
 
   while (i < text.length) {
     const ch = text[i];

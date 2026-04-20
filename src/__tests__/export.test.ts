@@ -204,4 +204,19 @@ describe("downloadCardsExport", () => {
   test("default filename matches the spec", () => {
     expect(DEFAULT_EXPORT_FILENAME).toBe("price-charming-cards.csv");
   });
+
+  test("a BOM-prefixed export round-trips through parseCards (regression)", () => {
+    // Simulate what a browser download would hand back if re-imported
+    // as-is — includes the UTF-8 BOM we prepend for Excel.
+    const withBom = "\ufeff" + exportAllCardsAsCsv();
+    const reparsed = parseCards(withBom);
+    expect(reparsed.length).toBe(ALL_HIRELINGS.length + ALL_SPELLS.length);
+    expect(reparsed.find((c) => c.name === "Doughboy")).toBeDefined();
+  });
+});
+
+describe("EXPORT_COLUMNS", () => {
+  test("is frozen at runtime for consistency with other spec constants", () => {
+    expect(Object.isFrozen(EXPORT_COLUMNS)).toBe(true);
+  });
 });
