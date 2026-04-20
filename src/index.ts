@@ -149,3 +149,7 @@ export {
   returnToPool,
   takeFromPool,
 } from "./shop/pool";
+export {
+  assignHirelingPotion,
+  assignPotionsToPool,
+} from "./shop/assignment";

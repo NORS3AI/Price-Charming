@@ -1,6 +1,6 @@
 import { ALL_HIRELINGS } from "../cards/hirelings";
 import { ALL_SPELLS } from "../cards/spells";
-import { createWageTracker } from "../economy/wages";
+import { createHirelingInstance } from "../board/hand";
 import { SELL_VALUE } from "../economy/gold";
 import {
   ACTIVE_SLOTS,
@@ -27,7 +27,7 @@ import { HirelingInstance } from "../board/types";
 function mkHireling(name: string, id: string): HirelingInstance {
   const card = ALL_HIRELINGS.find((h) => h.name === name);
   if (!card) throw new Error(`Missing hireling: ${name}`);
-  return { id, card, wageTracker: createWageTracker(card.wageTier) };
+  return createHirelingInstance(card, id);
 }
 
 describe("board layout constants", () => {

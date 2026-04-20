@@ -15,6 +15,7 @@ describe("starter state", () => {
     expect(inst.wageTracker.tier).toBe("None");
     expect(inst.wageTracker.paydaysSurvived).toBe(0);
     expect(inst.id).toBe("starter-dusty-broom");
+    expect(inst.potionType).toBeNull();
   });
 
   test("createDustyBroomInstance rejects any other card", () => {

@@ -1,5 +1,6 @@
 import { HirelingCard, SpellCard } from "../cards/types";
 import { createWageTracker } from "../economy/wages";
+import { PotionTypeId } from "../potions/types";
 import { HandCardInstance, Hand, HirelingInstance, SpellInstance } from "./types";
 
 /** Maximum hand size — both hirelings and spells share these slots. */
@@ -9,13 +10,20 @@ export const MAX_HAND_SIZE = 8;
  * Wrap a HirelingCard in a playable instance: fresh wage tracker derived
  * from the card's wage tier, plus a caller-supplied unique id. Shop
  * purchases and Charmed-merge results should use this rather than
- * hand-rolling the shape.
+ * hand-rolling the shape. `potionType` defaults to null; pool draws
+ * will pass the already-assigned potion through.
  */
 export function createHirelingInstance(
   card: HirelingCard,
-  id: string
+  id: string,
+  potionType: PotionTypeId | null = null
 ): HirelingInstance {
-  return { id, card, wageTracker: createWageTracker(card.wageTier) };
+  return {
+    id,
+    card,
+    wageTracker: createWageTracker(card.wageTier),
+    potionType,
+  };
 }
 
 /** Wrap a SpellCard in a hand-ready instance with the given id. */

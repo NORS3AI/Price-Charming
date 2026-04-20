@@ -1,16 +1,22 @@
 import { HirelingCard, SpellCard } from "../cards/types";
 import { WageTracker } from "../economy/wages";
+import { PotionTypeId } from "../potions/types";
 
 /**
  * A hireling instance on the board or in the hand. Wraps the underlying
- * card template with per-instance state (wage tracker; later: permanent
- * buffs, current potion assignment, charmed flag, etc.).
+ * card template with per-instance state (wage tracker, potion-type
+ * assignment; later: permanent buffs, charmed flag, etc.).
  */
 export interface HirelingInstance {
   /** Unique instance id — distinct from `card.id` so two copies coexist. */
   id: string;
   card: HirelingCard;
   wageTracker: WageTracker;
+  /**
+   * Which active potion type this copy sells. `null` for instances not
+   * yet assigned (e.g. fresh from the factory before potion reshuffle).
+   */
+  potionType: PotionTypeId | null;
 }
 
 /** A spell instance in the hand. Spells are consumed on use. */
