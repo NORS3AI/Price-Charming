@@ -13,6 +13,22 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.1.7-alpha",
+    date: "2026-04-20",
+    title: "Phase 1 — Core Data & Keywords",
+    changes: [
+      "Rebuilt the card type system: Guild, HirelingGuild, WageTier, StarRating, Keyword (with optional xN count), CastTime variants (seconds, passive, random, decreasing, none), PotionSlot, HirelingCard, SpellCard.",
+      "Added a keyword registry (src/cards/keywords.ts) with engine-facing and player-facing definitions for Sabotage, Bewitch, Knockoff, Haggle, Quickcraft, plus the spell-only Charm tag.",
+      "Added a minimal CSV parser (src/cards/csv-parser.ts) that handles quoted fields, embedded commas, escaped quotes, and CRLF line endings.",
+      "Added a loader (src/cards/loader.ts) that turns src/data/cards.csv into typed Card objects, deriving kebab-case ids from card names.",
+      "Cast Time strings parse into structured variants (e.g. '1-8s (random)' → random, '7s (reduces by 1s per cast)' → decreasing, 'Passive' → passive).",
+      "Quickcraft hirelings whose printed stock is blank now resolve to a base stock of 0 per the keyword spec.",
+      "ALL_HIRELINGS (72 - 9 = 63) and ALL_SPELLS (9) are now loaded from the CSV at module import.",
+      "Added Jest coverage: 24 tests across keyword definitions, CSV parser edge cases, and loader output (specific cards, guild distribution, multi-keyword parsing, kebab id quirks like Lady's Maid).",
+      "Note: The CSV occasionally uses Sabotage xN (e.g. The Saboteur 'Sabotage x2'). The parser preserves these counts even though the design spec restricts xN to Knockoff/Haggle/Quickcraft.",
+    ],
+  },
+  {
     version: "V0.1.6-alpha",
     date: "2026-04-20",
     title: "System Reset & Full Game Spec",

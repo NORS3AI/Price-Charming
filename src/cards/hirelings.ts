@@ -1,9 +1,9 @@
+import { loadCards } from "./loader";
 import { HirelingCard } from "./types";
 
-/**
- * Card data has been cleared as part of the Phase 1 reset. The card system
- * is being rebuilt from scratch from `src/data/cards.csv` — guilds, wage
- * tiers, keywords (Sabotage, Bewitch, Knockoff, Haggle, Quickcraft), and
- * ability text will be loaded from that source rather than hand-coded here.
- */
-export const ALL_HIRELINGS: HirelingCard[] = [];
+const cards = loadCards();
+
+/** Every hireling defined in `src/data/cards.csv`. */
+export const ALL_HIRELINGS: readonly HirelingCard[] = cards.filter(
+  (c): c is HirelingCard => c.kind === "hireling"
+);

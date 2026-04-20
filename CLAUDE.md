@@ -22,8 +22,12 @@
 ```
 src/
   cards/
-    types.ts        — Card type system (will be rebuilt to match cards.csv schema)
-    hirelings.ts    — Hireling registry (currently empty; rebuilt in Phase 1 from cards.csv)
+    types.ts        — Card type system (Guild, WageTier, Keyword, CastTime, HirelingCard, SpellCard…)
+    keywords.ts     — Keyword registry with coding + player-facing definitions
+    csv-parser.ts   — Minimal RFC-4180-style CSV parser
+    loader.ts       — Parses cards.csv into typed Card objects
+    hirelings.ts    — ALL_HIRELINGS (loaded from cards.csv)
+    spells.ts       — ALL_SPELLS (loaded from cards.csv)
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)
@@ -33,7 +37,7 @@ docs/
   index.html        — GitHub Pages site
 ```
 
-> The previous `spells/` folder (`transformations.ts`, `upgrades.ts`, `wishing-star.ts`) and the old hireling/spell definitions have been cleared. The card system is being rebuilt from scratch from `src/data/cards.csv`.
+> Phase 1 is complete: `cards/loader.ts` reads `src/data/cards.csv` at module load and produces typed `HirelingCard` / `SpellCard` objects. All five hireling keywords (Sabotage, Bewitch, Knockoff, Haggle, Quickcraft) plus the spell-only Charm tag are defined in `cards/keywords.ts` with both engine-facing and player-facing text.
 
 ## Game Phases
 
