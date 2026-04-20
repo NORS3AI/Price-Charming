@@ -528,6 +528,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .pc-slot-stats-bold.pc-stat-gain{color:#1a6b1a;text-shadow:0 0 4px rgba(80,200,80,.3)}
 .pc-slot-stats-bold.pc-stat-loss{color:#a01515}
 .pc-slot-stats{display:flex;gap:.3rem;font-size:.7rem;justify-content:space-between}
+.pc-slot-buff{margin-top:.2rem;text-align:center;font-size:.7rem;font-weight:bold;color:#1a6b1a;background:rgba(80,200,80,.15);border:1px solid rgba(80,200,80,.4);border-radius:3px;padding:.1rem .25rem;letter-spacing:.02em}
 .pc-slot-keys{font-size:.65rem;color:var(--purple);margin-top:.15rem}
 .pc-slot-cast{font-size:.7rem;color:var(--deep);font-style:italic}
 .pc-slot-castbar{position:relative;height:.85rem;background:rgba(0,0,0,.15);border-radius:3px;overflow:hidden;margin-top:.2rem}
@@ -651,6 +652,9 @@ let pcCustomerSpawnIdx = 0;
 let pcTargetPick = null;           // active target-picker (Lucky / Bottle / Polish)
 let pcRoundSummary = null;         // populated between rounds so the UI can show a recap
 let pcDrag = null;                 // { source: "board"|"hand"|"shop", index: number }
+let pcStarPowerCharges = 0;        // Star Power: next N customer spawns get +1 rep
+let pcStarPowerCastThisShop = false; // Star Power can only be cast once per shop phase
+let pcFreeRefreshPending = false;  // Talent Scout: next refresh is free
 
 // Difficulty knobs — gold per round drives the opponent's board growth,
 // so their builds scale proportionally to the player's own pacing.
@@ -716,6 +720,9 @@ function pcStartGame(diff){
   pcRoundSummary = null;
   pcTargetPick = null;
   pcDrag = null;
+  pcStarPowerCharges = 0;
+  pcStarPowerCastThisShop = false;
+  pcFreeRefreshPending = false;
   if (document.body && document.body.classList) {
     document.body.classList.remove("pc-dragging");
   }
@@ -939,10 +946,20 @@ function pcBuildSlotCard(inst, slotIdx, isBench, opts){
     ? "pc-slot-stats-bold pc-stat-loss"
     : "pc-slot-stats-bold";
 
+  // Surface the permanent buff delta so the player can see how far a
+  // hireling has climbed above its printed stats.
+  const buffBits = [];
+  if (stockDelta > 0) buffBits.push(`+${stockDelta} stock`);
+  if (potencyDelta > 0) buffBits.push(`+${potencyDelta} pot`);
+  const buffBadge = buffBits.length
+    ? `<div class="pc-slot-buff">${buffBits.join(" · ")}</div>`
+    : "";
+
   d.innerHTML = `
     <div class="pc-slot-name">${inst.card.name}${inst.charmed ? " ✨" : ""}</div>
     <div class="pc-slot-potion-label">${potionLabel}</div>
     <div class="${statsClass}">${liveStock}/${livePotency}</div>
+    ${buffBadge}
     ${inst.card.keywords.length ? `<div class="pc-slot-keys">${pcFormatKeywords(inst.card.keywords)}</div>` : ""}
     ${castBar}
     ${castText ? `<div class="pc-slot-cast">${castText}</div>` : ""}
@@ -1365,8 +1382,16 @@ window.pcSellBoard = pcSellBoard;
 function pcRefresh(){
   if (!pcGame || pcGame.phase !== "shop") return;
   try {
-    const res = E.refreshShopWithCost(pcGame.offering, pcGame.pool, pcGame.round, pcRng, pcGame.gold);
-    pcGame = { ...pcGame, offering: res.offering, pool: res.pool, gold: res.gold };
+    if (pcFreeRefreshPending) {
+      // Talent Scout was cast — this refresh costs nothing.
+      const res = E.refreshShop(pcGame.offering, pcGame.pool, pcGame.round, pcRng);
+      pcGame = { ...pcGame, offering: res.offering, pool: res.pool };
+      pcFreeRefreshPending = false;
+      pcFlash("Free refresh (Talent Scout).");
+    } else {
+      const res = E.refreshShopWithCost(pcGame.offering, pcGame.pool, pcGame.round, pcRng, pcGame.gold);
+      pcGame = { ...pcGame, offering: res.offering, pool: res.pool, gold: res.gold };
+    }
     pcAfterChange();
   } catch (err) { pcFlash(err.message); }
 }
@@ -1412,11 +1437,27 @@ function pcPlayHand(handIdx){
     } else if (id === "potion-polish") {
       pcEnterTargetMode(handIdx, "polish", "Pick a board hireling to grant +3 permanent potency.");
       return;
-    } else {
-      // Star Power / Talent Scout and any future non-targeted spells.
+    } else if (id === "star-power") {
+      if (pcStarPowerCastThisShop) {
+        pcFlash("Star Power is only castable once per shop phase.");
+        return;
+      }
       const { hand: nextHand } = E.removeFromHand(pcGame.hand, handIdx);
       pcGame = { ...pcGame, hand: nextHand };
-      pcFlash(`Cast ${card.card.name}.`);
+      pcStarPowerCharges = 3;
+      pcStarPowerCastThisShop = true;
+      pcFlash("Star Power: next 3 customers get +1 reputation star.");
+    } else if (id === "talent-scout") {
+      const { hand: nextHand } = E.removeFromHand(pcGame.hand, handIdx);
+      pcGame = { ...pcGame, hand: nextHand };
+      pcFreeRefreshPending = true;
+      pcFlash("Talent Scout: your next refresh is free.");
+    } else {
+      // Any future non-targeted, non-self-resolving spell. Until
+      // implemented we keep it in hand so the player doesn't burn a
+      // slot by clicking it.
+      pcFlash(`${card.card.name} doesn't have an effect wired up yet.`);
+      return;
     }
     pcAfterChange();
   } catch (err) { pcFlash(err.message); }
@@ -1684,7 +1725,13 @@ function pcBuildCustomerSchedule(){
     const type = pcGame.activePotionTypes[Math.floor(pcRng() * pcGame.activePotionTypes.length)];
     const budget = 2 + Math.floor(pcRng() * 4) + Math.min(2, Math.floor(round / 5));
     const quality = 1 + Math.floor(pcRng() * Math.min(8, round + 1));
-    const stars = minStars + Math.floor(pcRng() * (maxStars - minStars + 1));
+    let stars = minStars + Math.floor(pcRng() * (maxStars - minStars + 1));
+    // Star Power: the next customers after casting get +1 star each,
+    // clamped to the 1-5 range, consumed one charge per customer.
+    if (pcStarPowerCharges > 0) {
+      stars = Math.min(5, stars + 1);
+      pcStarPowerCharges--;
+    }
     const patience = Math.max(5, 9 - Math.floor(round / 4));
     queue.push({
       spawnAt: i * 2.5,
@@ -1798,6 +1845,10 @@ window.pcAdvanceFromRoundEnd = function(){
   pcOpponentPlayRound(pcGame.round);
   pcGame = E.startShopPhase(pcGame, pcRng);
   pcRoundSummary = null;
+  // New shop phase = Star Power is castable again (spec: "only castable
+  // once per shop phase"). Talent Scout's free-refresh flag persists
+  // until actually used.
+  pcStarPowerCastThisShop = false;
   pcRender();
 };
 

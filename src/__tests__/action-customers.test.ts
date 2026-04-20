@@ -283,6 +283,26 @@ describe("sale execution", () => {
     expect(sale!.goldEarned).toBe(2);
   });
 
+  test("Jumping Jack grants +1 permanent stock and +1 permanent potency per sale", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Jumping Jack", "love"); // ability: self +1/+1 on sale
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const jj = s.hirelingStates.get("Jumping Jack-3")!;
+    expect(jj.permanentStockGainedThisRound).toBeGreaterThan(0);
+    expect(jj.permanentPotencyGainedThisRound).toBeGreaterThan(0);
+    const buffLog = s.log.find(
+      (e) => e.kind === "ability-buff" && e.casterId === "Jumping Jack-3"
+    );
+    expect(buffLog).toBeDefined();
+  });
+
   test("no sale happens when no hireling of matching type has stock", () => {
     let b = createBoard();
     // Wrong-type hireling — cannot sell.

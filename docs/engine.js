@@ -1738,12 +1738,29 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     ];
     return { ...state, hirelingStates: states, log };
   }
+  function postSaleSelfBuff(hireling) {
+    switch (hireling.card.id) {
+      case "jumping-jack":
+        return { stock: 1, potency: 1 };
+      default:
+        return void 0;
+    }
+  }
   function applyPostCastAbility(state, caster, atSeconds) {
     switch (caster.card.id) {
       case "sugar-sprinkler":
         return buffActiveAdjacent(state, caster, 0, 1, atSeconds);
       case "oven-master":
         return buffActiveAllies(state, caster, 0, 2, atSeconds);
+      case "lord-chamberlain":
+        return buffActiveAllies(
+          state,
+          caster,
+          1,
+          1,
+          atSeconds,
+          (h) => h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
+        );
       default:
         return state;
     }
@@ -1767,10 +1784,11 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return working;
   }
-  function buffActiveAllies(state, caster, stock, potency, atSeconds) {
+  function buffActiveAllies(state, caster, stock, potency, atSeconds, filter) {
     let working = state;
     for (const h of activeHirelings(state.board)) {
       if (h.id === caster.id) continue;
+      if (filter && !filter(h)) continue;
       working = buffHireling(working, caster.id, h.id, stock, potency, atSeconds);
     }
     return working;
@@ -2042,6 +2060,22 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         kind: "knockoff",
         instanceId: hireling.id,
         stockGained: knockoff,
+        atSeconds: state.elapsedSeconds
+      });
+    }
+    const selfBuff = postSaleSelfBuff(hireling);
+    if (selfBuff && (selfBuff.stock !== 0 || selfBuff.potency !== 0)) {
+      nextHs = {
+        ...nextHs,
+        permanentStockGainedThisRound: nextHs.permanentStockGainedThisRound + selfBuff.stock,
+        permanentPotencyGainedThisRound: nextHs.permanentPotencyGainedThisRound + selfBuff.potency
+      };
+      log.push({
+        kind: "ability-buff",
+        casterId: hireling.id,
+        targetId: hireling.id,
+        stockGained: selfBuff.stock,
+        potencyGained: selfBuff.potency,
         atSeconds: state.elapsedSeconds
       });
     }

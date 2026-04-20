@@ -258,6 +258,25 @@ function buffHireling(
 }
 
 /**
+ * Per-card on-sale self-buff registry. Fires inside executeSale after
+ * Knockoff. Returns { stock, potency } deltas applied to the seller's
+ * own permanent-gain counters, or undefined for no effect.
+ *
+ *   - jumping-jack: "After this sells, gain +1 permanent stock and
+ *                    +1 permanent potency."
+ */
+function postSaleSelfBuff(
+  hireling: HirelingInstance
+): { stock: number; potency: number } | undefined {
+  switch (hireling.card.id) {
+    case "jumping-jack":
+      return { stock: 1, potency: 1 };
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Per-card on-cast ability hook. Fires AFTER the keyword pass (so
  * Quickcraft's temp stock is already recorded). Returns the updated
  * state. The registry below maps card.id → (state, caster, atSeconds)
@@ -275,9 +294,18 @@ function applyPostCastAbility(
 ): ActionState {
   switch (caster.card.id) {
     case "sugar-sprinkler":
+      // "Adjacent allies gain +1 potency (permanent)."
       return buffActiveAdjacent(state, caster, 0, 1, atSeconds);
     case "oven-master":
+      // "Quickcraft x5. Allies gain +2 potency (permanent)."
       return buffActiveAllies(state, caster, 0, 2, atSeconds);
+    case "lord-chamberlain":
+      // "All Nobles Guild allies gain +1 permanent stock and +1
+      //  permanent potency. This effect doubles during the action round
+      //  immediately following payday." (Payday-double not implemented.)
+      return buffActiveAllies(state, caster, 1, 1, atSeconds, (h) =>
+        h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
+      );
     default:
       return state;
   }
@@ -313,17 +341,22 @@ function buffActiveAdjacent(
   return working;
 }
 
-/** Buff every active-slot ally (all active hirelings except the caster). */
+/**
+ * Buff every active-slot ally (caster excluded), optionally filtered
+ * (e.g. Lord Chamberlain buffs only Nobles Guild allies).
+ */
 function buffActiveAllies(
   state: ActionState,
   caster: HirelingInstance,
   stock: number,
   potency: number,
-  atSeconds: number
+  atSeconds: number,
+  filter?: (h: HirelingInstance) => boolean
 ): ActionState {
   let working = state;
   for (const h of activeHirelings(state.board)) {
     if (h.id === caster.id) continue;
+    if (filter && !filter(h)) continue;
     working = buffHireling(working, caster.id, h.id, stock, potency, atSeconds);
   }
   return working;
@@ -731,6 +764,28 @@ function executeSale(
       kind: "knockoff",
       instanceId: hireling.id,
       stockGained: knockoff,
+      atSeconds: state.elapsedSeconds,
+    });
+  }
+
+  // Per-card on-sale ability hook (e.g. Jumping Jack: self +1 stock
+  // +1 potency per sale). Runs AFTER Knockoff so both can stack on
+  // a single sale if the card happens to have both triggers.
+  const selfBuff = postSaleSelfBuff(hireling);
+  if (selfBuff && (selfBuff.stock !== 0 || selfBuff.potency !== 0)) {
+    nextHs = {
+      ...nextHs,
+      permanentStockGainedThisRound:
+        nextHs.permanentStockGainedThisRound + selfBuff.stock,
+      permanentPotencyGainedThisRound:
+        nextHs.permanentPotencyGainedThisRound + selfBuff.potency,
+    };
+    log.push({
+      kind: "ability-buff",
+      casterId: hireling.id,
+      targetId: hireling.id,
+      stockGained: selfBuff.stock,
+      potencyGained: selfBuff.potency,
       atSeconds: state.elapsedSeconds,
     });
   }

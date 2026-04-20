@@ -219,6 +219,21 @@ describe("tick", () => {
     expect(selfHs.permanentPotencyGainedThisRound).toBe(0);
   });
 
+  test("Lord Chamberlain only buffs Nobles Guild allies on cast", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "The Page");        // Nobles Guild
+    b = placeAt(b, 3, "Lord Chamberlain"); // 7s cast
+    b = placeAt(b, 5, "Doughboy");         // Sugar Guild — should NOT be buffed
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 8, mulberry32(1)); // one cast at 7s
+    const pageHs = s.hirelingStates.get("The Page-1")!;
+    const doughboyHs = s.hirelingStates.get("Doughboy-5")!;
+    expect(pageHs.permanentStockGainedThisRound).toBe(1);
+    expect(pageHs.permanentPotencyGainedThisRound).toBe(1);
+    expect(doughboyHs.permanentStockGainedThisRound).toBe(0);
+    expect(doughboyHs.permanentPotencyGainedThisRound).toBe(0);
+  });
+
   test("determinism under a seeded RNG for random cast times", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Royal Advisor"); // 1-8s random
