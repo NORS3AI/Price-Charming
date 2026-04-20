@@ -156,6 +156,31 @@ describe("mergeCharmableTriple", () => {
   });
 });
 
+describe("hand-overflow safety (regression)", () => {
+  test("throws cleanly without mutating the board when the hand would overflow", () => {
+    // All 3 copies on the board; hand already at MAX_HAND_SIZE (8).
+    let b = createBoard();
+    b = placeHireling(b, 1, inst("Doughboy", "b1", "love"));
+    b = placeHireling(b, 3, inst("Doughboy", "b2", "love"));
+    b = placeHireling(b, 5, inst("Doughboy", "b3", "love"));
+
+    let h = createHand();
+    for (let i = 0; i < 8; i++) {
+      // Filler unrelated hirelings so the hand is full.
+      h = addToHand(h, inst("Teacups" in {} ? "Doughboy" : "Doughboy", `filler-${i}`, "luck"));
+    }
+
+    const triple = findCharmableTriple(b, h)!;
+    const beforeBoardIds = b.slots.map((s) => s?.id ?? null);
+    expect(() =>
+      mergeCharmableTriple(triple, { board: b, hand: h, pool: createInitialPool() }, "ch-1")
+    ).toThrow(/overflow the hand/);
+
+    // Board is untouched — we caught the overflow BEFORE removing anything.
+    expect(b.slots.map((s) => s?.id ?? null)).toEqual(beforeBoardIds);
+  });
+});
+
 describe("mergeIfCharmable", () => {
   test("returns charmed: null when no triple exists", () => {
     const result = mergeIfCharmable({

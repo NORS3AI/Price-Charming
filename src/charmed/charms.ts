@@ -57,13 +57,16 @@ export const LUCKY_POTENCY_BONUS = 3;
  * Throws if the hand is full when the Charm is granted (the play
  * itself frees one slot, so this only matters in pathological cases).
  */
+let defaultCharmIdCounter = 0;
+
 export function playCharmed(
   board: Board,
   hand: Hand,
   handIndex: number,
   slot: number,
   rng: RNG,
-  charmIdFor: (cardId: string) => string = (id) => `charm-${id}-${Date.now()}`
+  charmIdFor: (cardId: string) => string = (id) =>
+    `charm-${id}-${Date.now()}-${defaultCharmIdCounter++}`
 ): { board: Board; hand: Hand; grantedCharm: SpellCard | null } {
   const card = hand.cards[handIndex];
   if (!card || !isHireling(card)) {

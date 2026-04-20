@@ -1,7 +1,12 @@
-import { allHirelings, sellHirelingFromBoard } from "../board/board";
+import { sellHirelingFromBoard } from "../board/board";
 import { createHirelingInstance } from "../board/hand";
 import { Board, Hand, HirelingInstance } from "../board/types";
-import { addToHand, isHireling, removeFromHand } from "../board/hand";
+import {
+  MAX_HAND_SIZE,
+  addToHand,
+  isHireling,
+  removeFromHand,
+} from "../board/hand";
 import { ShopPool, removeFromPoolWhere } from "../shop/pool";
 
 /** Number of identical copies needed to trigger a Charmed merge. */
@@ -114,10 +119,11 @@ export function buildCharmedInstance(
 /**
  * Apply a Charmed merge: remove the three consumed copies from the
  * board / hand, drop their pool counterparts, and place the new Charmed
- * instance directly into the hand. Throws if the hand is full — caller
- * should ensure space before triggering (per spec the merge is "instant"
- * when the third copy is acquired, but a full hand at acquisition time
- * is still a real edge case).
+ * instance directly into the hand.
+ *
+ * Throws if the merge would overflow the hand — e.g. when all 3 copies
+ * are on the board and the hand is already full. The caller should
+ * free a hand slot (or sell something) and retry.
  */
 export function mergeCharmableTriple(
   triple: CharmableTriple,
@@ -134,6 +140,16 @@ export function mergeCharmableTriple(
     .filter((m) => m.source.kind === "board")
     .map((m) => m.source as { kind: "board"; slot: number })
     .sort((x, y) => y.slot - x.slot);
+
+  // Pre-check hand overflow so we never half-mutate the state: after
+  // removing hand sources and adding the Charmed, the hand must fit.
+  const projectedHandSize =
+    state.hand.cards.length - handSources.length + 1;
+  if (projectedHandSize > MAX_HAND_SIZE) {
+    throw new Error(
+      `Charmed merge would overflow the hand (projected ${projectedHandSize} > max ${MAX_HAND_SIZE}). Free a hand slot and retry.`
+    );
+  }
 
   let hand = state.hand;
   for (const src of handSources) {
@@ -159,15 +175,16 @@ export function mergeCharmableTriple(
   return { board, hand, pool, charmed };
 }
 
+let defaultCharmedIdCounter = 0;
+
 /** Convenience wrapper: detect a triple and merge it in one call. */
 export function mergeIfCharmable(
   state: { board: Board; hand: Hand; pool: ShopPool },
-  charmedIdFor: (cardId: string) => string = (id) => `charmed-${id}-${Date.now()}`
+  charmedIdFor: (cardId: string) => string = (id) =>
+    `charmed-${id}-${Date.now()}-${defaultCharmedIdCounter++}`
 ): { board: Board; hand: Hand; pool: ShopPool; charmed: HirelingInstance | null } {
   const triple = findCharmableTriple(state.board, state.hand);
   if (!triple) return { ...state, charmed: null };
   return mergeCharmableTriple(triple, state, charmedIdFor(triple.cardId));
 }
 
-/** Used by Phase 9B's grant logic. Re-export for convenience. */
-export { allHirelings };
