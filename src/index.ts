@@ -301,3 +301,14 @@ export {
 } from "./game/types";
 export type { CreateGameOptions } from "./game/state";
 export { clampReputation, createGame } from "./game/state";
+export type {
+  BoardPaydayLineItem,
+  StartShopPhaseOptions,
+} from "./game/shop-phase";
+export {
+  paydayDueNow,
+  paydayLineItems,
+  payWage,
+  sellAtPayday,
+  startShopPhase,
+} from "./game/shop-phase";
