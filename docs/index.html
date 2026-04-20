@@ -1692,9 +1692,11 @@ function pcStartBattle(){
 }
 window.pcStartBattle = pcStartBattle;
 
-// Safety cap: sum(patience) + spawn spread gives a comfortable bound —
-// 60 sim-seconds is enough even for the Insane 8-customer schedule.
-const PC_MAX_BATTLE_SECONDS = 60;
+// Safety cap. Customer count now scales with round (base + round − 1)
+// so round-15 Insane has 22 customers, spawning every 2.5s for ~55s
+// before patience runs out. Pad to 120s so late rounds never get
+// force-resolved by the timer.
+const PC_MAX_BATTLE_SECONDS = 120;
 
 function pcBattleTick(){
   if (!pcGame || pcGame.phase !== "action" || !pcGame.action) {
