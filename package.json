@@ -4,7 +4,7 @@
   "description": "A fairy-tale themed auto-battler card game",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-data.js",
     "test": "jest --verbose",
     "gen-notes": "node scripts/gen-patch-notes.js"
   },

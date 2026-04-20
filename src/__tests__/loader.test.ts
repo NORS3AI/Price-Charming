@@ -1,4 +1,4 @@
-import { loadCards } from "../cards/loader";
+import { getAllCards, loadCards, parseCards } from "../cards/loader";
 import { HirelingCard, SpellCard } from "../cards/types";
 
 const cards = loadCards();
@@ -22,6 +22,35 @@ function findSpell(name: string): SpellCard {
 describe("loadCards()", () => {
   test("loads all 72 cards from cards.csv", () => {
     expect(cards.length).toBe(72);
+  });
+
+  test("every hireling has a valid structured cast time and at least one potion", () => {
+    const validKinds = new Set([
+      "seconds",
+      "passive",
+      "random",
+      "decreasing",
+    ]);
+    for (const h of hirelings) {
+      expect(validKinds.has(h.castTime.kind)).toBe(true);
+      expect(h.potions.length).toBeGreaterThanOrEqual(1);
+      expect(h.potions.length).toBeLessThanOrEqual(2);
+      for (const p of h.potions) {
+        expect(Number.isInteger(p.stock)).toBe(true);
+        expect(p.stock).toBeGreaterThanOrEqual(0);
+        expect(Number.isInteger(p.potency)).toBe(true);
+        expect(p.potency).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test("every hireling's wage, round, and pool are sensible", () => {
+    for (const h of hirelings) {
+      expect(["Low", "Medium", "High", "None"]).toContain(h.wageTier);
+      expect(h.roundAvailable).toBeGreaterThanOrEqual(1);
+      expect(h.roundAvailable).toBeLessThanOrEqual(15);
+      expect(h.poolCount).toBeGreaterThanOrEqual(1);
+    }
   });
 
   test("guild distribution matches the CSV", () => {
@@ -117,6 +146,65 @@ describe("hireling parsing", () => {
   test("Lady's Maid id strips the apostrophe", () => {
     const c = findHireling("Lady's Maid");
     expect(c.id).toBe("ladys-maid");
+  });
+
+  test("The Saboteur preserves Sabotage x2 count from the CSV", () => {
+    const c = findHireling("The Saboteur");
+    expect(c.keywords).toEqual([
+      { name: "Sabotage", count: 2 },
+      { name: "Knockoff", count: 1 },
+    ]);
+  });
+
+  test("passive hirelings carry no keywords", () => {
+    const passives = hirelings.filter((h) => h.castTime.kind === "passive");
+    expect(passives.length).toBeGreaterThan(0);
+    for (const h of passives) {
+      expect(h.keywords).toEqual([]);
+    }
+  });
+});
+
+describe("parseCards() error cases", () => {
+  const header =
+    "Guild,Name,Star Rating,Wage Tier,Round Available,Pool Count," +
+    "Potion 1 Stock,Potion 1 Potency,Potion 2 Stock,Potion 2 Potency," +
+    "Cast Time,Keywords,Ability Text\n";
+
+  test("rejects unknown Guild", () => {
+    expect(() =>
+      parseCards(header + "Bogus,Thing,,Low,1,4,1,1,,,5s,,text\n")
+    ).toThrow(/unknown Guild/);
+  });
+
+  test("rejects hireling with N/A cast time", () => {
+    expect(() =>
+      parseCards(header + "No Guild,NoCast,,Low,1,4,1,1,,,N/A,,text\n")
+    ).toThrow(/Cast Time cannot be empty or N\/A/);
+  });
+
+  test("rejects hireling with no potion potency", () => {
+    expect(() =>
+      parseCards(header + "No Guild,Empty,,Low,1,4,,,,,5s,,text\n")
+    ).toThrow(/no potion potency/);
+  });
+
+  test("rejects unknown keyword", () => {
+    expect(() =>
+      parseCards(header + "No Guild,Mystery,,Low,1,4,1,1,,,5s,Nonsense,text\n")
+    ).toThrow(/unknown keyword/);
+  });
+});
+
+describe("getAllCards()", () => {
+  test("caches the card list between calls", () => {
+    const a = getAllCards();
+    const b = getAllCards();
+    expect(a).toBe(b);
+  });
+
+  test("matches loadCards() content", () => {
+    expect(getAllCards().length).toBe(loadCards().length);
   });
 });
 

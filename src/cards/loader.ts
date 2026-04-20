@@ -43,7 +43,7 @@ const KEYWORD_NAMES: ReadonlySet<KeywordName> = new Set([
   "Charm",
 ]);
 
-/** Default location of the master CSV, relative to the repo root. */
+/** Default location of the master CSV, relative to the compiled module. */
 export const DEFAULT_CARDS_CSV_PATH = path.resolve(
   __dirname,
   "..",
@@ -61,6 +61,21 @@ export function parseCards(csv: string): Card[] {
 export function loadCards(filepath: string = DEFAULT_CARDS_CSV_PATH): Card[] {
   const csv = fs.readFileSync(filepath, "utf8");
   return parseCards(csv);
+}
+
+let cachedCards: readonly Card[] | null = null;
+
+/**
+ * Return the shared, cached card list loaded from the default CSV. The first
+ * call reads and parses the CSV; subsequent calls return the same array.
+ * `hirelings.ts` and `spells.ts` both go through this so startup only does
+ * one file read.
+ */
+export function getAllCards(): readonly Card[] {
+  if (cachedCards === null) {
+    cachedCards = Object.freeze(loadCards());
+  }
+  return cachedCards;
 }
 
 function parseRow(row: Record<string, string>, lineNumber: number): Card {
@@ -233,7 +248,11 @@ function parsePotion(
 
 function parseCastTime(raw: string | undefined, lineNumber: number): CastTime {
   const value = (raw ?? "").trim();
-  if (value === "" || value.toUpperCase() === "N/A") return { kind: "none" };
+  if (value === "" || value.toUpperCase() === "N/A") {
+    throw new Error(
+      `Line ${lineNumber}: hireling Cast Time cannot be empty or N/A.`
+    );
+  }
   if (/^passive$/i.test(value)) return { kind: "passive" };
 
   const range = value.match(/^(\d+)\s*-\s*(\d+)\s*s\s*\(random\)\s*$/i);

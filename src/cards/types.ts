@@ -42,14 +42,12 @@ export interface Keyword {
  *   - "Passive" → passive
  *   - "1-8s (random)" → random
  *   - "7s (reduces by 1s per cast)" → decreasing
- *   - "N/A" (spells) → none
  */
 export type CastTime =
   | { kind: "seconds"; value: number }
   | { kind: "passive" }
   | { kind: "random"; min: number; max: number }
-  | { kind: "decreasing"; start: number; decrementPerCast: number }
-  | { kind: "none" };
+  | { kind: "decreasing"; start: number; decrementPerCast: number };
 
 /** A potion slot carried by a hireling. */
 export interface PotionSlot {
