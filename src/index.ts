@@ -37,3 +37,35 @@ export {
 // Card registries (loaded from src/data/cards.csv)
 export { ALL_HIRELINGS } from "./cards/hirelings";
 export { ALL_SPELLS } from "./cards/spells";
+
+// Economy — gold, wages, and payday schedule
+export {
+  STARTING_GOLD,
+  COST_HIRELING,
+  COST_SPELL,
+  COST_REFRESH,
+  SELL_VALUE,
+  canAfford,
+} from "./economy/gold";
+export {
+  MAX_PAYDAYS,
+  WAGE_SCHEDULE,
+  createWageTracker,
+  wageFor,
+  currentWageDemand,
+  survivePayday,
+  isExemptFromPayday,
+} from "./economy/wages";
+export type { WageTracker } from "./economy/wages";
+export {
+  PAYDAY_ROUNDS,
+  GLOW_ROUNDS,
+  isPaydayRound,
+  isGlowRound,
+  paydayIndex,
+  nextPaydayRound,
+  roundsUntilPayday,
+  buildPaydayLineItems,
+  totalPaydays,
+} from "./economy/payday";
+export type { PaydayLineItem } from "./economy/payday";

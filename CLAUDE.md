@@ -28,6 +28,10 @@ src/
     loader.ts       — Parses cards.csv into typed Card objects
     hirelings.ts    — ALL_HIRELINGS (loaded from cards.csv)
     spells.ts       — ALL_SPELLS (loaded from cards.csv)
+  economy/
+    gold.ts         — Gold costs (starting, hireling, spell, refresh, sell)
+    wages.ts        — Wage tier table + per-hireling WageTracker
+    payday.ts       — Payday schedule (rounds 3/6/9/12/15) and line-item builder
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

@@ -1,5 +1,19 @@
 [
   {
+    "version": "V0.1.8-alpha",
+    "date": "2026-04-20",
+    "title": "Phase 2 — Economy, Wages, and Payday",
+    "changes": [
+      "Added src/economy/gold.ts: STARTING_GOLD=5, COST_HIRELING=4, COST_SPELL=2, COST_REFRESH=1, SELL_VALUE=1, plus canAfford().",
+      "Added src/economy/wages.ts: per-tier wage table (Low 2→10, Medium 4→12, High 6→14, None 0) and a WageTracker type for per-hireling payday escalation.",
+      "wageFor(), currentWageDemand(), survivePayday(), createWageTracker(), and isExemptFromPayday() handle the +2g-per-payday escalation and the Dusty Broom exemption.",
+      "Added src/economy/payday.ts: PAYDAY_ROUNDS [3,6,9,12,15], GLOW_ROUNDS [2,5,8,11,14], and helpers paydayIndex, nextPaydayRound, roundsUntilPayday, isPaydayRound, isGlowRound.",
+      "buildPaydayLineItems(gold, trackers) returns one item per non-exempt hireling with wage, canPay, and sellValue so the payday UI can present Pay/Sell per hireling with the affordability flag driving the greyed-out Pay button.",
+      "All new symbols exported from src/index.ts.",
+      "31 new Jest tests across gold constants, wage schedule and tracker escalation, payday schedule helpers, and line-item construction. 65 tests total; compiled dist verified."
+    ]
+  },
+  {
     "version": "V0.1.7-alpha",
     "date": "2026-04-20",
     "title": "Phase 1 — Core Data & Keywords",
