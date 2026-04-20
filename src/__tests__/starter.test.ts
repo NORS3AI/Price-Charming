@@ -3,8 +3,11 @@ import { STARTER_SLOT } from "../board/board";
 import { createHand, handSize } from "../board/hand";
 import {
   createDustyBroomInstance,
+  createStarterBoard,
   createStarterState,
 } from "../board/starter";
+import { mulberry32 } from "../potions/rng";
+import { PotionTypeId } from "../potions/types";
 
 const dustyBroom = ALL_HIRELINGS.find((h) => h.name === "Dusty Broom")!;
 
@@ -32,5 +35,29 @@ describe("starter state", () => {
     }
     expect(handSize(hand)).toBe(0);
     expect(hand.cards).toEqual(createHand().cards);
+  });
+
+  test("createStarterBoard also binds a random active potion to the broom", () => {
+    const active: readonly PotionTypeId[] = [
+      "love",
+      "luck",
+      "flutterfix",
+      "dragons-breath",
+      "goblins-greed",
+    ];
+    const { board, hand, broom } = createStarterBoard(
+      dustyBroom,
+      active,
+      mulberry32(1)
+    );
+    expect(active).toContain(broom.potionType!);
+    expect(board.slots[STARTER_SLOT]).toBe(broom);
+    expect(handSize(hand)).toBe(0);
+  });
+
+  test("createStarterBoard refuses an empty active-type list", () => {
+    expect(() =>
+      createStarterBoard(dustyBroom, [], mulberry32(1))
+    ).toThrow();
   });
 });

@@ -1,4 +1,6 @@
 import { mulberry32 } from "../potions/rng";
+import { PotionTypeId } from "../potions/types";
+import { assignPotionsToPool } from "../shop/assignment";
 import {
   DEFAULT_SHOP_SIZE,
   createEmptyOffering,
@@ -9,7 +11,15 @@ import {
   rollShop,
   takeFromOffering,
 } from "../shop/offering";
-import { createInitialPool, poolSize } from "../shop/pool";
+import { createInitialPool, poolHirelings, poolSize } from "../shop/pool";
+
+const ACTIVE: readonly PotionTypeId[] = [
+  "love",
+  "luck",
+  "flutterfix",
+  "dragons-breath",
+  "goblins-greed",
+];
 
 describe("createEmptyOffering", () => {
   test("has the requested number of null slots", () => {
@@ -98,6 +108,21 @@ describe("rollShop", () => {
       expect(ids).not.toContain("spring-cleaning");
     }
   });
+
+  test("spells do not always land in slot 0 — positions are shuffled", () => {
+    // With spellChance=1 every roll has a spell; its slot should vary by seed.
+    const positions = new Set<number>();
+    for (let seed = 0; seed < 30; seed++) {
+      const res = rollShop(createInitialPool(), 7, mulberry32(seed), {
+        spellChance: 1,
+      });
+      const spellIdx = res.offering.slots.findIndex(
+        (s) => s !== null && s.card.kind === "spell"
+      );
+      positions.add(spellIdx);
+    }
+    expect(positions.size).toBeGreaterThan(1);
+  });
 });
 
 describe("refreshShop", () => {
@@ -140,6 +165,37 @@ describe("refreshShop", () => {
     expect(a.offering.slots.map((s) => s?.id ?? null)).toEqual(
       b.offering.slots.map((s) => s?.id ?? null)
     );
+  });
+});
+
+describe("refresh preserves potion-type assignments (spec: only shop-phase advance reshuffles)", () => {
+  test("hireling potion types are stable across a refresh", () => {
+    const assigned = assignPotionsToPool(
+      createInitialPool(),
+      ACTIVE,
+      mulberry32(1)
+    );
+    const snapshot = new Map(
+      poolHirelings(assigned).map((i) => [i.id, i.potionType])
+    );
+
+    const rolled = rollShop(assigned, 3, mulberry32(2));
+    const refreshed = refreshShop(
+      rolled.offering,
+      rolled.pool,
+      3,
+      mulberry32(3)
+    );
+
+    // Every hireling still in the pool or in the new offering carries its
+    // original potion type.
+    const currentHirelings = [
+      ...poolHirelings(refreshed.pool),
+      ...offeringHirelings(refreshed.offering),
+    ];
+    for (const h of currentHirelings) {
+      expect(h.potionType).toBe(snapshot.get(h.id));
+    }
   });
 });
 

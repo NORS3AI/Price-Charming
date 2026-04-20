@@ -110,6 +110,7 @@ export {
 } from "./board/board";
 export {
   createDustyBroomInstance,
+  createStarterBoard,
   createStarterState,
 } from "./board/starter";
 

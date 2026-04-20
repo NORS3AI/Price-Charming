@@ -1,4 +1,4 @@
-import { RNG, shuffle } from "../potions/rng";
+import { pick, RNG, shuffle } from "../potions/rng";
 import {
   PoolInstance,
   ShopPool,
@@ -15,7 +15,7 @@ export const DEFAULT_SHOP_SIZE = 5;
 /**
  * Probability that a shop roll includes a spell slot, subject to the
  * "at most 1 spell per refresh" rule. When no spells are eligible this
- * round, the spell slot always falls back to a hireling.
+ * round, no spell slot is included and every slot is a hireling.
  */
 export const DEFAULT_SPELL_CHANCE = 0.25;
 
@@ -77,21 +77,22 @@ export function rollShop(
   const hirelingTarget = includeSpell ? size - 1 : size;
 
   const picked: PoolInstance[] = [];
-  if (includeSpell) {
-    const shuffled = shuffle(spells, rng);
-    picked.push(shuffled[0]);
-  }
+  if (includeSpell) picked.push(pick(spells, rng));
   picked.push(...shuffle(hirelings, rng).slice(0, hirelingTarget));
 
+  // Shuffle picks across slot positions so the spell doesn't always land
+  // in slot 0 (which would leak "no spell this refresh" to the player).
+  const arranged = shuffle(picked, rng);
+
   let nextPool = pool;
-  for (const inst of picked) {
+  for (const inst of arranged) {
     nextPool = takeFromPool(nextPool, inst.id).pool;
   }
 
   const slots: (PoolInstance | null)[] = Array<PoolInstance | null>(size).fill(
     null
   );
-  for (let i = 0; i < picked.length; i++) slots[i] = picked[i];
+  for (let i = 0; i < arranged.length; i++) slots[i] = arranged[i];
 
   return { offering: { slots }, pool: nextPool };
 }

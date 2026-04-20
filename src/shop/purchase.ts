@@ -52,11 +52,12 @@ export function buyHirelingFromShop(
   if (!peek || peek.card.kind !== "hireling") {
     throw new Error(`Shop slot ${shopSlot} is not a hireling.`);
   }
+  // peek.card is now narrowed to HirelingCard. taken is the same instance.
+  const hirelingCard = peek.card;
 
   const { offering: nextOffering, taken } = takeFromOffering(offering, shopSlot);
   const hirelingInstance = createHirelingInstance(
-    // Narrowed by the peek above.
-    taken.card as Parameters<typeof createHirelingInstance>[0],
+    hirelingCard,
     taken.id,
     taken.potionType
   );
@@ -89,12 +90,10 @@ export function buySpellFromShop(
   if (!peek || peek.card.kind !== "spell") {
     throw new Error(`Shop slot ${shopSlot} is not a spell.`);
   }
+  const spellCard = peek.card;
 
   const { offering: nextOffering, taken } = takeFromOffering(offering, shopSlot);
-  const spellInstance = createSpellInstance(
-    taken.card as Parameters<typeof createSpellInstance>[0],
-    taken.id
-  );
+  const spellInstance = createSpellInstance(spellCard, taken.id);
   return {
     offering: nextOffering,
     hand: addToHand(hand, spellInstance),
