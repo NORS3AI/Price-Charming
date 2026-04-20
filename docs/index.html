@@ -1248,6 +1248,12 @@ function pcRenderLog(){
       case "cast": return `${t} cast ${e.instanceId} (#${e.castNumber})`;
       case "quickcraft": return `${t} quickcraft on ${e.instanceId} +${e.stockAdded}`;
       case "knockoff": return `${t} knockoff ${e.instanceId} +${e.stockGained}`;
+      case "ability-buff": {
+        const bits = [];
+        if (e.stockGained) bits.push(`+${e.stockGained} stock`);
+        if (e.potencyGained) bits.push(`+${e.potencyGained} potency`);
+        return `${t} ${e.casterId} → ${e.targetId} (${bits.join(", ")})`;
+      }
       case "stopped": return `${t} stopped ${e.instanceId}`;
       default: return `${t} ${e.kind}`;
     }

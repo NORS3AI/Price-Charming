@@ -1714,6 +1714,67 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   function findInstance(board, instanceId) {
     return activeHirelings(board).find((h) => h.id === instanceId);
   }
+  function buffHireling(state, casterId, targetId, stockGained, potencyGained, atSeconds) {
+    if (stockGained === 0 && potencyGained === 0) return state;
+    const hs = state.hirelingStates.get(targetId);
+    if (!hs) return state;
+    const next = {
+      ...hs,
+      permanentStockGainedThisRound: hs.permanentStockGainedThisRound + stockGained,
+      permanentPotencyGainedThisRound: hs.permanentPotencyGainedThisRound + potencyGained
+    };
+    const states = new Map(state.hirelingStates);
+    states.set(targetId, next);
+    const log = [
+      ...state.log,
+      {
+        kind: "ability-buff",
+        casterId,
+        targetId,
+        stockGained,
+        potencyGained,
+        atSeconds
+      }
+    ];
+    return { ...state, hirelingStates: states, log };
+  }
+  function applyPostCastAbility(state, caster, atSeconds) {
+    switch (caster.card.id) {
+      case "sugar-sprinkler":
+        return buffActiveAdjacent(state, caster, 0, 1, atSeconds);
+      case "oven-master":
+        return buffActiveAllies(state, caster, 0, 2, atSeconds);
+      default:
+        return state;
+    }
+  }
+  function buffActiveAdjacent(state, caster, stock, potency, atSeconds) {
+    const casterSlot = state.board.slots.findIndex((s) => (s == null ? void 0 : s.id) === caster.id);
+    if (casterSlot === -1) return state;
+    let working = state;
+    for (const neighborSlot of [casterSlot - 1, casterSlot + 1]) {
+      if (neighborSlot < 0 || neighborSlot >= state.board.slots.length) continue;
+      const neighbor = state.board.slots[neighborSlot];
+      if (!neighbor) continue;
+      working = buffHireling(
+        working,
+        caster.id,
+        neighbor.id,
+        stock,
+        potency,
+        atSeconds
+      );
+    }
+    return working;
+  }
+  function buffActiveAllies(state, caster, stock, potency, atSeconds) {
+    let working = state;
+    for (const h of activeHirelings(state.board)) {
+      if (h.id === caster.id) continue;
+      working = buffHireling(working, caster.id, h.id, stock, potency, atSeconds);
+    }
+    return working;
+  }
   function fireCast(state, instanceId, atSeconds, rng) {
     const prev = state.hirelingStates.get(instanceId);
     if (!prev) return state;
@@ -1758,11 +1819,12 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     };
     const hirelingStates = new Map(state.hirelingStates);
     hirelingStates.set(instanceId, nextHireling);
-    return {
+    const withCasterState = {
       ...state,
       hirelingStates,
       log
     };
+    return applyPostCastAbility(withCasterState, inst, atSeconds);
   }
   function finalizeRound(state) {
     if (state.customers.every((c) => c.resolvedFor !== null)) return state;

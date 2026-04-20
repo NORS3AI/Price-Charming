@@ -218,11 +218,124 @@ function findInstance(
 }
 
 /**
+ * Apply a permanent buff (stock / potency) to a target hireling's
+ * per-round gain fields, appending an `ability-buff` log entry. The
+ * buff carries into the HirelingInstance's permanent bonuses when
+ * endRound runs promotePermanentBuffs.
+ */
+function buffHireling(
+  state: ActionState,
+  casterId: string,
+  targetId: string,
+  stockGained: number,
+  potencyGained: number,
+  atSeconds: number
+): ActionState {
+  if (stockGained === 0 && potencyGained === 0) return state;
+  const hs = state.hirelingStates.get(targetId);
+  if (!hs) return state;
+  const next: HirelingActionState = {
+    ...hs,
+    permanentStockGainedThisRound:
+      hs.permanentStockGainedThisRound + stockGained,
+    permanentPotencyGainedThisRound:
+      hs.permanentPotencyGainedThisRound + potencyGained,
+  };
+  const states = new Map(state.hirelingStates);
+  states.set(targetId, next);
+  const log: ActionLogEntry[] = [
+    ...state.log,
+    {
+      kind: "ability-buff",
+      casterId,
+      targetId,
+      stockGained,
+      potencyGained,
+      atSeconds,
+    },
+  ];
+  return { ...state, hirelingStates: states, log };
+}
+
+/**
+ * Per-card on-cast ability hook. Fires AFTER the keyword pass (so
+ * Quickcraft's temp stock is already recorded). Returns the updated
+ * state. The registry below maps card.id → (state, caster, atSeconds)
+ * transformers; cards not in the registry don't contribute extra
+ * effects beyond their keywords.
+ *
+ * Ability text reads:
+ *   - sugar-sprinkler: "Adjacent allies gain +1 potency (permanent)."
+ *   - oven-master:     "Quickcraft x5. Allies gain +2 potency (permanent)."
+ */
+function applyPostCastAbility(
+  state: ActionState,
+  caster: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  switch (caster.card.id) {
+    case "sugar-sprinkler":
+      return buffActiveAdjacent(state, caster, 0, 1, atSeconds);
+    case "oven-master":
+      return buffActiveAllies(state, caster, 0, 2, atSeconds);
+    default:
+      return state;
+  }
+}
+
+/** Buff the two active-slot neighbors immediately left + right of the caster. */
+function buffActiveAdjacent(
+  state: ActionState,
+  caster: HirelingInstance,
+  stock: number,
+  potency: number,
+  atSeconds: number
+): ActionState {
+  const casterSlot = state.board.slots.findIndex((s) => s?.id === caster.id);
+  if (casterSlot === -1) return state;
+  let working = state;
+  for (const neighborSlot of [casterSlot - 1, casterSlot + 1]) {
+    if (neighborSlot < 0 || neighborSlot >= state.board.slots.length) continue;
+    // Bench adjacency matters only when the neighbor is on an active
+    // slot (bench hirelings don't participate in the action phase, so
+    // they have no HirelingActionState entry anyway).
+    const neighbor = state.board.slots[neighborSlot];
+    if (!neighbor) continue;
+    working = buffHireling(
+      working,
+      caster.id,
+      neighbor.id,
+      stock,
+      potency,
+      atSeconds
+    );
+  }
+  return working;
+}
+
+/** Buff every active-slot ally (all active hirelings except the caster). */
+function buffActiveAllies(
+  state: ActionState,
+  caster: HirelingInstance,
+  stock: number,
+  potency: number,
+  atSeconds: number
+): ActionState {
+  let working = state;
+  for (const h of activeHirelings(state.board)) {
+    if (h.id === caster.id) continue;
+    working = buffHireling(working, caster.id, h.id, stock, potency, atSeconds);
+  }
+  return working;
+}
+
+/**
  * Fire a single cast for one hireling: applies Quickcraft (if any),
- * increments castsSoFar, and reschedules the next cast (or marks the
- * hireling as stopped). `atSeconds` is the exact in-round time the
- * cast fires — callers must pass the true moment (pre-tick time plus
- * however much of the tick had elapsed when the timer hit 0).
+ * runs per-card ability effects, increments castsSoFar, and reschedules
+ * the next cast (or marks the hireling as stopped). `atSeconds` is the
+ * exact in-round time the cast fires — callers must pass the true
+ * moment (pre-tick time plus however much of the tick had elapsed when
+ * the timer hit 0).
  */
 function fireCast(
   state: ActionState,
@@ -280,11 +393,15 @@ function fireCast(
   const hirelingStates = new Map(state.hirelingStates);
   hirelingStates.set(instanceId, nextHireling);
 
-  return {
+  // After updating the caster's own state, fire per-card ability
+  // effects (e.g. Sugar Sprinkler buffs adjacent allies). These may
+  // mutate OTHER hirelings' action states.
+  const withCasterState: ActionState = {
     ...state,
     hirelingStates,
     log,
   };
+  return applyPostCastAbility(withCasterState, inst, atSeconds);
 }
 
 /**

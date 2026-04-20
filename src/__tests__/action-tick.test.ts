@@ -182,6 +182,43 @@ describe("tick", () => {
     expect(castTimes).toEqual([3, 6, 9]);
   });
 
+  test("Sugar Sprinkler grants +1 permanent potency to adjacent allies on every cast", () => {
+    let b = createBoard();
+    // Put Sugar Sprinkler at slot 3, adjacent hirelings at 2 and 4.
+    b = placeAt(b, 2, "Doughboy");
+    b = placeAt(b, 3, "Sugar Sprinkler"); // 5s cast, ability: adjacent +1 potency
+    b = placeAt(b, 4, "Doughboy");
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    // Tick 11s → Sugar Sprinkler casts twice (at 5s and 10s). Each cast
+    // buffs both adjacent Doughboys by +1 potency.
+    s = tick(s, 11, mulberry32(1));
+    const leftHs = s.hirelingStates.get("Doughboy-2")!;
+    const rightHs = s.hirelingStates.get("Doughboy-4")!;
+    expect(leftHs.permanentPotencyGainedThisRound).toBe(2);
+    expect(rightHs.permanentPotencyGainedThisRound).toBe(2);
+    // Caster doesn't buff itself.
+    const selfHs = s.hirelingStates.get("Sugar Sprinkler-3")!;
+    expect(selfHs.permanentPotencyGainedThisRound).toBe(0);
+    // Log entries emitted per buff (2 casts × 2 targets = 4 entries).
+    const buffLog = s.log.filter((e) => e.kind === "ability-buff");
+    expect(buffLog.length).toBe(4);
+  });
+
+  test("Oven Master buffs every active ally (excluding self) per cast", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "Doughboy");
+    b = placeAt(b, 3, "Oven Master"); // 6s cast, ability: allies +2 potency
+    b = placeAt(b, 5, "Doughboy");
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 7, mulberry32(1)); // one cast at 6s
+    const leftHs = s.hirelingStates.get("Doughboy-1")!;
+    const rightHs = s.hirelingStates.get("Doughboy-5")!;
+    expect(leftHs.permanentPotencyGainedThisRound).toBe(2);
+    expect(rightHs.permanentPotencyGainedThisRound).toBe(2);
+    const selfHs = s.hirelingStates.get("Oven Master-3")!;
+    expect(selfHs.permanentPotencyGainedThisRound).toBe(0);
+  });
+
   test("determinism under a seeded RNG for random cast times", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Royal Advisor"); // 1-8s random

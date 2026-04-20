@@ -83,6 +83,14 @@ export type ActionLogEntry =
       atSeconds: number;
     }
   | {
+      kind: "ability-buff";
+      casterId: string;
+      targetId: string;
+      stockGained: number;
+      potencyGained: number;
+      atSeconds: number;
+    }
+  | {
       kind: "weather-started";
       weatherId: string;
       atSeconds: number;
