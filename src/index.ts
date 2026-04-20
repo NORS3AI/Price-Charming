@@ -131,3 +131,21 @@ export {
 } from "./potions/discovery";
 export type { RNG } from "./potions/rng";
 export { defaultRng, mulberry32, pick, shuffle } from "./potions/rng";
+
+// Shop pool (Phase 4B)
+export type { PoolInstance, ShopPool } from "./shop/pool";
+export {
+  countOfCard,
+  createInitialPool,
+  instanceIdFor,
+  isHirelingPoolInstance,
+  isInPool,
+  isSpellPoolInstance,
+  poolAvailableAtRound,
+  poolHirelings,
+  poolSize,
+  poolSpells,
+  removeFromPoolWhere,
+  returnToPool,
+  takeFromPool,
+} from "./shop/pool";
