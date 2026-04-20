@@ -580,6 +580,12 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 #pc-target-box{background:var(--deep);padding:1.5rem 2rem;border:2px solid var(--gold);border-radius:10px;color:var(--parch);max-width:26rem;text-align:center}
 #pc-target-msg{margin-bottom:.75rem;font-size:1rem}
 .pc-slot.pc-targetable{outline:3px solid gold;cursor:pointer}
+body.pc-dragging .pc-slot:not(.pc-empty){cursor:move}
+body.pc-dragging #pc-shop-section{outline:2px dashed var(--gold-dim);outline-offset:4px;border-radius:8px}
+body.pc-dragging .pc-board{outline:2px dashed var(--gold);outline-offset:4px;border-radius:8px}
+.pc-slot[draggable="true"]{cursor:move}
+.pc-hand-card[draggable="true"],.pc-shop-card[draggable="true"]{cursor:grab}
+.pc-hand-card[draggable="true"]:active,.pc-shop-card[draggable="true"]:active{cursor:grabbing}
 </style>
 
 <div id="cust-sidebar"></div>
@@ -619,6 +625,7 @@ let pcCustomerQueue = [];
 let pcCustomerSpawnIdx = 0;
 let pcTargetPick = null;           // active target-picker (Lucky / Bottle / Polish)
 let pcRoundSummary = null;         // populated between rounds so the UI can show a recap
+let pcDrag = null;                 // { source: "board"|"hand"|"shop", index: number }
 
 // Difficulty knobs — gold per round drives the opponent's board growth,
 // so their builds scale proportionally to the player's own pacing.
@@ -681,6 +688,15 @@ function pcStartGame(diff){
   // their snapshot is ready to contest the first action phase.
   pcOpponentPlayRound(pcGame.round);
   pcGame = E.startShopPhase(pcGame, pcRng);
+
+  // Make the shop section a drop target for selling hirelings, and
+  // attach it once here since the container persists across renders.
+  const shopSection = $("pc-shop-section");
+  if (shopSection) {
+    shopSection.ondragover = pcAllowDrop;
+    shopSection.ondrop = pcDropOnShopArea;
+  }
+
   showScreen("game-screen");
   pcRender();
 }
@@ -864,7 +880,14 @@ function pcRenderPlayerBoard(){
       card.title = "Click to target this hireling";
     } else if (inst && pcGame.phase === "shop") {
       card.onclick = () => pcSellBoard(i);
-      card.title = "Click to sell for 1g";
+      card.title = "Click to sell for 1g · drag to another slot to rearrange · drag to shop to sell";
+      card.draggable = true;
+      card.ondragstart = (ev) => pcDragStart("board", i, ev);
+      card.ondragend = pcDragEnd;
+    }
+    if (pcGame.phase === "shop") {
+      card.ondragover = pcAllowDrop;
+      card.ondrop = (ev) => pcDropOnBoardSlot(i, ev);
     }
     el.appendChild(card);
   }
@@ -939,7 +962,15 @@ function pcRenderOffering(){
     }
     if (!cannotAfford) {
       d.onclick = () => pcTryBuy(i);
-      d.title = `Click to buy for ${cost}g`;
+      if (!isSpell) {
+        // Drag a shop hireling directly onto a board slot to buy-and-place.
+        d.draggable = true;
+        d.ondragstart = (ev) => pcDragStart("shop", i, ev);
+        d.ondragend = pcDragEnd;
+        d.title = `Click to buy for ${cost}g · drag onto a slot to place it there`;
+      } else {
+        d.title = `Click to buy for ${cost}g`;
+      }
     } else {
       d.title = `Need ${cost}g to buy`;
     }
@@ -981,9 +1012,19 @@ function pcRenderHand(){
         if (!isSpell && ev && ev.shiftKey) { pcSellHand(idx); return; }
         pcPlayHand(idx);
       };
+      // Hirelings and the 3 targeted spells (Lucky/Bottle/Polish) are
+      // draggable; non-targeted spells stay click-only.
+      const canDrag = !isSpell || PC_TARGETED_SPELLS.has(inst.card.id);
+      if (canDrag) {
+        d.draggable = true;
+        d.ondragstart = (ev) => pcDragStart("hand", idx, ev);
+        d.ondragend = pcDragEnd;
+      }
       d.title = isSpell
-        ? "Click to cast"
-        : "Click to play · Shift-click to sell for 1g";
+        ? (PC_TARGETED_SPELLS.has(inst.card.id)
+            ? "Click to pick a target · drag onto a hireling to target directly"
+            : "Click to cast")
+        : "Click to play · Shift-click to sell · drag to a slot · drag to shop to sell";
     }
     el.appendChild(d);
   }
@@ -1209,6 +1250,169 @@ function pcPlayHand(handIdx){
   } catch (err) { pcFlash(err.message); }
 }
 window.pcPlayHand = pcPlayHand;
+
+// --- drag-and-drop --------------------------------------------------
+// Sources: board (rearrange + drop-to-sell), hand (play + drop-to-sell),
+// shop (buy-and-place). Drop targets: board slots (buy/play/insert) and
+// the shop area (sell). Spells are click-to-cast except the 3 targeted
+// ones (Lucky / Bottomless Bottle / Potion Polish), which can also be
+// dragged onto a board hireling.
+const PC_TARGETED_SPELLS = new Set([
+  "lucky-charm",
+  "bottomless-bottle",
+  "potion-polish",
+]);
+
+function pcDragStart(source, index, ev){
+  // Only allow drag during the shop phase.
+  if (!pcGame || pcGame.phase !== "shop") { ev.preventDefault(); return; }
+  pcDrag = { source, index };
+  if (ev.dataTransfer) {
+    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.setData("text/plain", `${source}:${index}`);
+  }
+  // Mark the body so CSS can dim non-drop targets if we want (optional).
+  document.body.classList.add("pc-dragging");
+}
+window.pcDragStart = pcDragStart;
+
+function pcDragEnd(){
+  pcDrag = null;
+  document.body.classList.remove("pc-dragging");
+}
+window.pcDragEnd = pcDragEnd;
+
+function pcAllowDrop(ev){
+  if (!pcDrag) return;
+  ev.preventDefault();
+  if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+}
+window.pcAllowDrop = pcAllowDrop;
+
+function pcDropOnBoardSlot(targetSlot, ev){
+  ev.preventDefault();
+  if (!pcDrag || !pcGame || pcGame.phase !== "shop") { pcDragEnd(); return; }
+  const { source, index } = pcDrag;
+  try {
+    if (source === "board") {
+      pcDragBoardToBoard(index, targetSlot);
+    } else if (source === "hand") {
+      pcDragHandToBoard(index, targetSlot);
+    } else if (source === "shop") {
+      pcDragShopToBoard(index, targetSlot);
+    }
+  } catch (err) { pcFlash(err.message); }
+  pcDragEnd();
+}
+window.pcDropOnBoardSlot = pcDropOnBoardSlot;
+
+function pcDropOnShopArea(ev){
+  ev.preventDefault();
+  if (!pcDrag || !pcGame || pcGame.phase !== "shop") { pcDragEnd(); return; }
+  const { source, index } = pcDrag;
+  try {
+    if (source === "hand") {
+      const card = pcGame.hand.cards[index];
+      if (card && card.card.kind === "hireling") pcSellHand(index);
+      else pcFlash("Spells can't be sold.");
+    } else if (source === "board") {
+      pcSellBoard(index);
+    }
+    // source === "shop" → no-op (dropping a shop card back onto the shop).
+  } catch (err) { pcFlash(err.message); }
+  pcDragEnd();
+}
+window.pcDropOnShopArea = pcDropOnShopArea;
+
+// Board → board: splice-insert via the engine's rearrangeBoard.
+function pcDragBoardToBoard(fromSlot, toSlot){
+  if (fromSlot === toSlot) return;
+  if (!pcGame.board.slots[fromSlot]) return;
+  const board = E.rearrangeBoard(pcGame.board, fromSlot, toSlot);
+  pcGame = { ...pcGame, board };
+  pcAfterChange();
+}
+
+// Hand → target board slot. If the slot is empty, play directly;
+// otherwise play into the first empty slot and rearrange to the target
+// so other hirelings shift to accommodate.
+function pcPlayHandIntoSlot(state, handIdx, targetSlot){
+  const card = state.hand.cards[handIdx];
+  if (!card || card.card.kind !== "hireling") {
+    throw new Error("Only hirelings can land on board slots.");
+  }
+  if (state.board.slots[targetSlot] === null) {
+    const res = E.playCharmed(state.board, state.hand, handIdx, targetSlot, pcRng);
+    if (res.grantedCharm) pcFlash(`Charmed played! Granted ${res.grantedCharm.name}.`);
+    return { ...state, board: res.board, hand: res.hand };
+  }
+  const empty = E.firstEmptySlot(state.board);
+  if (empty === null) { pcFlash("Board is full."); return state; }
+  const played = E.playCharmed(state.board, state.hand, handIdx, empty, pcRng);
+  if (played.grantedCharm) pcFlash(`Charmed played! Granted ${played.grantedCharm.name}.`);
+  // rearrangeBoard handles from===to as a no-op, so this is safe even
+  // if the picked empty slot equals the target (which never happens).
+  const board = E.rearrangeBoard(played.board, empty, targetSlot);
+  return { ...state, board, hand: played.hand };
+}
+
+function pcDragHandToBoard(handIdx, targetSlot){
+  const card = pcGame.hand.cards[handIdx];
+  if (!card) return;
+  if (card.card.kind === "spell") {
+    // Drag-targeted-spell path: Lucky / Bottle / Polish drop on a
+    // board hireling casts directly. Other spells fall back to click.
+    if (!PC_TARGETED_SPELLS.has(card.card.id)) {
+      pcFlash("Drag only targeted spells (Lucky / Bottle / Polish) onto a hireling.");
+      return;
+    }
+    const inst = pcGame.board.slots[targetSlot];
+    if (!inst) { pcFlash("Drop onto a hireling, not an empty slot."); return; }
+    // Reuse the same spell-cast code path that the click picker uses.
+    const id = card.card.id;
+    if (id === "lucky-charm") {
+      const res = E.castLuckyCharm(pcGame.hand, handIdx, pcGame.board, targetSlot);
+      pcGame = { ...pcGame, hand: res.hand, board: res.board };
+      pcFlash(`Lucky Charm: ${inst.card.name} +3 potency.`);
+    } else if (id === "bottomless-bottle" || id === "potion-polish") {
+      const { hand: nextHand } = E.removeFromHand(pcGame.hand, handIdx);
+      const buffed = {
+        ...inst,
+        permanentStockBonus: inst.permanentStockBonus + (id === "bottomless-bottle" ? 3 : 0),
+        permanentPotencyBonus: inst.permanentPotencyBonus + (id === "potion-polish" ? 3 : 0),
+      };
+      const slots = pcGame.board.slots.slice();
+      slots[targetSlot] = buffed;
+      pcGame = { ...pcGame, hand: nextHand, board: { slots } };
+      pcFlash(
+        id === "bottomless-bottle"
+          ? `Bottomless Bottle: ${inst.card.name} +3 stock.`
+          : `Potion Polish: ${inst.card.name} +3 potency.`
+      );
+    }
+    pcAfterChange();
+    return;
+  }
+  // Hireling drop — play (with insert if slot is filled).
+  pcGame = pcPlayHandIntoSlot(pcGame, handIdx, targetSlot);
+  pcAfterChange();
+}
+
+// Shop → board: buy (card → hand at end) then play-into-slot.
+function pcDragShopToBoard(shopSlot, targetSlot){
+  const inst = pcGame.offering.slots[shopSlot];
+  if (!inst) return;
+  if (inst.card.kind !== "hireling") {
+    pcFlash("Only hirelings can be dropped on a board slot — buy spells normally.");
+    return;
+  }
+  const buy = E.buyHirelingFromShop(pcGame.offering, shopSlot, pcGame.hand, pcGame.gold);
+  let next = { ...pcGame, offering: buy.offering, hand: buy.hand, gold: buy.gold };
+  const handIdx = next.hand.cards.length - 1;
+  next = pcPlayHandIntoSlot(next, handIdx, targetSlot);
+  pcGame = next;
+  pcAfterChange();
+}
 
 // --- target picker for Lucky / Bottle / Polish ----------------------
 function pcEnterTargetMode(handIdx, type, message){
