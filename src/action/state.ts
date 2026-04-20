@@ -258,21 +258,96 @@ function buffHireling(
 }
 
 /**
- * Per-card on-sale self-buff registry. Fires inside executeSale after
- * Knockoff. Returns { stock, potency } deltas applied to the seller's
- * own permanent-gain counters, or undefined for no effect.
+ * Per-card post-own-sale ability hook. Fires inside executeSale AFTER
+ * Knockoff so both can stack. Returns the updated state (can buff self
+ * or allies).
  *
  *   - jumping-jack: "After this sells, gain +1 permanent stock and
  *                    +1 permanent potency."
+ *   - confectioner: "After this sells, all Sugar Guild allies gain +1
+ *                    potency permanently." (Haggled or not.)
+ *   - street-rat:   "If Haggled sale succeeds, gain +2 permanent stock."
  */
-function postSaleSelfBuff(
-  hireling: HirelingInstance
-): { stock: number; potency: number } | undefined {
+function applyPostSaleAbility(
+  state: ActionState,
+  hireling: HirelingInstance,
+  haggled: boolean,
+  atSeconds: number
+): ActionState {
   switch (hireling.card.id) {
     case "jumping-jack":
-      return { stock: 1, potency: 1 };
+      return buffHireling(state, hireling.id, hireling.id, 1, 1, atSeconds);
+    case "confectioner":
+      return buffActiveAllies(state, hireling, 0, 1, atSeconds, (h) =>
+        h.card.kind === "hireling" && h.card.guild === "Sugar Guild"
+      );
+    case "street-rat":
+      // Haggle sales only.
+      if (!haggled) return state;
+      return buffHireling(state, hireling.id, hireling.id, 2, 0, atSeconds);
     default:
-      return undefined;
+      return state;
+  }
+}
+
+/**
+ * Per-card post-ANY-ally-sale reactive hook. Runs for every active ally
+ * of the seller each time a sale fires. Used by cards like Gingerbread
+ * King whose buff triggers on other hirelings' sales.
+ *
+ *   - gingerbread-king: "After an ally sells, gain +2 potency (permanent)."
+ */
+function applyOnAllySaleAbility(
+  state: ActionState,
+  reactor: HirelingInstance,
+  seller: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  if (reactor.id === seller.id) return state; // Not reactive to own sale.
+  switch (reactor.card.id) {
+    case "gingerbread-king":
+      return buffHireling(state, seller.id, reactor.id, 0, 2, atSeconds);
+    default:
+      return state;
+  }
+}
+
+/**
+ * End-of-round ability hook. Runs once per active hireling inside
+ * finalizeRound, after all lingering customers have been resolved, so
+ * conditions like "sold nothing this round" or "total Quickcraft stock
+ * > 10" reflect final round totals.
+ *
+ *   - burnt-batch: "If this sells nothing this round, gain +6 potency
+ *                   permanently."
+ *   - glazier:     "If total temporary stock generated this round
+ *                   exceeds 10, gain +3 permanent potency."
+ */
+function applyEndOfRoundAbility(
+  state: ActionState,
+  inst: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  const hs = state.hirelingStates.get(inst.id);
+  if (!hs) return state;
+  switch (inst.card.id) {
+    case "burnt-batch":
+      if (hs.unitsSoldThisRound === 0) {
+        return buffHireling(state, inst.id, inst.id, 0, 6, atSeconds);
+      }
+      return state;
+    case "glazier": {
+      // temporaryStock is the running tally that hasn't been sold; but
+      // the spec asks about total generated. Quickcraft count × casts so
+      // far tells us what was produced even after sales depleted it.
+      const generated = quickcraftCount(inst) * hs.castsSoFar;
+      if (generated > 10) {
+        return buffHireling(state, inst.id, inst.id, 0, 3, atSeconds);
+      }
+      return state;
+    }
+    default:
+      return state;
   }
 }
 
@@ -282,10 +357,6 @@ function postSaleSelfBuff(
  * state. The registry below maps card.id → (state, caster, atSeconds)
  * transformers; cards not in the registry don't contribute extra
  * effects beyond their keywords.
- *
- * Ability text reads:
- *   - sugar-sprinkler: "Adjacent allies gain +1 potency (permanent)."
- *   - oven-master:     "Quickcraft x5. Allies gain +2 potency (permanent)."
  */
 function applyPostCastAbility(
   state: ActionState,
@@ -306,9 +377,77 @@ function applyPostCastAbility(
       return buffActiveAllies(state, caster, 1, 1, atSeconds, (h) =>
         h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
       );
+    case "snatchling":
+      // "Knockoff x2. Spend -1 Reputation. Gain +4 permanent stock."
+      return buffHireling(
+        { ...state, reputation: state.reputation - 1 },
+        caster.id,
+        caster.id,
+        4,
+        0,
+        atSeconds
+      );
+    case "fence-master":
+      // "Knockoff x3. Haggle. Spend -1 Reputation. All Thieves allies
+      //  gain +1 permanent stock."
+      return buffActiveAllies(
+        { ...state, reputation: state.reputation - 1 },
+        caster,
+        1,
+        0,
+        atSeconds,
+        (h) => h.card.kind === "hireling" && h.card.guild === "Thieves Guild"
+      );
+    case "ogreachiever":
+      // "All active hirelings gain +1 permanent potency. (Does not apply
+      //  to hirelings with Quickcraft.)"
+      return buffActiveAllies(state, caster, 0, 1, atSeconds, (h) =>
+        h.card.kind === "hireling" && quickcraftCount(h) === 0
+      );
+    case "the-duchess":
+      // "Only applies to Nobles Guild Allies: All allies to the left
+      //  gain +1 permanent stock. All allies to the right gain +1
+      //  permanent potency." Self-buff clause requires a Nobles ally on
+      //  both sides.
+      return applyDuchessBuffs(state, caster, atSeconds);
     default:
       return state;
   }
+}
+
+/**
+ * The Duchess: directional noble-only buffs. Allies left of her gain
+ * +1 permanent stock; right gain +1 permanent potency. If at least one
+ * Nobles ally exists on each side, she also gains the same buffs herself
+ * (+1 stock +1 potency).
+ */
+function applyDuchessBuffs(
+  state: ActionState,
+  caster: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  const casterSlot = state.board.slots.findIndex((s) => s?.id === caster.id);
+  if (casterSlot === -1) return state;
+  let working = state;
+  let leftNoble = false;
+  let rightNoble = false;
+  for (let i = 0; i < state.board.slots.length; i++) {
+    const h = state.board.slots[i];
+    if (!h || h.id === caster.id) continue;
+    if (h.card.kind !== "hireling" || h.card.guild !== "Nobles Guild") continue;
+    if (!working.hirelingStates.has(h.id)) continue; // active slot only
+    if (i < casterSlot) {
+      working = buffHireling(working, caster.id, h.id, 1, 0, atSeconds);
+      leftNoble = true;
+    } else if (i > casterSlot) {
+      working = buffHireling(working, caster.id, h.id, 0, 1, atSeconds);
+      rightNoble = true;
+    }
+  }
+  if (leftNoble && rightNoble) {
+    working = buffHireling(working, caster.id, caster.id, 1, 1, atSeconds);
+  }
+  return working;
 }
 
 /** Buff the two active-slot neighbors immediately left + right of the caster. */
@@ -445,48 +584,61 @@ function fireCast(
  * to match the shape produced by `tick` resolutions.
  */
 export function finalizeRound(state: ActionState): ActionState {
-  if (state.customers.every((c) => c.resolvedFor !== null)) return state;
-
-  const panel = buildPricingPanel(
-    state.activePotionTypes,
-    state.board,
-    state.prices
-  );
-  const priceByType = new Map(
-    panel.map((e) => [e.potionType, e.effectivePrice])
-  );
+  const allResolved = state.customers.every((c) => c.resolvedFor !== null);
 
   let working: ActionState = state;
   const resolvedCustomers: CustomerState[] = [];
 
-  for (const cs of state.customers) {
-    if (cs.resolvedFor !== null) {
-      resolvedCustomers.push(cs);
-      continue;
+  if (!allResolved) {
+    const panel = buildPricingPanel(
+      state.activePotionTypes,
+      state.board,
+      state.prices
+    );
+    const priceByType = new Map(
+      panel.map((e) => [e.potionType, e.effectivePrice])
+    );
+
+    for (const cs of state.customers) {
+      if (cs.resolvedFor !== null) {
+        resolvedCustomers.push(cs);
+        continue;
+      }
+      const next = resolveCustomer(cs);
+      working = {
+        ...working,
+        log: [
+          ...working.log,
+          {
+            kind: "customer-resolved",
+            customerId: next.customer.id,
+            atSeconds: state.elapsedSeconds,
+            resolution: next.resolvedFor!,
+          },
+        ],
+      };
+      if (next.resolvedFor === "player") {
+        // Execute a sale with a deterministic min-units pick — finalize
+        // shouldn't consume RNG drawn for gameplay ticks. Any caller
+        // that wants randomized finalize sales can tick until natural
+        // expiry.
+        working = executeSale(working, next, priceByType, deterministicMinRng);
+      }
+      resolvedCustomers.push(next);
     }
-    const next = resolveCustomer(cs);
-    working = {
-      ...working,
-      log: [
-        ...working.log,
-        {
-          kind: "customer-resolved",
-          customerId: next.customer.id,
-          atSeconds: state.elapsedSeconds,
-          resolution: next.resolvedFor!,
-        },
-      ],
-    };
-    if (next.resolvedFor === "player") {
-      // Execute a sale with a deterministic min-units pick — finalize
-      // shouldn't consume RNG drawn for gameplay ticks. Any caller that
-      // wants randomized finalize sales can tick until natural expiry.
-      working = executeSale(working, next, priceByType, deterministicMinRng);
-    }
-    resolvedCustomers.push(next);
+    working = { ...working, customers: resolvedCustomers };
   }
 
-  return { ...working, customers: resolvedCustomers };
+  // End-of-round ability hook: runs once per active hireling after all
+  // sales have finalized. Cards like Burnt Batch ("sold nothing this
+  // round") and Glazier ("Quickcraft stock > 10") check their totals
+  // here and emit permanent-buff log entries that promotePermanentBuffs
+  // will carry onto the HirelingInstance next round.
+  for (const inst of activeHirelings(working.board)) {
+    working = applyEndOfRoundAbility(working, inst, working.elapsedSeconds);
+  }
+
+  return working;
 }
 
 /**
@@ -768,36 +920,28 @@ function executeSale(
     });
   }
 
-  // Per-card on-sale ability hook (e.g. Jumping Jack: self +1 stock
-  // +1 potency per sale). Runs AFTER Knockoff so both can stack on
-  // a single sale if the card happens to have both triggers.
-  const selfBuff = postSaleSelfBuff(hireling);
-  if (selfBuff && (selfBuff.stock !== 0 || selfBuff.potency !== 0)) {
-    nextHs = {
-      ...nextHs,
-      permanentStockGainedThisRound:
-        nextHs.permanentStockGainedThisRound + selfBuff.stock,
-      permanentPotencyGainedThisRound:
-        nextHs.permanentPotencyGainedThisRound + selfBuff.potency,
-    };
-    log.push({
-      kind: "ability-buff",
-      casterId: hireling.id,
-      targetId: hireling.id,
-      stockGained: selfBuff.stock,
-      potencyGained: selfBuff.potency,
-      atSeconds: state.elapsedSeconds,
-    });
-  }
-
   const hirelingStates = new Map(state.hirelingStates);
   hirelingStates.set(hireling.id, nextHs);
 
-  return {
+  let working: ActionState = {
     ...state,
     hirelingStates,
     gold: state.gold + goldEarned,
     reputation: state.reputation + reputationDelta,
     log,
   };
+
+  // Per-card on-sale ability hook for the seller (e.g. Jumping Jack,
+  // Confectioner, Street Rat). Runs AFTER Knockoff so they can stack
+  // on a single sale.
+  working = applyPostSaleAbility(working, hireling, haggled, state.elapsedSeconds);
+
+  // Per-card reactive hook for every OTHER active ally (e.g. Gingerbread
+  // King: +2 potency whenever any ally sells).
+  for (const ally of activeHirelings(state.board)) {
+    if (ally.id === hireling.id) continue;
+    working = applyOnAllySaleAbility(working, ally, hireling, state.elapsedSeconds);
+  }
+
+  return working;
 }

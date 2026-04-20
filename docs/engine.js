@@ -390,7 +390,7 @@ Sugar Guild,Sugar Sprinkler,,Medium,4,3,,5,,,5s,,Adjacent allies gain +1 potency
 Sugar Guild,Sample Server,,Medium,4,3,1,5,,,Passive,,First stock each round sells immediately.
 Sugar Guild,Glazier,,Medium,4,3,,5,,6,6s,Quickcraft x4,"Quickcraft x4. If total temporary stock generated this round exceeds 10, gain +3 permanent potency."
 Sugar Guild,Sugar Rush Peddler,,Medium,5,3,,6,,5,6s,Quickcraft x4,Quickcraft x4. Each sale this round reduces cast time by 0.5s until end of round.
-Sugar Guild,Confectioner,,Medium,5,3,,6,,7,7s,Quickcraft x4 / Haggle,"Quickcraft x4. Haggle. If a Haggled sale succeeds, all Sugar Guild allies gain +1 potency permanently."
+Sugar Guild,Confectioner,,Medium,5,3,,6,,7,7s,Quickcraft x4 / Haggle,"Quickcraft x4. Haggle. After this sells, all Sugar Guild allies gain +1 potency permanently."
 Sugar Guild,Tasting Table,,Medium,4,3,2,4,,,5s,,"When a customer walks away without buying from any hireling, redirect them to this hireling. If they buy, all Sugar Guild allies gain +1 temporary stock."
 Sugar Guild,Frosted Lookout,,Medium,5,3,,5,,,5s,Quickcraft x3,"Quickcraft x3. When an opponent uses Sabotage, immediately trigger your highest potency Sugar Guild ally's ability."
 Sugar Guild,Oven Master,\u2B50,High,6,3,,7,,7,6s,Quickcraft x5,Quickcraft x5. Allies gain +2 potency (permanent).
@@ -1738,12 +1738,53 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     ];
     return { ...state, hirelingStates: states, log };
   }
-  function postSaleSelfBuff(hireling) {
+  function applyPostSaleAbility(state, hireling, haggled, atSeconds) {
     switch (hireling.card.id) {
       case "jumping-jack":
-        return { stock: 1, potency: 1 };
+        return buffHireling(state, hireling.id, hireling.id, 1, 1, atSeconds);
+      case "confectioner":
+        return buffActiveAllies(
+          state,
+          hireling,
+          0,
+          1,
+          atSeconds,
+          (h) => h.card.kind === "hireling" && h.card.guild === "Sugar Guild"
+        );
+      case "street-rat":
+        if (!haggled) return state;
+        return buffHireling(state, hireling.id, hireling.id, 2, 0, atSeconds);
       default:
-        return void 0;
+        return state;
+    }
+  }
+  function applyOnAllySaleAbility(state, reactor, seller, atSeconds) {
+    if (reactor.id === seller.id) return state;
+    switch (reactor.card.id) {
+      case "gingerbread-king":
+        return buffHireling(state, seller.id, reactor.id, 0, 2, atSeconds);
+      default:
+        return state;
+    }
+  }
+  function applyEndOfRoundAbility(state, inst, atSeconds) {
+    const hs = state.hirelingStates.get(inst.id);
+    if (!hs) return state;
+    switch (inst.card.id) {
+      case "burnt-batch":
+        if (hs.unitsSoldThisRound === 0) {
+          return buffHireling(state, inst.id, inst.id, 0, 6, atSeconds);
+        }
+        return state;
+      case "glazier": {
+        const generated = quickcraftCount(inst) * hs.castsSoFar;
+        if (generated > 10) {
+          return buffHireling(state, inst.id, inst.id, 0, 3, atSeconds);
+        }
+        return state;
+      }
+      default:
+        return state;
     }
   }
   function applyPostCastAbility(state, caster, atSeconds) {
@@ -1761,9 +1802,62 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           atSeconds,
           (h) => h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
         );
+      case "snatchling":
+        return buffHireling(
+          { ...state, reputation: state.reputation - 1 },
+          caster.id,
+          caster.id,
+          4,
+          0,
+          atSeconds
+        );
+      case "fence-master":
+        return buffActiveAllies(
+          { ...state, reputation: state.reputation - 1 },
+          caster,
+          1,
+          0,
+          atSeconds,
+          (h) => h.card.kind === "hireling" && h.card.guild === "Thieves Guild"
+        );
+      case "ogreachiever":
+        return buffActiveAllies(
+          state,
+          caster,
+          0,
+          1,
+          atSeconds,
+          (h) => h.card.kind === "hireling" && quickcraftCount(h) === 0
+        );
+      case "the-duchess":
+        return applyDuchessBuffs(state, caster, atSeconds);
       default:
         return state;
     }
+  }
+  function applyDuchessBuffs(state, caster, atSeconds) {
+    const casterSlot = state.board.slots.findIndex((s) => (s == null ? void 0 : s.id) === caster.id);
+    if (casterSlot === -1) return state;
+    let working = state;
+    let leftNoble = false;
+    let rightNoble = false;
+    for (let i = 0; i < state.board.slots.length; i++) {
+      const h = state.board.slots[i];
+      if (!h || h.id === caster.id) continue;
+      if (h.card.kind !== "hireling" || h.card.guild !== "Nobles Guild") continue;
+      if (!working.hirelingStates.has(h.id)) continue;
+      if (i < casterSlot) {
+        working = buffHireling(working, caster.id, h.id, 1, 0, atSeconds);
+        leftNoble = true;
+      } else if (i > casterSlot) {
+        working = buffHireling(working, caster.id, h.id, 0, 1, atSeconds);
+        rightNoble = true;
+      }
+    }
+    if (leftNoble && rightNoble) {
+      working = buffHireling(working, caster.id, caster.id, 1, 1, atSeconds);
+    }
+    return working;
   }
   function buffActiveAdjacent(state, caster, stock, potency, atSeconds) {
     const casterSlot = state.board.slots.findIndex((s) => (s == null ? void 0 : s.id) === caster.id);
@@ -1845,41 +1939,47 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     return applyPostCastAbility(withCasterState, inst, atSeconds);
   }
   function finalizeRound(state) {
-    if (state.customers.every((c) => c.resolvedFor !== null)) return state;
-    const panel = buildPricingPanel(
-      state.activePotionTypes,
-      state.board,
-      state.prices
-    );
-    const priceByType = new Map(
-      panel.map((e) => [e.potionType, e.effectivePrice])
-    );
+    const allResolved = state.customers.every((c) => c.resolvedFor !== null);
     let working = state;
     const resolvedCustomers = [];
-    for (const cs of state.customers) {
-      if (cs.resolvedFor !== null) {
-        resolvedCustomers.push(cs);
-        continue;
+    if (!allResolved) {
+      const panel = buildPricingPanel(
+        state.activePotionTypes,
+        state.board,
+        state.prices
+      );
+      const priceByType = new Map(
+        panel.map((e) => [e.potionType, e.effectivePrice])
+      );
+      for (const cs of state.customers) {
+        if (cs.resolvedFor !== null) {
+          resolvedCustomers.push(cs);
+          continue;
+        }
+        const next = resolveCustomer(cs);
+        working = {
+          ...working,
+          log: [
+            ...working.log,
+            {
+              kind: "customer-resolved",
+              customerId: next.customer.id,
+              atSeconds: state.elapsedSeconds,
+              resolution: next.resolvedFor
+            }
+          ]
+        };
+        if (next.resolvedFor === "player") {
+          working = executeSale(working, next, priceByType, deterministicMinRng);
+        }
+        resolvedCustomers.push(next);
       }
-      const next = resolveCustomer(cs);
-      working = {
-        ...working,
-        log: [
-          ...working.log,
-          {
-            kind: "customer-resolved",
-            customerId: next.customer.id,
-            atSeconds: state.elapsedSeconds,
-            resolution: next.resolvedFor
-          }
-        ]
-      };
-      if (next.resolvedFor === "player") {
-        working = executeSale(working, next, priceByType, deterministicMinRng);
-      }
-      resolvedCustomers.push(next);
+      working = { ...working, customers: resolvedCustomers };
     }
-    return { ...working, customers: resolvedCustomers };
+    for (const inst of activeHirelings(working.board)) {
+      working = applyEndOfRoundAbility(working, inst, working.elapsedSeconds);
+    }
+    return working;
   }
   var deterministicMinRng = () => 0;
   function tick(state, deltaSeconds, rng) {
@@ -2063,31 +2163,21 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         atSeconds: state.elapsedSeconds
       });
     }
-    const selfBuff = postSaleSelfBuff(hireling);
-    if (selfBuff && (selfBuff.stock !== 0 || selfBuff.potency !== 0)) {
-      nextHs = {
-        ...nextHs,
-        permanentStockGainedThisRound: nextHs.permanentStockGainedThisRound + selfBuff.stock,
-        permanentPotencyGainedThisRound: nextHs.permanentPotencyGainedThisRound + selfBuff.potency
-      };
-      log.push({
-        kind: "ability-buff",
-        casterId: hireling.id,
-        targetId: hireling.id,
-        stockGained: selfBuff.stock,
-        potencyGained: selfBuff.potency,
-        atSeconds: state.elapsedSeconds
-      });
-    }
     const hirelingStates = new Map(state.hirelingStates);
     hirelingStates.set(hireling.id, nextHs);
-    return {
+    let working = {
       ...state,
       hirelingStates,
       gold: state.gold + goldEarned,
       reputation: state.reputation + reputationDelta,
       log
     };
+    working = applyPostSaleAbility(working, hireling, haggled, state.elapsedSeconds);
+    for (const ally of activeHirelings(state.board)) {
+      if (ally.id === hireling.id) continue;
+      working = applyOnAllySaleAbility(working, ally, hireling, state.elapsedSeconds);
+    }
+    return working;
   }
 
   // src/opponent/snapshot.ts

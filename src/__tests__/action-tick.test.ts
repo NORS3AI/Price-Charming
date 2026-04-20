@@ -234,6 +234,84 @@ describe("tick", () => {
     expect(doughboyHs.permanentPotencyGainedThisRound).toBe(0);
   });
 
+  test("Snatchling: per-cast self +4 stock and -1 reputation", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Snatchling"); // 6s cast
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 7, mulberry32(1)); // one cast at 6s
+    const hs = s.hirelingStates.get("Snatchling-3")!;
+    expect(hs.permanentStockGainedThisRound).toBe(4);
+    expect(s.reputation).toBe(-1);
+  });
+
+  test("Fence Master: per-cast buffs only Thieves Guild allies (+1 stock)", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "Robbin Goblin");  // Thieves
+    b = placeAt(b, 3, "Fence Master");   // 7s cast
+    b = placeAt(b, 5, "Doughboy");       // Sugar — not buffed
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 8, mulberry32(1));
+    const rgHs = s.hirelingStates.get("Robbin Goblin-1")!;
+    const dbHs = s.hirelingStates.get("Doughboy-5")!;
+    expect(rgHs.permanentStockGainedThisRound).toBe(1);
+    expect(dbHs.permanentStockGainedThisRound).toBe(0);
+    // Self-buff clause is not part of Fence Master's text.
+    const selfHs = s.hirelingStates.get("Fence Master-3")!;
+    expect(selfHs.permanentStockGainedThisRound).toBe(0);
+    // Haggle + "Spend -1 Reputation" clause.
+    expect(s.reputation).toBe(-1);
+  });
+
+  test("Ogreachiever: per-cast buffs only non-Quickcraft active allies (+1 pot)", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "Doughboy");      // has Quickcraft x2 — NOT buffed
+    b = placeAt(b, 3, "Ogreachiever");  // 8s cast, no Quickcraft
+    b = placeAt(b, 5, "Jumping Jack");  // No Quickcraft — buffed
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 9, mulberry32(1));
+    const dbHs = s.hirelingStates.get("Doughboy-1")!;
+    const jjHs = s.hirelingStates.get("Jumping Jack-5")!;
+    expect(dbHs.permanentPotencyGainedThisRound).toBe(0);
+    expect(jjHs.permanentPotencyGainedThisRound).toBe(1);
+  });
+
+  test("The Duchess: directional Nobles-only buffs + both-sides self buff", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "The Page");       // Nobles, left
+    b = placeAt(b, 2, "Doughboy");       // Sugar, left — should NOT be buffed
+    b = placeAt(b, 3, "The Duchess");    // 6s cast
+    b = placeAt(b, 4, "Lady's Maid");    // Nobles, right
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 7, mulberry32(1));
+    const pageHs = s.hirelingStates.get("The Page-1")!;
+    const doughHs = s.hirelingStates.get("Doughboy-2")!;
+    const maidHs = s.hirelingStates.get("Lady's Maid-4")!;
+    const dutchHs = s.hirelingStates.get("The Duchess-3")!;
+    // Left Nobles gets +1 stock.
+    expect(pageHs.permanentStockGainedThisRound).toBe(1);
+    expect(pageHs.permanentPotencyGainedThisRound).toBe(0);
+    // Non-Nobles left is untouched.
+    expect(doughHs.permanentStockGainedThisRound).toBe(0);
+    expect(doughHs.permanentPotencyGainedThisRound).toBe(0);
+    // Right Nobles gets +1 potency.
+    expect(maidHs.permanentStockGainedThisRound).toBe(0);
+    expect(maidHs.permanentPotencyGainedThisRound).toBe(1);
+    // Duchess herself: Nobles on both sides → self +1 stock +1 potency.
+    expect(dutchHs.permanentStockGainedThisRound).toBe(1);
+    expect(dutchHs.permanentPotencyGainedThisRound).toBe(1);
+  });
+
+  test("The Duchess: no self-buff when only one side has a Nobles ally", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "The Duchess");
+    b = placeAt(b, 5, "The Page"); // Nobles only on the right
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 7, mulberry32(1));
+    const dutchHs = s.hirelingStates.get("The Duchess-3")!;
+    expect(dutchHs.permanentStockGainedThisRound).toBe(0);
+    expect(dutchHs.permanentPotencyGainedThisRound).toBe(0);
+  });
+
   test("determinism under a seeded RNG for random cast times", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Royal Advisor"); // 1-8s random

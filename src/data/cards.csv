@@ -10,7 +10,7 @@ Sugar Guild,Sugar Sprinkler,,Medium,4,3,,5,,,5s,,Adjacent allies gain +1 potency
 Sugar Guild,Sample Server,,Medium,4,3,1,5,,,Passive,,First stock each round sells immediately.
 Sugar Guild,Glazier,,Medium,4,3,,5,,6,6s,Quickcraft x4,"Quickcraft x4. If total temporary stock generated this round exceeds 10, gain +3 permanent potency."
 Sugar Guild,Sugar Rush Peddler,,Medium,5,3,,6,,5,6s,Quickcraft x4,Quickcraft x4. Each sale this round reduces cast time by 0.5s until end of round.
-Sugar Guild,Confectioner,,Medium,5,3,,6,,7,7s,Quickcraft x4 / Haggle,"Quickcraft x4. Haggle. If a Haggled sale succeeds, all Sugar Guild allies gain +1 potency permanently."
+Sugar Guild,Confectioner,,Medium,5,3,,6,,7,7s,Quickcraft x4 / Haggle,"Quickcraft x4. Haggle. After this sells, all Sugar Guild allies gain +1 potency permanently."
 Sugar Guild,Tasting Table,,Medium,4,3,2,4,,,5s,,"When a customer walks away without buying from any hireling, redirect them to this hireling. If they buy, all Sugar Guild allies gain +1 temporary stock."
 Sugar Guild,Frosted Lookout,,Medium,5,3,,5,,,5s,Quickcraft x3,"Quickcraft x3. When an opponent uses Sabotage, immediately trigger your highest potency Sugar Guild ally's ability."
 Sugar Guild,Oven Master,⭐,High,6,3,,7,,7,6s,Quickcraft x5,Quickcraft x5. Allies gain +2 potency (permanent).

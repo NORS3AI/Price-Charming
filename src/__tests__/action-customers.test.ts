@@ -303,6 +303,137 @@ describe("sale execution", () => {
     expect(buffLog).toBeDefined();
   });
 
+  test("Confectioner: after any sale, all Sugar Guild allies gain +1 permanent potency", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Doughboy", "love");        // Sugar ally — should be buffed
+    b = placeAt(b, 3, "Confectioner", "love");    // Sugar, 7s cast, Haggle
+    b = placeAt(b, 5, "Jumping Jack", "luck");    // No Guild + different potion
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 5);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // Tick 8s so Confectioner casts once and has +4 temp stock for the sale.
+    s = tick(s, 8, mulberry32(1));
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 5, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 5, mulberry32(1));
+    const doughHs = s.hirelingStates.get("Doughboy-2")!;
+    const jjHs = s.hirelingStates.get("Jumping Jack-5")!;
+    const selfHs = s.hirelingStates.get("Confectioner-3")!;
+    // Sugar Guild ally gets +1 potency; non-Sugar ally does not; self does not.
+    expect(doughHs.permanentPotencyGainedThisRound).toBe(1);
+    expect(jjHs.permanentPotencyGainedThisRound).toBe(0);
+    expect(selfHs.permanentPotencyGainedThisRound).toBe(0);
+  });
+
+  test("Gingerbread King: gains +2 potency whenever any ally sells", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Jumping Jack", "love");       // base stock 3, 5s cast
+    b = placeAt(b, 3, "Gingerbread King", "luck");   // different potion — won't sell
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const gk = s.hirelingStates.get("Gingerbread King-3")!;
+    expect(gk.permanentPotencyGainedThisRound).toBe(2);
+    // Jumping Jack sold — it gets its own +1/+1 self-buff, but NOT
+    // Gingerbread King's ally buff (its own sale doesn't reflect back).
+    const jj = s.hirelingStates.get("Jumping Jack-2")!;
+    expect(jj.permanentPotencyGainedThisRound).toBe(1);
+  });
+
+  test("Street Rat: +2 permanent stock only on Haggled sales", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Street Rat", "love"); // Haggle + Knockoff x2
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 5);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // Customer budget must accommodate haggled price (5 + 3 = 8).
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const sr = s.hirelingStates.get("Street Rat-3")!;
+    // +2 from Street Rat's own Haggle-buff, plus Knockoff x2 (potency is low).
+    expect(sr.permanentStockGainedThisRound).toBeGreaterThanOrEqual(2);
+    // Log has an ability-buff entry for the +2 stock.
+    const streetRatBuff = s.log.find(
+      (e) => e.kind === "ability-buff" &&
+             e.casterId === "Street Rat-3" &&
+             e.targetId === "Street Rat-3" &&
+             e.stockGained === 2
+    );
+    expect(streetRatBuff).toBeDefined();
+  });
+
+  test("Burnt Batch: gains +6 permanent potency at end of round if it sold nothing", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Burnt Batch", "love"); // 3s cast, Quickcraft x2
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // No customers — tick a while, then finalize.
+    s = tick(s, 10, mulberry32(1));
+    const { finalizeRound } = require("../action/state");
+    const fin = finalizeRound(s);
+    const bb = fin.hirelingStates.get("Burnt Batch-3")!;
+    expect(bb.permanentPotencyGainedThisRound).toBe(6);
+  });
+
+  test("Burnt Batch: no +6 buff if it sold anything", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Burnt Batch", "love"); // Quickcraft x2 — generates temp stock
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 10, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    // 3s cast → at least one Quickcraft fires, then the customer resolves.
+    s = tick(s, 12, mulberry32(1));
+    const { finalizeRound } = require("../action/state");
+    const fin = finalizeRound(s);
+    const bb = fin.hirelingStates.get("Burnt Batch-3")!;
+    // Sold at least one unit → no end-of-round buff.
+    expect(bb.unitsSoldThisRound).toBeGreaterThan(0);
+    expect(bb.permanentPotencyGainedThisRound).toBe(0);
+  });
+
+  test("Glazier: gains +3 permanent potency if total Quickcraft stock generated > 10", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Glazier", "love"); // 6s cast, Quickcraft x4
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // 3 casts @ 6s = 18s; 3 × 4 = 12 Quickcraft stock generated > 10.
+    s = tick(s, 19, mulberry32(1));
+    const { finalizeRound } = require("../action/state");
+    const fin = finalizeRound(s);
+    const gl = fin.hirelingStates.get("Glazier-3")!;
+    expect(gl.permanentPotencyGainedThisRound).toBe(3);
+  });
+
+  test("Glazier: no +3 buff when Quickcraft-generated total is 10 or under", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Glazier", "love");
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // 2 casts @ 6s = 12s; 2 × 4 = 8 Quickcraft stock — not > 10.
+    s = tick(s, 13, mulberry32(1));
+    const { finalizeRound } = require("../action/state");
+    const fin = finalizeRound(s);
+    const gl = fin.hirelingStates.get("Glazier-3")!;
+    expect(gl.permanentPotencyGainedThisRound).toBe(0);
+  });
+
   test("no sale happens when no hireling of matching type has stock", () => {
     let b = createBoard();
     // Wrong-type hireling — cannot sell.
