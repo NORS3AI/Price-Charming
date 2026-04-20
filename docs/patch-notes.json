@@ -1,5 +1,31 @@
 [
   {
+    "version": "V0.1.6-alpha",
+    "date": "2026-04-20",
+    "title": "System Reset & Full Game Spec",
+    "changes": [
+      "Cleared all previously defined hireling and spell card data — no cards, stats, abilities, keywords, or spell definitions retained.",
+      "Removed obsolete spell systems: transformations, upgrades, and Wishing Star (replaced by the Charmed Hireling merge mechanic).",
+      "Hireling registry (src/cards/hirelings.ts) is now empty pending Phase 1 rebuild from src/data/cards.csv.",
+      "Documented full game systems in CLAUDE.md, README.md, and FEATURES.md: Hand & Board, Economy, Payday, Potion Pricing, Potion Types, Customers, Charmed Hirelings, Hover Tooltips, and Export to Excel.",
+      "Hand: max 8 cards, holds both hirelings and spells; spells cannot be sold.",
+      "Board: 7 slots — slots 1 & 7 are bench (still pay wages, no casts); slots 2-6 are active.",
+      "Economy: 5 starting gold, hireling 4g, spell 2g, refresh 1g, sell 1g; gold rolls over.",
+      "Dusty Broom starter: pre-placed slot 4, exempt from payday, cannot be Sabotaged or buffed, never in pool.",
+      "Payday triggers rounds 3/6/9/12/15 with glow warnings on rounds 2/5/8/11/14; wages escalate +2g per payday survived.",
+      "Wage tiers (flat): Low 2g, Medium 4g, High 6g, None for starters.",
+      "Potion pricing brackets: 1-8 potency=1g, up through 63+=8g cap; Haggle adds +3g per sale at -1 reputation.",
+      "Stock-to-units rules: 1-5 stock=1 unit, 6-15=1-2, 16-30=2-3, 31+=3-4 per customer interaction.",
+      "Potion types: 7 total (Love, Dragon's Breath, Mermaid's Tears, Goblin's Greed, Luck, Half-Curse Cure, Flutterfix); 5 of 7 are randomly active per run; player discovers via shop browsing.",
+      "Potion type reshuffle happens at the start of each shop phase; refreshing the shop does not reshuffle.",
+      "Keywords spec: Sabotage, Bewitch, Knockoff (xN), Haggle, Quickcraft (xN); only Knockoff/Haggle/Quickcraft accept xN. Hover tooltips list every keyword definition at the bottom.",
+      "Customers: 4-axis tug-of-war (Focus, Type, Budget, Quality) with patience timers and 1-5 star reputation rewards; passive hirelings naturally lean by stat (Stock→Focus, Potency→Quality, Set Price→Budget, Potion Type→Type).",
+      "Charmed Hireling: 3 copies of the same hireling with the same potion type merge instantly into the hand; playing a Charmed onto the board grants a random Charm card (Tip Jar, Second Chance, or Lucky).",
+      "Shop rule: at most 1 spell per refresh across all general and guild-specific spells (Merlin's Academy will override later).",
+      "Planned admin tool: Export to Excel button on the home page exports all hireling and spell data using the cards.csv schema."
+    ]
+  },
+  {
     "version": "V0.1.5-alpha",
     "date": "2026-04-19",
     "title": "11-Phase Rollout Plan",

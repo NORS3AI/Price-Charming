@@ -12,22 +12,34 @@ Welcome to the enchanted marketplace! You are a potion shop owner travelling thr
 
 ### How It Works
 
-Each game lasts up to **15 rounds**. At the start you pick a **Caravan** (your travelling shopfront) and begin hiring creatures and casting spells from the **Fairy Godmother's shop**.
+Each game lasts up to **15 rounds**. Every round is split into two phases:
 
-- **Hire** enchanted creatures to staff your shop. Each hireling carries potions with their own stock and potency.
-- **Assist** your hirelings with assistants who help brew and restock potions.
-- **Cast spells** to buff potency, transform hirelings into stronger forms, protect your crew, and more.
-- **Sell potions** to customers during the battle phase. Earn coins, build reputation, and outperform your opponent.
+- **Shop Phase** — buy hirelings and spells from the **Fairy Godmother's shop**, refresh, set potion prices, and arrange your board.
+- **Action Phase** — the marketplace opens. Hirelings auto-cast on timers and sell to customers in a 4-axis tug-of-war for Focus, Type, Budget, and Quality.
 
-Your opponents are **snapshots** — recordings of real players' builds at the same round you're on. Beat them to gain reputation; lose and your reputation drops.
+You start with **5 gold** and a free **Dusty Broom** pre-placed on your board. Hirelings live in 7 slots — 5 active, 2 bench. Bench hirelings rest but still owe wages.
+
+### Guilds & Keywords
+
+Hirelings belong to one of four guilds — **Sugar**, **Thieves**, **Nobles**, or **No Guild** — and may carry these keywords:
+
+- **Sabotage** — slow an opponent's hireling.
+- **Bewitch** — pull a customer's focus to your side.
+- **Knockoff xN** — gain permanent stock after low-potency sales.
+- **Haggle** — sell at +3g for −1 reputation per sale.
+- **Quickcraft xN** — generate temporary stock each cast.
+
+### Charmed Hirelings
+
+Collect **3 copies of the same hireling with the same potion type** — across board, bench, or hand — and they merge instantly into a **Charmed** hireling. Playing a Charmed onto the board grants a random **Charm card** (Tip Jar, Second Chance, or Lucky).
+
+### Payday
+
+Wages come due on rounds **3, 6, 9, 12, 15**. Every hireling — bench included — must be paid or sold, and wages climb +2g for each payday a hireling survives.
 
 ### Win Condition
 
-Max out your reputation bar to win. Lose all reputation and you're out. In the final rounds (13-15) the reputation bar **crunches**, making every sale count even more.
-
-### Transformation & Upgrades
-
-Some hirelings can be **transformed** with the Wishing Star spell — choose between two powerful upgraded forms. Collect **3 identical cards** and they automatically **upgrade** into a single stronger card.
+Max out your reputation bar to win. Lose all reputation and you're out. In the final rounds (13–15) the reputation bar **crunches**, making every sale count even more.
 
 ### Game Modes
 
@@ -43,6 +55,8 @@ npm install
 npm test
 npm run build
 ```
+
+> **Note:** The card system is currently being rebuilt. All previously coded hirelings, spells, transformations, and upgrades have been cleared. Phase 1 will rebuild the registry from `src/data/cards.csv`.
 
 ## Rollout Plan
 
