@@ -13,6 +13,18 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.2.2-alpha",
+    date: "2026-04-20",
+    title: "Phase 6 — Customer System",
+    changes: [
+      "src/customers/types.ts: Customer (desiredType, budget, qualityThreshold, reputationStars 1-5, patienceSeconds, axisPriority), AxisKind union (focus/type/budget/quality), AxisBar {playerFill, opponentFill}, CustomerState, AXIS_THRESHOLD=100.",
+      "src/customers/state.ts: createCustomerState validates axis priority completeness and reputation bounds; applyContribution clamps fills to [0, AXIS_THRESHOLD] and no-ops on resolved customers; tickPatience decrements and floors at 0; axisLeader / axesLedBy / determineWinner / resolveCustomer resolve per-axis leads and break ties via the customer's axisPriority list; reputationReward returns the customer's stars on a player win only.",
+      "src/customers/contributions.ts: PASSIVE_RATES (tunable) + computePassiveContribution turns a single active hireling's stock, potency, price, and potion-type match into per-second contributions following the spec leans (Stock→Focus, Potency→Quality, Set Price→Budget, Potion Type→Type); overBudgetPressure returns the drain a price-above-budget hireling exerts on the opposing side's Budget bar.",
+      "All symbols exported from src/index.ts. Customers are pure data — Phase 7 will wire them into the action-round timer loop.",
+      "31 new Jest tests across state transitions, priority-based tiebreakers, and passive contribution math (245 total). dist smoke-tested end-to-end: 5s of passive play from Pantry Stocker on Love → player leads on all 4 axes, resolves for 3 reputation.",
+    ],
+  },
+  {
     version: "V0.2.1-alpha",
     date: "2026-04-20",
     title: "Phase 5 — Potion Pricing",

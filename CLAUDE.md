@@ -53,6 +53,10 @@ src/
     potency.ts      — combinedPotencyByType across active-slot hirelings
     panel.ts        — PriceMap + PricingPanelEntry + buildPricingPanel + applyHaggle
     stock.ts        — unitsRange / rollUnitsPerInteraction (stock → units sold)
+  customers/
+    types.ts        — Customer, AxisKind, AxisBar, CustomerState, AXIS_THRESHOLD=100
+    state.ts        — createCustomerState, applyContribution, tickPatience, resolveCustomer
+    contributions.ts — passive per-second contribution per spec leans (stock→focus, etc.)
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

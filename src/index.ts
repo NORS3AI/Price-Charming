@@ -205,3 +205,36 @@ export {
 } from "./pricing/panel";
 export type { UnitsRange } from "./pricing/stock";
 export { rollUnitsPerInteraction, unitsRange } from "./pricing/stock";
+
+// Customers (Phase 6)
+export type {
+  AxisBar,
+  AxisKind,
+  Customer,
+  CustomerState,
+  Side,
+} from "./customers/types";
+export {
+  AXES,
+  AXIS_THRESHOLD,
+  MAX_REPUTATION_STARS,
+  MIN_REPUTATION_STARS,
+} from "./customers/types";
+export {
+  applyContribution,
+  axesLedBy,
+  axisLeader,
+  createCustomerState,
+  determineWinner,
+  isExpired,
+  reputationReward,
+  resolveCustomer,
+  tickPatience,
+} from "./customers/state";
+export type { PassiveContribution } from "./customers/contributions";
+export {
+  PASSIVE_RATES,
+  computePassiveContribution,
+  contributionToAxes,
+  overBudgetPressure,
+} from "./customers/contributions";
