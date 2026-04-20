@@ -740,7 +740,13 @@ function pcRenderPlayerBoard(){
   const el = $("pc-player-board"); if (!el) return;
   el.innerHTML = "";
   for (let i = 0; i < pcGame.board.slots.length; i++) {
-    el.appendChild(pcBuildSlotCard(pcGame.board.slots[i], i, E.isBenchSlot(i)));
+    const card = pcBuildSlotCard(pcGame.board.slots[i], i, E.isBenchSlot(i));
+    const inst = pcGame.board.slots[i];
+    if (inst && pcGame.phase === "shop") {
+      card.onclick = () => pcSellBoard(i);
+      card.title = "Click to sell for 1g";
+    }
+    el.appendChild(card);
   }
 }
 
@@ -769,6 +775,9 @@ function pcRenderPricingPanel(){
       <div class="pc-price-status">${status}</div>
     `;
     el.appendChild(d);
+    for (const btn of d.querySelectorAll(".pc-price-btn")) {
+      btn.onclick = () => pcSetPrice(btn.dataset.type, Number(btn.dataset.delta));
+    }
   }
 }
 
@@ -808,6 +817,12 @@ function pcRenderOffering(){
         <div class="pc-shop-ability">${s.abilityText || ""}</div>
       `;
     }
+    if (!cannotAfford) {
+      d.onclick = () => pcTryBuy(i);
+      d.title = `Click to buy for ${cost}g`;
+    } else {
+      d.title = `Need ${cost}g to buy`;
+    }
     el.appendChild(d);
   }
 }
@@ -838,6 +853,17 @@ function pcRenderHand(){
         <div style="font-weight:bold;font-size:.85rem">✦ ${inst.card.name}</div>
         <div style="font-size:.7rem;color:var(--purple)">Spell${inst.card.keywords.length ? " · " + pcFormatKeywords(inst.card.keywords) : ""}</div>
       `;
+    }
+    if (pcGame.phase === "shop") {
+      const idx = i;
+      d.onclick = (ev) => {
+        // Shift-click to sell a hireling; plain click plays hirelings or casts spells.
+        if (!isSpell && ev && ev.shiftKey) { pcSellHand(idx); return; }
+        pcPlayHand(idx);
+      };
+      d.title = isSpell
+        ? "Click to cast"
+        : "Click to play · Shift-click to sell for 1g";
     }
     el.appendChild(d);
   }
@@ -879,8 +905,122 @@ function pcRender(){
   pcRenderHand();
 }
 
-// --- stub handlers for buttons referenced in the new game-screen ---
-window.pcRefresh     = function(){ pcFlash("Shop actions wired in chunk C."); };
+// --- shop actions ---------------------------------------------------
+function pcAfterChange(){
+  // Auto-detect a Charmed merge. If one fires, announce it and render.
+  if (pcGame && pcGame.phase === "shop") {
+    const res = E.mergeIfCharmable({
+      board: pcGame.board, hand: pcGame.hand, pool: pcGame.pool
+    });
+    if (res.charmed) {
+      pcGame = { ...pcGame, board: res.board, hand: res.hand, pool: res.pool };
+      pcFlash(`Third Time's the Charm! ${res.charmed.card.name} merged.`);
+    }
+  }
+  pcRender();
+}
+
+function pcTryBuy(slotIdx){
+  if (!pcGame || pcGame.phase !== "shop") return;
+  const inst = pcGame.offering.slots[slotIdx];
+  if (!inst) return;
+  try {
+    const res = inst.card.kind === "hireling"
+      ? E.buyHirelingFromShop(pcGame.offering, slotIdx, pcGame.hand, pcGame.gold)
+      : E.buySpellFromShop(pcGame.offering, slotIdx, pcGame.hand, pcGame.gold);
+    pcGame = { ...pcGame, offering: res.offering, hand: res.hand, gold: res.gold };
+    pcAfterChange();
+  } catch (err) { pcFlash(err.message); }
+}
+window.pcTryBuy = pcTryBuy;
+
+function pcSellHand(handIdx){
+  if (!pcGame || pcGame.phase !== "shop") return;
+  try {
+    const res = E.sellHirelingFromHandToPool(pcGame.hand, handIdx, pcGame.pool, pcGame.gold);
+    pcGame = { ...pcGame, hand: res.hand, pool: res.pool, gold: res.gold };
+    pcAfterChange();
+  } catch (err) { pcFlash(err.message); }
+}
+window.pcSellHand = pcSellHand;
+
+function pcSellBoard(slot){
+  if (!pcGame || pcGame.phase !== "shop") return;
+  if (!pcGame.board.slots[slot]) return;
+  try {
+    const res = E.sellHirelingFromBoardToPool(pcGame.board, slot, pcGame.pool, pcGame.gold);
+    pcGame = { ...pcGame, board: res.board, pool: res.pool, gold: res.gold };
+    pcAfterChange();
+  } catch (err) { pcFlash(err.message); }
+}
+window.pcSellBoard = pcSellBoard;
+
+function pcRefresh(){
+  if (!pcGame || pcGame.phase !== "shop") return;
+  try {
+    const res = E.refreshShopWithCost(pcGame.offering, pcGame.pool, pcGame.round, pcRng, pcGame.gold);
+    pcGame = { ...pcGame, offering: res.offering, pool: res.pool, gold: res.gold };
+    pcAfterChange();
+  } catch (err) { pcFlash(err.message); }
+}
+window.pcRefresh = pcRefresh;
+
+function pcPlayHand(handIdx){
+  if (!pcGame || pcGame.phase !== "shop") return;
+  const card = pcGame.hand.cards[handIdx];
+  if (!card) return;
+  if (card.card.kind === "hireling") {
+    const slot = E.firstEmptySlot(pcGame.board);
+    if (slot === null) { pcFlash("Board is full."); return; }
+    try {
+      const res = E.playCharmed(pcGame.board, pcGame.hand, handIdx, slot, pcRng);
+      pcGame = { ...pcGame, board: res.board, hand: res.hand };
+      if (res.grantedCharm) pcFlash(`Charmed played! Granted ${res.grantedCharm.name}.`);
+      pcAfterChange();
+    } catch (err) { pcFlash(err.message); }
+    return;
+  }
+  // Spells — chunk G will add Lucky / Bottle / Polish targeting.
+  // Tip Jar + Second Chance + Spring Cleaning work right now.
+  const id = card.card.id;
+  try {
+    if (id === "tip-jar-charm") {
+      const res = E.castTipJarCharm(pcGame.hand, handIdx, pcGame.gold);
+      pcGame = { ...pcGame, hand: res.hand, gold: res.gold };
+      pcFlash("+3 gold from the Tip Jar.");
+    } else if (id === "second-chance-charm") {
+      const res = E.castSecondChanceCharm(pcGame.hand, handIdx, pcGame.offering, pcGame.pool, pcGame.round, pcRng);
+      pcGame = { ...pcGame, hand: res.hand, offering: res.offering, pool: res.pool };
+      pcFlash("Shop refreshed for free.");
+    } else if (id === "spring-cleaning" || id === "spring-cleaning-upgraded") {
+      const res = E.castSpringCleaning(pcGame.hand, handIdx, pcGame.pool);
+      pcGame = { ...pcGame, hand: res.hand, pool: res.pool };
+      pcFlash(`${card.card.name}: removed ${res.removedHirelings.length} hirelings from the pool.`);
+    } else {
+      // Placeholder until chunk G wires target-pick cast helpers.
+      const { hand: nextHand } = E.removeFromHand(pcGame.hand, handIdx);
+      pcGame = { ...pcGame, hand: nextHand };
+      pcFlash(`Cast ${card.card.name} (effect coming in chunk G).`);
+    }
+    pcAfterChange();
+  } catch (err) { pcFlash(err.message); }
+}
+window.pcPlayHand = pcPlayHand;
+
+function pcSetPrice(type, delta){
+  if (!pcGame || pcGame.phase !== "shop") return;
+  const rows = E.buildPricingPanel(pcGame.activePotionTypes, pcGame.board, pcGame.prices);
+  const row = rows.find(r => r.potionType === type);
+  if (!row) return;
+  const next = row.storedPrice + delta;
+  try {
+    const prices = E.setPrice(pcGame.prices, type, next, row.currentMax);
+    pcGame = { ...pcGame, prices };
+    pcRender();
+  } catch (err) { pcFlash(err.message); }
+}
+window.pcSetPrice = pcSetPrice;
+
 window.pcStartBattle = function(){ pcFlash("Battle wired in chunk E."); };
 window.pcAdvanceFromRoundEnd = function(){};
 window.pcCancelTarget = function(){
