@@ -286,3 +286,18 @@ export {
   pickRandomCharm,
   playCharmed,
 } from "./charmed/charms";
+
+// Game loop (Phase 10)
+export type {
+  GameOutcome,
+  GamePhase,
+  GameState,
+} from "./game/types";
+export {
+  FIRST_ROUND,
+  MAX_ROUNDS,
+  REPUTATION_MAX,
+  REPUTATION_MIN,
+} from "./game/types";
+export type { CreateGameOptions } from "./game/state";
+export { clampReputation, createGame } from "./game/state";
