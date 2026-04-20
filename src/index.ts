@@ -240,3 +240,16 @@ export {
   contributionToAxes,
   overBudgetPressure,
 } from "./customers/contributions";
+
+// Action round (Phase 7)
+export type {
+  ActionLogEntry,
+  ActionState,
+  HirelingActionState,
+} from "./action/types";
+export {
+  firstCastDelay,
+  initializeActionState,
+  nextCastDelay,
+  tick,
+} from "./action/state";
