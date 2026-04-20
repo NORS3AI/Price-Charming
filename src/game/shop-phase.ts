@@ -10,8 +10,10 @@ import { isPaydayRound } from "../economy/payday";
 import { SELL_VALUE } from "../economy/gold";
 import { sellHirelingFromBoardToPool } from "../shop/purchase";
 import { assignPotionsToPool } from "../shop/assignment";
-import { rollShop } from "../shop/offering";
+import { offeringInstances, refreshShop } from "../shop/offering";
+import { markSeenMany } from "../potions/discovery";
 import { RNG } from "../potions/rng";
+import { PotionTypeId } from "../potions/types";
 import { GameState } from "./types";
 
 /** Payday line-item tied to the specific hireling (board-only). */
@@ -108,11 +110,18 @@ export interface StartShopPhaseOptions {
 }
 
 /**
- * Open a fresh shop phase: reshuffle potion types across every pool
- * copy (spec: done at the start of each shop phase, never on refresh),
- * then roll a fresh offering for free. Requires `phase === "shop"` —
- * caller advances the round and sets the phase via Phase 10C's
- * `endRound` before reopening the shop.
+ * Open a fresh shop phase:
+ *   1. Return any unbought cards from the previous offering back to the
+ *      pool (otherwise those copies leak out of circulation over 15
+ *      rounds).
+ *   2. Reshuffle potion types across every pool copy (spec: done at the
+ *      start of each shop phase, never on refresh).
+ *   3. Roll a fresh offering for free.
+ *   4. Mark every potion type visible in the new offering as
+ *      discovered so the hover panel reveals them.
+ *
+ * Requires `phase === "shop"` — caller advances the round and sets the
+ * phase via Phase 10C's `endRound` before reopening the shop.
  */
 export function startShopPhase(
   state: GameState,
@@ -124,15 +133,42 @@ export function startShopPhase(
       `startShopPhase: expected phase "shop", got "${state.phase}".`
     );
   }
-  const reshuffled = assignPotionsToPool(
-    state.pool,
+  // Return leftover offering to pool first, THEN reshuffle + re-roll.
+  // refreshShop already composes return-to-pool + rollShop.
+  const reshuffledPool = assignPotionsToPool(
+    // Fold any leftover offering cards back into the pool before we
+    // reshuffle potion types across every copy.
+    offeringInstances(state.offering).reduce(
+      (pool, inst) => ({ instances: [...pool.instances, inst] }),
+      state.pool
+    ),
     state.activePotionTypes,
     rng
   );
-  const rolled = rollShop(reshuffled, state.round, rng, options);
+  // refreshShop expects the offering it's clearing — pass an empty one
+  // since we already moved those back above (to be included in the
+  // reshuffle). Then rolling draws from the fully-reshuffled pool.
+  const rolled = refreshShop(
+    { slots: state.offering.slots.map(() => null) },
+    reshuffledPool,
+    state.round,
+    rng,
+    options
+  );
+
+  // Discovery: every potion type on display now counts as encountered.
+  const shownTypes: PotionTypeId[] = [];
+  for (const inst of offeringInstances(rolled.offering)) {
+    if (inst.card.kind === "hireling" && inst.potionType) {
+      shownTypes.push(inst.potionType);
+    }
+  }
+  const discovery = markSeenMany(state.discovery, shownTypes);
+
   return {
     ...state,
     pool: rolled.pool,
     offering: rolled.offering,
+    discovery,
   };
 }

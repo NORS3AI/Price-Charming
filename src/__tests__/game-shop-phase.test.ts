@@ -150,4 +150,50 @@ describe("startShopPhase", () => {
       b.offering.slots.map((s) => s?.id ?? null)
     );
   });
+
+  test("returns the previous offering to the pool (regression: no copies leak)", () => {
+    // Roll round 1, capture the offering ids, roll round 2, and confirm
+    // the pool + new offering together still contain those ids.
+    const g0 = createGame({ rng: mulberry32(1) });
+    const first = startShopPhase(g0, mulberry32(2));
+    const firstOfferingIds = new Set(
+      first.offering.slots.filter((s) => s !== null).map((s) => s!.id)
+    );
+    const totalInstancesAfterFirst =
+      first.pool.instances.length +
+      first.offering.slots.filter((s) => s !== null).length;
+
+    const second = startShopPhase({ ...first, round: 2 }, mulberry32(3));
+
+    // Same total number of pool + offering instances (no leaks).
+    const totalInstancesAfterSecond =
+      second.pool.instances.length +
+      second.offering.slots.filter((s) => s !== null).length;
+    expect(totalInstancesAfterSecond).toBe(totalInstancesAfterFirst);
+
+    // Every id from the first offering is findable in the second pool
+    // or in the second offering (nothing evaporated).
+    const secondIds = new Set([
+      ...second.pool.instances.map((i) => i.id),
+      ...second.offering.slots.filter((s) => s !== null).map((s) => s!.id),
+    ]);
+    for (const id of firstOfferingIds) {
+      expect(secondIds.has(id)).toBe(true);
+    }
+  });
+
+  test("marks every potion type visible in the new offering as discovered", () => {
+    const g0 = createGame({ rng: mulberry32(1) });
+    expect(g0.discovery.seen.size).toBe(0);
+    const rolled = startShopPhase(g0, mulberry32(2));
+    // The freshly-rolled offering's hireling potion types should all
+    // now be discovered.
+    const offeringHirelingTypes = rolled.offering.slots
+      .filter((s) => s !== null && s!.card.kind === "hireling")
+      .map((s) => s!.potionType!);
+    for (const t of offeringHirelingTypes) {
+      expect(rolled.discovery.seen.has(t)).toBe(true);
+    }
+    expect(rolled.discovery.seen.size).toBeGreaterThan(0);
+  });
 });
