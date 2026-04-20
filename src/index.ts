@@ -252,5 +252,8 @@ export {
   firstCastDelay,
   initializeActionState,
   nextCastDelay,
+  setWeather,
   tick,
 } from "./action/state";
+export type { Weather, WeatherEffect } from "./action/weather";
+export { tickWeather } from "./action/weather";

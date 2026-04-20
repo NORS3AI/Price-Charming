@@ -21,6 +21,7 @@ import {
   ActionState,
   HirelingActionState,
 } from "./types";
+import { Weather, tickWeather } from "./weather";
 
 /**
  * Compute when a hireling's very first cast of the round should fire.
@@ -137,7 +138,27 @@ export function initializeActionState(
     customers: [],
     gold: startingGold,
     reputation: startingReputation,
+    weather: null,
     log: [],
+  };
+}
+
+/**
+ * Install a weather effect. Emits `weather-started`. Replaces any
+ * currently-active weather.
+ */
+export function setWeather(state: ActionState, weather: Weather): ActionState {
+  return {
+    ...state,
+    weather,
+    log: [
+      ...state.log,
+      {
+        kind: "weather-started",
+        weatherId: weather.id,
+        atSeconds: state.elapsedSeconds,
+      },
+    ],
   };
 }
 
@@ -306,6 +327,22 @@ export function tick(
 
   // 2. Advance customers.
   working = advanceCustomers(working, deltaSeconds, rng);
+
+  // 3. Tick weather — clears itself when duration expires.
+  if (working.weather) {
+    const nextWeather = tickWeather(working.weather, deltaSeconds);
+    if (nextWeather !== working.weather) {
+      const log: ActionLogEntry[] = [...working.log];
+      if (nextWeather === null) {
+        log.push({
+          kind: "weather-cleared",
+          weatherId: working.weather.id,
+          atSeconds: working.elapsedSeconds,
+        });
+      }
+      working = { ...working, weather: nextWeather, log };
+    }
+  }
 
   return working;
 }

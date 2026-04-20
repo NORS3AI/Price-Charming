@@ -57,6 +57,10 @@ src/
     types.ts        — Customer, AxisKind, AxisBar, CustomerState, AXIS_THRESHOLD=100
     state.ts        — createCustomerState, applyContribution, tickPatience, resolveCustomer
     contributions.ts — passive per-second contribution per spec leans (stock→focus, etc.)
+  action/
+    types.ts        — ActionState, HirelingActionState, ActionLogEntry union
+    state.ts        — initializeActionState, addCustomer, setWeather, tick (cast + customer + weather)
+    weather.ts      — Weather placeholder with duration decay
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

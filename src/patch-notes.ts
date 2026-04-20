@@ -13,6 +13,18 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.2.3-alpha",
+    date: "2026-04-20",
+    title: "Phase 7 — Action Round (casts, customers, sales, weather)",
+    changes: [
+      "7A src/action/types.ts + state.ts: ActionState immutably wraps elapsedSeconds, a board, per-active-hireling HirelingActionState (cast timer, casts so far, temp stock, per-round permanent gains, units sold), and a structured log. tick(state, dt, rng) progresses timers and fires casts — multi-cast ticks carry overshoot into the next timer. firstCastDelay/nextCastDelay translate all four CastTime variants (seconds, passive, random, decreasing). Quickcraft xN adds +N temp stock on every cast.",
+      "7B Customer lifecycle: addCustomer admits a fresh CustomerState and logs arrival; tick applies per-second passive contributions (spec leans: stock→focus, potency→quality, set price→budget, potion type→type) from every active hireling, ticks patience, and resolves on expiration with a customer-resolved log entry. Effective prices come from buildPricingPanel so the Budget axis respects the price cap.",
+      "7C Sales: when a customer resolves for the player, the highest-potency in-stock matching hireling rings them up. rollUnitsPerInteraction draws units from the stock bracket (capped by stock). pricePerUnit = effective price + 3g for Haggle. goldEarned and reputationDelta update the ActionState's running totals (Haggle costs -1 rep per sale). Knockoff xN fires when current potency < 10, granting +N permanent stock this round. New sale and knockoff log entries.",
+      "7D Weather placeholder: Weather type + tickWeather with duration decay. setWeather installs; tick clears when duration expires. Effect payload is opaque for now — concrete mechanics land in a future balance pass.",
+      "All symbols exported from src/index.ts. 36 new Jest tests across cast-delay math, multi-cast overshoot, Grand Vizier's decreasing cast wind-down (7 casts in 28s), passive-contribution-driven customer resolution, sale economics (Haggle +3g/-1rep, Knockoff trigger), and weather duration decay. 280 tests total; tsc clean; dist smoke-tested.",
+    ],
+  },
+  {
     version: "V0.2.2-alpha",
     date: "2026-04-20",
     title: "Phase 6 — Customer System",

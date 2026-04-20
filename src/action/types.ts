@@ -2,6 +2,7 @@ import { Board } from "../board/types";
 import { Customer, CustomerState, Resolution } from "../customers/types";
 import { PriceMap } from "../pricing/panel";
 import { PotionTypeId } from "../potions/types";
+import { Weather } from "./weather";
 
 /**
  * Per-hireling state that lives only during the action phase. Base stats
@@ -79,6 +80,16 @@ export type ActionLogEntry =
       instanceId: string;
       stockGained: number;
       atSeconds: number;
+    }
+  | {
+      kind: "weather-started";
+      weatherId: string;
+      atSeconds: number;
+    }
+  | {
+      kind: "weather-cleared";
+      weatherId: string;
+      atSeconds: number;
     };
 
 /**
@@ -102,6 +113,8 @@ export interface ActionState {
   gold: number;
   /** Player reputation delta accumulated so far this round. */
   reputation: number;
+  /** Active weather event, or null if none. */
+  weather: Weather | null;
   /** Append-only event log for tests and UI replay. */
   log: readonly ActionLogEntry[];
 }
