@@ -422,7 +422,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <div id="pc-top-bar">
     <div class="pc-stat"><span class="pc-label">Round</span><span class="pc-val" id="pc-round">1</span><span class="pc-label">/15</span></div>
     <div class="pc-stat"><span class="pc-label">Gold</span><span class="pc-val" id="pc-gold">0</span></div>
-    <div class="pc-stat"><span class="pc-label">Rep</span><span class="pc-val" id="pc-rep">0</span><span class="pc-label">/30</span></div>
+    <div class="pc-stat"><span class="pc-label">Rep</span><span class="pc-val" id="pc-rep">0</span><span class="pc-label">/100</span></div>
     <div class="pc-stat" id="pc-phase-tag">Shop</div>
     <div class="pc-stat" id="pc-diff-tag">Normal</div>
     <div style="margin-left:auto;display:flex;gap:.4rem">
@@ -525,6 +525,8 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .pc-slot-name{font-weight:bold;font-size:.85rem;line-height:1.15}
 .pc-slot-potion-label{font-size:1rem;text-align:center;margin:.15rem 0;font-weight:600;color:var(--deep)}
 .pc-slot-stats-bold{text-align:center;font-size:1.05rem;font-weight:bold;color:var(--deep);letter-spacing:.04em}
+.pc-slot-stats-bold.pc-stat-gain{color:#1a6b1a;text-shadow:0 0 4px rgba(80,200,80,.3)}
+.pc-slot-stats-bold.pc-stat-loss{color:#a01515}
 .pc-slot-stats{display:flex;gap:.3rem;font-size:.7rem;justify-content:space-between}
 .pc-slot-keys{font-size:.65rem;color:var(--purple);margin-top:.15rem}
 .pc-slot-cast{font-size:.7rem;color:var(--deep);font-style:italic}
@@ -692,6 +694,18 @@ window.saveVictory  = function(){ /* redirected later to pcSaveToLeaderboard */ 
 window.startGame = function(diff){
   pcStartGame(diff);
 };
+
+// Temporary global override: per the player's request, every hireling
+// in the pool pays the Low wage (2g scaling). Dusty Broom stays payday-
+// exempt. Idempotent — running it twice is a no-op.
+function pcForceLowWages(){
+  for (const card of E.ALL_HIRELINGS) {
+    if (card.id !== "dusty-broom" && card.wageTier !== "Low") {
+      card.wageTier = "Low";
+    }
+  }
+}
+pcForceLowWages();
 
 function pcStartGame(diff){
   pcDifficulty = diff || "normal";
@@ -887,13 +901,16 @@ function pcBuildSlotCard(inst, slotIdx, isBench, opts){
   d.className = classes.join(" ");
   d.dataset.slot = String(slotIdx);
 
-  // Action-phase extras: live stock includes temp + sold deltas, and
-  // the cast bar reflects nextCastIn vs the current cycle's baseline.
+  // Action-phase extras: live stock includes temp + sold deltas, live
+  // potency includes this-round permanent gains. The cast bar reflects
+  // nextCastIn vs the current cycle's baseline.
   let liveStock = stock;
+  let livePotency = potency;
   let castBar = "";
   const hs = opts && opts.hirelingStates ? opts.hirelingStates.get(inst.id) : null;
   if (hs) {
     liveStock = stock + (hs.temporaryStock || 0) + (hs.permanentStockGainedThisRound || 0) - (hs.unitsSoldThisRound || 0);
+    livePotency = potency + (hs.permanentPotencyGainedThisRound || 0);
     const progress = pcCastProgress(inst.card.castTime, hs);
     if (progress !== null) {
       castBar = `
@@ -913,11 +930,19 @@ function pcBuildSlotCard(inst, slotIdx, isBench, opts){
     : "— no potion —";
   const castText = hs ? "" : pcFormatCastTime(inst.card.castTime);
   const guildClass = pcGuildClass(inst.card.guild);
+  // Color stats by delta from base so gains/losses pop visually.
+  const stockDelta = liveStock - baseStock;
+  const potencyDelta = livePotency - basePotency;
+  const statsClass = (stockDelta > 0 || potencyDelta > 0)
+    ? "pc-slot-stats-bold pc-stat-gain"
+    : (stockDelta < 0)
+    ? "pc-slot-stats-bold pc-stat-loss"
+    : "pc-slot-stats-bold";
 
   d.innerHTML = `
     <div class="pc-slot-name">${inst.card.name}${inst.charmed ? " ✨" : ""}</div>
     <div class="pc-slot-potion-label">${potionLabel}</div>
-    <div class="pc-slot-stats-bold">${liveStock}/${potency}</div>
+    <div class="${statsClass}">${liveStock}/${livePotency}</div>
     ${inst.card.keywords.length ? `<div class="pc-slot-keys">${pcFormatKeywords(inst.card.keywords)}</div>` : ""}
     ${castBar}
     ${castText ? `<div class="pc-slot-cast">${castText}</div>` : ""}

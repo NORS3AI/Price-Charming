@@ -15,7 +15,7 @@ describe("game constants", () => {
     expect(MAX_ROUNDS).toBe(15);
     expect(FIRST_ROUND).toBe(1);
     expect(REPUTATION_MIN).toBe(-30);
-    expect(REPUTATION_MAX).toBe(30);
+    expect(REPUTATION_MAX).toBe(100);
   });
 });
 
@@ -92,7 +92,7 @@ describe("createGame", () => {
   });
 
   test("clamps over-the-top starting reputation to the bar envelope", () => {
-    const over = createGame({ rng: mulberry32(1), startingReputation: 99 });
+    const over = createGame({ rng: mulberry32(1), startingReputation: 999 });
     expect(over.reputation).toBe(REPUTATION_MAX);
     const under = createGame({ rng: mulberry32(1), startingReputation: -999 });
     expect(under.reputation).toBe(REPUTATION_MIN);
@@ -103,7 +103,7 @@ describe("clampReputation", () => {
   test("clamps to [-30, 30]", () => {
     expect(clampReputation(5)).toBe(5);
     expect(clampReputation(-5)).toBe(-5);
-    expect(clampReputation(40)).toBe(REPUTATION_MAX);
+    expect(clampReputation(150)).toBe(REPUTATION_MAX);
     expect(clampReputation(-40)).toBe(REPUTATION_MIN);
   });
 

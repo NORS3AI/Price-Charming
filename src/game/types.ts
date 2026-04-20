@@ -13,9 +13,9 @@ export const MAX_ROUNDS = 15;
 /** Starting round index. Shop phase of round 1 is the opening state. */
 export const FIRST_ROUND = 1;
 
-/** Reputation bounds per spec: -30 floor, +30 ceiling (no crunch yet). */
+/** Reputation bounds: floor at -30 (loss threshold), cap at 100 (win). */
 export const REPUTATION_MIN = -30;
-export const REPUTATION_MAX = 30;
+export const REPUTATION_MAX = 100;
 
 /**
  * Which phase of a round the game is currently in:

@@ -2231,7 +2231,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   var MAX_ROUNDS = 15;
   var FIRST_ROUND = 1;
   var REPUTATION_MIN = -30;
-  var REPUTATION_MAX = 30;
+  var REPUTATION_MAX = 100;
 
   // src/game/state.ts
   function createGame(options = {}) {
@@ -2434,7 +2434,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return { slots };
   }
-  function resolveOutcome(reputation, nextRound) {
+  function resolveOutcome(reputation, nextRound, tally2) {
     if (reputation >= REPUTATION_MAX) {
       return { outcome: "win", phase: "game-over" };
     }
@@ -2443,7 +2443,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     if (nextRound > MAX_ROUNDS) {
       return {
-        outcome: reputation > 0 ? "win" : "loss",
+        outcome: tally2.player > tally2.opponent ? "win" : "loss",
         phase: "game-over"
       };
     }
@@ -2461,7 +2461,12 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       action: finalized
     });
     const nextRound = state.round + 1;
-    const { outcome, phase } = resolveOutcome(finalized.reputation, nextRound);
+    const tally2 = { player: 0, opponent: 0 };
+    for (const cs of finalized.customers) {
+      if (cs.resolvedFor === "player") tally2.player++;
+      else if (cs.resolvedFor === "opponent") tally2.opponent++;
+    }
+    const { outcome, phase } = resolveOutcome(finalized.reputation, nextRound, tally2);
     return {
       ...state,
       round: Math.min(nextRound, MAX_ROUNDS),

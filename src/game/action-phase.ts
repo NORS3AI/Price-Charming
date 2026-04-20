@@ -102,10 +102,11 @@ function promotePermanentBuffs(state: GameState): Board {
   return { slots };
 }
 
-/** Compute the outcome + next phase given final reputation and round. */
+/** Compute the outcome + next phase given final rep, round, and customer tally. */
 function resolveOutcome(
   reputation: number,
-  nextRound: number
+  nextRound: number,
+  tally: { player: number; opponent: number }
 ): { outcome: GameOutcome; phase: GamePhase } {
   if (reputation >= REPUTATION_MAX) {
     return { outcome: "win", phase: "game-over" };
@@ -114,11 +115,10 @@ function resolveOutcome(
     return { outcome: "loss", phase: "game-over" };
   }
   if (nextRound > MAX_ROUNDS) {
-    // 15 rounds survived: positive reputation counts as a win, otherwise
-    // a loss. Exactly 0 rep at round 15 is a loss (player needs to end
-    // on the positive side of the bar).
+    // At the end of round 15, the player wins if they beat their
+    // opponent on customer count; ties or losses go to the opponent.
     return {
-      outcome: reputation > 0 ? "win" : "loss",
+      outcome: tally.player > tally.opponent ? "win" : "loss",
       phase: "game-over",
     };
   }
@@ -147,7 +147,14 @@ export function endRound(state: GameState): GameState {
     action: finalized,
   });
   const nextRound = state.round + 1;
-  const { outcome, phase } = resolveOutcome(finalized.reputation, nextRound);
+  // Tally how customers resolved this round so the round-15 tiebreaker
+  // can decide on customer count (spec: beat your opponent on round 15 = win).
+  const tally = { player: 0, opponent: 0 };
+  for (const cs of finalized.customers) {
+    if (cs.resolvedFor === "player") tally.player++;
+    else if (cs.resolvedFor === "opponent") tally.opponent++;
+  }
+  const { outcome, phase } = resolveOutcome(finalized.reputation, nextRound, tally);
 
   return {
     ...state,

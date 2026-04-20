@@ -156,20 +156,26 @@ describe("endRound", () => {
     expect(g.reputation).toBeLessThanOrEqual(30);
   });
 
-  test("ends the game when round 15 completes (positive rep → win)", () => {
+  test("ends the game when round 15 completes — win if player customers > opponent", () => {
     let g = createGame({ rng: mulberry32(1), startingReputation: 5 });
+    g = addBoardHireling(g, "Pantry Stocker", "ps", 2);
+    g = { ...g, prices: setPrice(g.prices, g.activePotionTypes[0], 1, 8) };
     g = { ...g, round: MAX_ROUNDS };
     g = endShopPhase(g, mulberry32(2));
+    // One customer Pantry Stocker will win → player customers 1, opp 0
+    g = addActionCustomer(g, makeCustomer(g, { patienceSeconds: 3 }));
+    g = tickAction(g, 3, mulberry32(3));
     g = endRound(g);
     expect(g.phase).toBe("game-over");
     expect(g.outcome).toBe("win");
     expect(g.round).toBe(MAX_ROUNDS);
   });
 
-  test("ends the game when round 15 completes with non-positive rep (loss)", () => {
+  test("ends the game when round 15 completes — loss if player customers <= opponent", () => {
     let g = createGame({ rng: mulberry32(1), startingReputation: 0 });
     g = { ...g, round: MAX_ROUNDS };
     g = endShopPhase(g, mulberry32(2));
+    // No customers spawned → tally 0-0 → loss
     g = endRound(g);
     expect(g.outcome).toBe("loss");
   });
