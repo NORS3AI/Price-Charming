@@ -986,6 +986,69 @@ function pcRenderOppSection(){
   }
 }
 
+function pcRenderCustomers(){
+  const el = $("pc-customers"); if (!el) return;
+  el.innerHTML = "";
+  const queue = pcGame.action ? pcGame.action.customers : [];
+  if (queue.length === 0) {
+    el.innerHTML = '<div class="pc-hint">Waiting for customers…</div>';
+    return;
+  }
+  for (const cs of queue) {
+    const c = cs.customer;
+    const d = document.createElement("div");
+    let stateCls = "";
+    if (cs.resolvedFor === "player") stateCls = " pc-won";
+    else if (cs.resolvedFor === "opponent") stateCls = " pc-lost";
+    else if (cs.resolvedFor === "no-sale") stateCls = " pc-nosale";
+    d.className = "pc-customer-card" + stateCls;
+    const statusLabel = cs.resolvedFor === "player" ? "✓ Won" :
+                        cs.resolvedFor === "opponent" ? "✗ Lost" :
+                        cs.resolvedFor === "no-sale" ? "— Walked away" :
+                        `⏳ ${cs.patienceRemaining.toFixed(1)}s`;
+    const stars = "★".repeat(c.reputationStars) + "☆".repeat(5 - c.reputationStars);
+    const bars = PC_AXES.map(axis => {
+      const bar = cs.axes[axis];
+      const pPct = Math.min(100, Math.max(0, bar.playerFill / 2));
+      const oPct = Math.min(100, Math.max(0, bar.opponentFill / 2));
+      return `
+        <div class="pc-cust-bar">
+          <span class="pc-cust-bar-label">${axis}</span>
+          <div class="pc-cust-bar-track">
+            <div class="pc-cust-bar-p" style="width:${pPct}%"></div>
+            <div class="pc-cust-bar-o" style="width:${oPct}%"></div>
+          </div>
+        </div>`;
+    }).join("");
+    d.innerHTML = `
+      <div class="pc-cust-head"><span>${c.id.split("-").slice(-1)[0]} wants ${pcPotionIcon(c.desiredType)}</span><span>${statusLabel}</span></div>
+      <div class="pc-cust-meta">Budget ${c.budget}g · Quality ≥ ${c.qualityThreshold} · ${stars}</div>
+      <div class="pc-cust-bars">${bars}</div>
+    `;
+    el.appendChild(d);
+  }
+}
+
+function pcRenderLog(){
+  const el = $("pc-log"); if (!el) return;
+  if (!pcGame.action) { el.textContent = ""; return; }
+  // Show the most recent 25 entries, newest at the top.
+  const entries = pcGame.action.log.slice(-25).reverse();
+  el.textContent = entries.map(e => {
+    const t = `[${e.atSeconds.toFixed(1)}s]`;
+    switch (e.kind) {
+      case "customer-arrived": return `${t} customer ${e.customerId} arrived`;
+      case "customer-resolved": return `${t} ${e.customerId} → ${e.resolution}`;
+      case "sale": return `${t} sale: ${e.instanceId} × ${e.unitsSold} @ ${e.pricePerUnit}g (+${e.goldEarned}g, ${e.reputationDelta >= 0 ? "+" : ""}${e.reputationDelta} rep${e.haggled ? " haggle" : ""})`;
+      case "cast": return `${t} cast ${e.instanceId} (#${e.castNumber})`;
+      case "quickcraft": return `${t} quickcraft on ${e.instanceId} +${e.stockAdded}`;
+      case "knockoff": return `${t} knockoff ${e.instanceId} +${e.stockGained}`;
+      case "stopped": return `${t} stopped ${e.instanceId}`;
+      default: return `${t} ${e.kind}`;
+    }
+  }).join("\n");
+}
+
 function pcRender(){
   if (!pcGame) return;
   $("pc-round").textContent = pcGame.round;
@@ -1007,6 +1070,10 @@ function pcRender(){
   if (shopMode) {
     pcRenderPricingPanel();
     pcRenderOffering();
+  }
+  if (actionMode) {
+    pcRenderCustomers();
+    pcRenderLog();
   }
   pcRenderHand();
 }
@@ -1127,7 +1194,103 @@ function pcSetPrice(type, delta){
 }
 window.pcSetPrice = pcSetPrice;
 
-window.pcStartBattle = function(){ pcFlash("Battle wired in chunk E."); };
+// --- battle / action phase -----------------------------------------
+const PC_AXES = ["focus", "type", "budget", "quality"];
+
+function pcShuffleAxes(rng){
+  const out = [...PC_AXES];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+// Build the customer schedule for the current round — count scales with
+// difficulty and patience/quality scale with round so later rounds are
+// harder even at Easy.
+function pcBuildCustomerSchedule(){
+  const diff = PC_DIFF[pcDifficulty];
+  const round = pcGame.round;
+  const count = diff.customerCount;
+  const queue = [];
+  for (let i = 0; i < count; i++) {
+    const type = pcGame.activePotionTypes[Math.floor(pcRng() * pcGame.activePotionTypes.length)];
+    const budget = 2 + Math.floor(pcRng() * 4) + Math.min(2, Math.floor(round / 5)); // 2..5 + round boost
+    const quality = 1 + Math.floor(pcRng() * Math.min(8, round + 1));
+    const stars = 1 + Math.floor(pcRng() * 5);
+    const patience = Math.max(5, 9 - Math.floor(round / 4));
+    queue.push({
+      spawnAt: i * 2.5, // one customer every 2.5 simulated seconds
+      customer: {
+        id: `cust-r${round}-${i}`,
+        desiredType: type,
+        budget,
+        qualityThreshold: quality,
+        reputationStars: stars,
+        patienceSeconds: patience,
+        axisPriority: pcShuffleAxes(pcRng),
+      },
+    });
+  }
+  return queue;
+}
+
+function pcStartBattle(){
+  if (!pcGame || pcGame.phase !== "shop") return;
+  // Stop the player from battling with unpaid wages.
+  if (E.paydayDueNow(pcGame) && E.paydayLineItems(pcGame).length > 0) {
+    pcFlash("Resolve payday before battling.");
+    return;
+  }
+  try {
+    pcGame = E.endShopPhase(pcGame, pcRng);
+  } catch (err) { pcFlash(err.message); return; }
+
+  pcCustomerQueue = pcBuildCustomerSchedule();
+  pcCustomerSpawnIdx = 0;
+  pcRender();
+
+  if (pcBattleTimer) clearInterval(pcBattleTimer);
+  pcBattleTimer = setInterval(pcBattleTick, 100);
+}
+window.pcStartBattle = pcStartBattle;
+
+function pcBattleTick(){
+  if (!pcGame || pcGame.phase !== "action" || !pcGame.action) {
+    clearInterval(pcBattleTimer); pcBattleTimer = null; return;
+  }
+  // Spawn customers whose scheduled time has arrived.
+  while (pcCustomerSpawnIdx < pcCustomerQueue.length &&
+         pcGame.action.elapsedSeconds >= pcCustomerQueue[pcCustomerSpawnIdx].spawnAt) {
+    pcGame = E.addActionCustomer(pcGame, pcCustomerQueue[pcCustomerSpawnIdx].customer);
+    pcCustomerSpawnIdx++;
+  }
+
+  try { pcGame = E.tickAction(pcGame, 0.1, pcRng); }
+  catch (err) { clearInterval(pcBattleTimer); pcBattleTimer = null; pcFlash(err.message); return; }
+
+  pcRender();
+
+  const allSpawned = pcCustomerSpawnIdx >= pcCustomerQueue.length;
+  const allResolved = pcGame.action.customers.every(c => c.resolvedFor !== null);
+  if (allSpawned && allResolved) {
+    clearInterval(pcBattleTimer); pcBattleTimer = null;
+    pcFinishRound();
+  }
+}
+
+function pcFinishRound(){
+  try { pcGame = E.endRound(pcGame); }
+  catch (err) { pcFlash(err.message); return; }
+  // Opponent plays their next shop before the player's new shop opens.
+  if (pcGame.phase === "shop") {
+    pcOpponentPlayRound(pcGame.round);
+    pcGame = E.startShopPhase(pcGame, pcRng);
+  }
+  pcRender();
+}
+
 window.pcAdvanceFromRoundEnd = function(){};
 window.pcCancelTarget = function(){
   const o = $("pc-target-overlay"); if (o) o.style.display = "none";
