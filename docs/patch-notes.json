@@ -1,5 +1,17 @@
 [
   {
+    "version": "V0.2.6-alpha",
+    "date": "2026-04-20",
+    "title": "Phase 10 — Round Structure (full 15-round game loop)",
+    "changes": [
+      "10A src/game/types.ts + state.ts: GameState bundles board, hand, pool, offering, prices, activePotionTypes, discovery, opponent, action, gold, reputation, round, phase ('shop' | 'action' | 'game-over'), outcome ('in-progress' | 'win' | 'loss'), and the starter Dusty Broom. createGame(options?) seeds round 1: picks 5 active potion types, places Dusty Broom at slot 3 with a bound potion, assigns potion types across the fresh pool, initializes prices at 1g, empty discovery/offering, opponent/action null. clampReputation enforces the -30/+30 envelope.",
+      "10B src/game/shop-phase.ts: paydayDueNow(state) + paydayLineItems(state) surface non-exempt board hirelings (bench included, Dusty Broom excluded) with wage/canPay/sellValue. payWage deducts gold + advances the wage tracker; sellAtPayday returns the copy to the pool (Dusty Broom disappears permanently). startShopPhase reshuffles pool potion types and rolls a fresh shop for free (spec: reshuffle at each shop phase, never on refresh).",
+      "10C src/game/action-phase.ts: endShopPhase → ActionState initialized from board/prices/activeTypes, opponent snapshot installed if attached. tickAction advances time; addActionCustomer admits customers. endRound force-resolves stragglers (with sales), promotes per-round Knockoff / potency gains onto board HirelingInstance permanent bonuses, rolls up gold + reputation, advances the round, and decides outcome (win at +30 rep or positive rep at round 15; loss at -30 rep or non-positive rep at round 15). runActionToCompletion ticks until every customer resolves.",
+      "All symbols exported from src/index.ts. 39 new Jest tests across game init (determinism, Dusty Broom placement, pool assignment), shop phase (payday, reshuffle + reroll), and action phase (customer lifecycle, buff promotion, outcome branches). 354 tests total; tsc clean.",
+      "Dist smoke-tested end-to-end: round 1 shop rolls 5 slots → action with a Gretel-style customer → customer resolves → endRound advances to round 2 with outcome still in-progress."
+    ]
+  },
+  {
     "version": "V0.2.5-alpha",
     "date": "2026-04-20",
     "title": "Phase 9 — Charmed Hirelings + Charm Cards",

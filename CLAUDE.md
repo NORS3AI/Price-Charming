@@ -67,6 +67,11 @@ src/
   charmed/
     merge.ts        — findCharmableTriple + mergeCharmableTriple (3-of-a-kind merge)
     charms.ts       — playCharmed grants a random Charm; cast helpers for the 3 charms
+  game/
+    types.ts        — GameState, GamePhase, GameOutcome, MAX_ROUNDS, REPUTATION_MIN/MAX
+    state.ts        — createGame, clampReputation (round-1 setup)
+    shop-phase.ts   — paydayLineItems, payWage, sellAtPayday, startShopPhase
+    action-phase.ts — endShopPhase, tickAction, addActionCustomer, endRound, runActionToCompletion
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

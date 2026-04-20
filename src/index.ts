@@ -312,3 +312,10 @@ export {
   sellAtPayday,
   startShopPhase,
 } from "./game/shop-phase";
+export {
+  addActionCustomer,
+  endRound,
+  endShopPhase,
+  runActionToCompletion,
+  tickAction,
+} from "./game/action-phase";
