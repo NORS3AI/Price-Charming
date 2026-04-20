@@ -101,6 +101,44 @@ describe("paydayLineItems", () => {
     // pins the "pays 2g, then immediately asks for 4g" bug fix.
     expect(paydayLineItems(g).length).toBe(0);
   });
+
+  test("a hireling acquired between paydays only pays ONCE on the next payday (regression)", () => {
+    // Buy on round 6 (between payday 1 at round 5 and payday 2 at round 8).
+    // paydaysSurvived stays at 0 because round 5 filtered them out via
+    // acquiredAtRound. At round 8 (idx=2), the filter `paydaysSurvived
+    // < idx` is 0 < 2 — true. Before the fix, paying once bumped to 1
+    // but 1 < 2 was still true, so the hireling was re-billed. After
+    // the fix, `lastPaidRound === state.round` excludes them.
+    let g = createGame({ rng: mulberry32(1), startingGold: 20 });
+    const card = ALL_HIRELINGS.find((h) => h.name === "Doughboy")!;
+    const midCycle = createHirelingInstance(card, "mid", g.activePotionTypes[0], {
+      acquiredAtRound: 6,
+    });
+    g = {
+      ...g,
+      round: 8,
+      board: placeHireling(g.board, 2, midCycle),
+    };
+    const first = paydayLineItems(g);
+    expect(first.length).toBe(1);
+    expect(first[0].wage).toBe(2); // 1st personal payday, not the game's 2nd idx
+    g = payWage(g, "mid");
+    expect(paydayLineItems(g).length).toBe(0);
+    expect(g.gold).toBe(18); // 20 - 2, NOT 20 - 2 - 4 = 14
+  });
+
+  test("lastPaidRound resets the single-round lock so next payday bills again", () => {
+    let g = createGame({ rng: mulberry32(1), startingGold: 30 });
+    g = withBoardHireling(g, "Doughboy", "d1", 2);
+    g = { ...g, round: 5 };
+    g = payWage(g, "d1");
+    expect(paydayLineItems(g).length).toBe(0);
+    // Next payday round — the hireling must show up again.
+    g = { ...g, round: 8 };
+    const items = paydayLineItems(g);
+    expect(items.length).toBe(1);
+    expect(items[0].wage).toBe(4); // 2nd personal payday → Low tier's 4g
+  });
 });
 
 describe("payWage", () => {

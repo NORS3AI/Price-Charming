@@ -312,6 +312,67 @@ describe("tick", () => {
     expect(dutchHs.permanentPotencyGainedThisRound).toBe(0);
   });
 
+  test("Rush Order Cook: base 8s cast reduces by 1s per other Sugar Guild ally", () => {
+    // Solo: 8s base — one cast at 8s, not another before t=15.
+    let bSolo = createBoard();
+    bSolo = placeAt(bSolo, 3, "Rush Order Cook");
+    let sSolo = initializeActionState(bSolo, defaultPriceMap([]), [], mulberry32(1));
+    sSolo = tick(sSolo, 15, mulberry32(1));
+    const castsSolo = sSolo.log.filter((e) => e.kind === "cast" && e.instanceId === "Rush Order Cook-3").length;
+    expect(castsSolo).toBe(1); // 8s cast fires once in 15s
+
+    // With 3 other Sugar Guild allies: 8 - 3 = 5s effective cast time.
+    // In 15s that's 3 casts (at 5s, 10s, 15s).
+    let b = createBoard();
+    b = placeAt(b, 1, "Doughboy");
+    b = placeAt(b, 2, "Burnt Batch");
+    b = placeAt(b, 3, "Rush Order Cook");
+    b = placeAt(b, 4, "Sugar Sprinkler");
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 15, mulberry32(1));
+    const casts = s.log.filter(
+      (e) => e.kind === "cast" && e.instanceId === "Rush Order Cook-3"
+    ).length;
+    expect(casts).toBe(3);
+  });
+
+  test("Rush Order Cook: non-Sugar Guild allies do not reduce its cast time", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "Robbin Goblin"); // Thieves Guild — no reduction
+    b = placeAt(b, 3, "Rush Order Cook");
+    b = placeAt(b, 5, "The Page");       // Nobles Guild — no reduction
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 15, mulberry32(1));
+    const casts = s.log.filter(
+      (e) => e.kind === "cast" && e.instanceId === "Rush Order Cook-3"
+    ).length;
+    expect(casts).toBe(1); // still 8s cast time
+  });
+
+  test("Rush Order Cook: effective cast time floors at 1s", () => {
+    let b = createBoard();
+    // Max out: 4 Sugar Guild allies around it. Base 8 - 4 = 4s, not
+    // below 1. Use 4 Sugar allies so reduction stays above floor.
+    b = placeAt(b, 1, "Doughboy");
+    b = placeAt(b, 2, "Burnt Batch");
+    b = placeAt(b, 3, "Rush Order Cook");
+    b = placeAt(b, 4, "Sugar Sprinkler");
+    b = placeAt(b, 5, "Oven Master");
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 5, mulberry32(1));
+    const casts = s.log.filter(
+      (e) => e.kind === "cast" && e.instanceId === "Rush Order Cook-3"
+    ).length;
+    // 8 - 4 = 4s → one cast at 4s in a 5s tick.
+    expect(casts).toBe(1);
+  });
+
+  test("Rush Order Cook has Quickcraft x2 (not x5) per updated card text", () => {
+    const card = ALL_HIRELINGS.find((h) => h.name === "Rush Order Cook")!;
+    const qc = card.keywords.find((k) => k.name === "Quickcraft");
+    expect(qc?.count).toBe(2);
+  });
+
   test("determinism under a seeded RNG for random cast times", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Royal Advisor"); // 1-8s random

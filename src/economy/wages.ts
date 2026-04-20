@@ -19,17 +19,23 @@ export const WAGE_SCHEDULE: Readonly<Record<WageTier, readonly number[]>> = {
  * specific hireling has already been paid through. A freshly purchased
  * hireling starts at 0 — the next payday will be their 1st.
  *
+ * `lastPaidRound` records the round on which this hireling was most
+ * recently paid. Used to prevent double-billing within a single payday
+ * round (e.g. a hireling whose paydaysSurvived was behind the current
+ * payday index could otherwise be re-included after paying once).
+ *
  * Benching does not pause or reset the counter. Selling + repurchasing
  * starts a new tracker at 0 (handled by the caller — create a new tracker).
  */
 export interface WageTracker {
   tier: WageTier;
   paydaysSurvived: number;
+  lastPaidRound: number;
 }
 
 /** Create a fresh tracker for a hireling with the given wage tier. */
 export function createWageTracker(tier: WageTier): WageTracker {
-  return { tier, paydaysSurvived: 0 };
+  return { tier, paydaysSurvived: 0, lastPaidRound: 0 };
 }
 
 /**
@@ -62,13 +68,17 @@ export function currentWageDemand(tracker: WageTracker): number {
  * more payday. Original tracker is not mutated. Throws if called beyond
  * MAX_PAYDAYS (a 15-round game has exactly 5 paydays).
  */
-export function survivePayday(tracker: WageTracker): WageTracker {
+export function survivePayday(tracker: WageTracker, round = 0): WageTracker {
   if (tracker.paydaysSurvived >= MAX_PAYDAYS) {
     throw new Error(
       `Hireling has already survived the maximum of ${MAX_PAYDAYS} paydays.`
     );
   }
-  return { ...tracker, paydaysSurvived: tracker.paydaysSurvived + 1 };
+  return {
+    ...tracker,
+    paydaysSurvived: tracker.paydaysSurvived + 1,
+    lastPaidRound: round,
+  };
 }
 
 /**

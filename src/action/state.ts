@@ -66,15 +66,46 @@ export function nextCastDelay(
   }
 }
 
+/**
+ * Compute this hireling's effective cast time given current board
+ * composition. Normally this is just `inst.card.castTime`, but some
+ * cards alter their own cast time based on allies:
+ *
+ *   - rush-order-cook: "-1s cast time for each other Sugar Guild ally."
+ *     Minimum 1s so the cast loop can't divide by zero or spin.
+ *
+ * The board is immutable during the action phase, so the result is
+ * stable across a round — callers may cache it, but we recompute each
+ * time for simplicity.
+ */
+function effectiveCastTime(inst: HirelingInstance, board: Board): CastTime {
+  const base = inst.card.castTime;
+  switch (inst.card.id) {
+    case "rush-order-cook": {
+      if (base.kind !== "seconds") return base;
+      const sugarAllies = activeHirelings(board).filter(
+        (h) =>
+          h.id !== inst.id &&
+          h.card.kind === "hireling" &&
+          h.card.guild === "Sugar Guild"
+      ).length;
+      return { kind: "seconds", value: Math.max(1, base.value - sugarAllies) };
+    }
+    default:
+      return base;
+  }
+}
+
 /** Fresh per-hireling state with the first cast scheduled. */
 function freshHirelingState(
   inst: HirelingInstance,
+  board: Board,
   rng: RNG
 ): HirelingActionState {
   return {
     instanceId: inst.id,
     castsSoFar: 0,
-    nextCastIn: firstCastDelay(inst.card.castTime, rng),
+    nextCastIn: firstCastDelay(effectiveCastTime(inst, board), rng),
     temporaryStock: 0,
     permanentStockGainedThisRound: 0,
     permanentPotencyGainedThisRound: 0,
@@ -131,7 +162,7 @@ export function initializeActionState(
 ): ActionState {
   const states = new Map<string, HirelingActionState>();
   for (const inst of activeHirelings(board)) {
-    states.set(inst.id, freshHirelingState(inst, rng));
+    states.set(inst.id, freshHirelingState(inst, board, rng));
   }
   return {
     board,
@@ -545,8 +576,14 @@ function fireCast(
     });
   }
 
-  // Schedule the next cast, or mark stopped.
-  const nextDelay = nextCastDelay(inst.card.castTime, castNumber, rng);
+  // Schedule the next cast, or mark stopped. Uses the board-aware
+  // effective cast time so cards like Rush Order Cook honor their
+  // per-ally reductions.
+  const nextDelay = nextCastDelay(
+    effectiveCastTime(inst, state.board),
+    castNumber,
+    rng
+  );
   if (nextDelay === null) {
     log.push({
       kind: "stopped",

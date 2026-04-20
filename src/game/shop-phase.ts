@@ -43,6 +43,12 @@ export function paydayLineItems(state: GameState): BoardPaydayLineItem[] {
   return allHirelings(state.board)
     .filter((h) => !isExemptFromPayday(h.wageTracker))
     .filter((h) => h.wageTracker.paydaysSurvived < idx)
+    // A hireling is only billed ONCE per payday round. Without this
+    // check, a hireling acquired between paydays (paydaysSurvived lags
+    // behind the current idx) would be re-included after each payment
+    // until paydaysSurvived caught up to idx — stacking 2g, 4g, 6g, ...
+    // in a single round.
+    .filter((h) => h.wageTracker.lastPaidRound !== state.round)
     // Hirelings acquired ON the current payday round skip this payday:
     // they weren't on the board yet when wages were assessed, and a
     // fresh hireling needs to survive a full payday cycle first.
@@ -90,9 +96,14 @@ export function payWage(state: GameState, hirelingId: string): GameState {
       `payWage: need ${wage}g, only have ${state.gold}g.`
     );
   }
+  if (hireling.wageTracker.lastPaidRound === state.round) {
+    throw new Error(
+      `payWage: "${hirelingId}" has already been paid at round ${state.round}.`
+    );
+  }
   const updated: HirelingInstance = {
     ...hireling,
-    wageTracker: survivePayday(hireling.wageTracker),
+    wageTracker: survivePayday(hireling.wageTracker, state.round),
   };
   const slots = state.board.slots.slice();
   slots[slot] = updated;

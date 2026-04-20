@@ -394,7 +394,7 @@ Sugar Guild,Confectioner,,Medium,5,3,,6,,7,7s,Quickcraft x4 / Haggle,"Quickcraft
 Sugar Guild,Tasting Table,,Medium,4,3,2,4,,,5s,,"When a customer walks away without buying from any hireling, redirect them to this hireling. If they buy, all Sugar Guild allies gain +1 temporary stock."
 Sugar Guild,Frosted Lookout,,Medium,5,3,,5,,,5s,Quickcraft x3,"Quickcraft x3. When an opponent uses Sabotage, immediately trigger your highest potency Sugar Guild ally's ability."
 Sugar Guild,Oven Master,\u2B50,High,6,3,,7,,7,6s,Quickcraft x5,Quickcraft x5. Allies gain +2 potency (permanent).
-Sugar Guild,Rush Order Cook,,High,6,3,,6,,7,8s,Quickcraft x5,Quickcraft x5. -1s cast time for each other Sugar Guild ally.
+Sugar Guild,Rush Order Cook,,High,6,3,,6,,7,8s,Quickcraft x2,Quickcraft x2. -1s cast time for each other Sugar Guild ally.
 Sugar Guild,Sugar Crash,,High,7,3,,8,,6,7s,Quickcraft x5 / Bewitch,"Quickcraft x5. Once per round, when your total temporary stock hits 20, all customers in the middle zone are Bewitched simultaneously."
 Sugar Guild,The Candy Architect,,High,7,3,,7,,8,8s,Quickcraft x6,"Quickcraft x6. Each time any Sugar Guild ally gains permanent potency this round, this hireling's next Quickcraft generates +2 additional stock."
 Sugar Guild,Gingerbread King,\u2B50,High,9,2,,8,,12,8s,Quickcraft x10,"Quickcraft x10. After an ally sells, gain +2 potency (permanent)."
@@ -677,7 +677,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     None: [0, 0, 0, 0, 0]
   };
   function createWageTracker(tier) {
-    return { tier, paydaysSurvived: 0 };
+    return { tier, paydaysSurvived: 0, lastPaidRound: 0 };
   }
   function wageFor(tier, paydayNumber) {
     if (!Number.isInteger(paydayNumber) || paydayNumber < 1 || paydayNumber > MAX_PAYDAYS) {
@@ -690,13 +690,17 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   function currentWageDemand(tracker) {
     return wageFor(tracker.tier, tracker.paydaysSurvived + 1);
   }
-  function survivePayday(tracker) {
+  function survivePayday(tracker, round = 0) {
     if (tracker.paydaysSurvived >= MAX_PAYDAYS) {
       throw new Error(
         `Hireling has already survived the maximum of ${MAX_PAYDAYS} paydays.`
       );
     }
-    return { ...tracker, paydaysSurvived: tracker.paydaysSurvived + 1 };
+    return {
+      ...tracker,
+      paydaysSurvived: tracker.paydaysSurvived + 1,
+      lastPaidRound: round
+    };
   }
   function isExemptFromPayday(tracker) {
     return tracker.tier === "None";
@@ -1627,11 +1631,25 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       }
     }
   }
-  function freshHirelingState(inst, rng) {
+  function effectiveCastTime(inst, board) {
+    const base = inst.card.castTime;
+    switch (inst.card.id) {
+      case "rush-order-cook": {
+        if (base.kind !== "seconds") return base;
+        const sugarAllies = activeHirelings(board).filter(
+          (h) => h.id !== inst.id && h.card.kind === "hireling" && h.card.guild === "Sugar Guild"
+        ).length;
+        return { kind: "seconds", value: Math.max(1, base.value - sugarAllies) };
+      }
+      default:
+        return base;
+    }
+  }
+  function freshHirelingState(inst, board, rng) {
     return {
       instanceId: inst.id,
       castsSoFar: 0,
-      nextCastIn: firstCastDelay(inst.card.castTime, rng),
+      nextCastIn: firstCastDelay(effectiveCastTime(inst, board), rng),
       temporaryStock: 0,
       permanentStockGainedThisRound: 0,
       permanentPotencyGainedThisRound: 0,
@@ -1658,7 +1676,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   function initializeActionState(board, prices, activePotionTypes, rng, startingGold = 0, startingReputation = 0) {
     const states = /* @__PURE__ */ new Map();
     for (const inst of activeHirelings(board)) {
-      states.set(inst.id, freshHirelingState(inst, rng));
+      states.set(inst.id, freshHirelingState(inst, board, rng));
     }
     return {
       board,
@@ -1914,7 +1932,11 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         temporaryStockAfter: temporaryStock
       });
     }
-    const nextDelay = nextCastDelay(inst.card.castTime, castNumber, rng);
+    const nextDelay = nextCastDelay(
+      effectiveCastTime(inst, state.board),
+      castNumber,
+      rng
+    );
     if (nextDelay === null) {
       log.push({
         kind: "stopped",
@@ -2467,7 +2489,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   function paydayLineItems(state) {
     const idx = paydayIndex(state.round);
     if (idx === null) return [];
-    return allHirelings(state.board).filter((h) => !isExemptFromPayday(h.wageTracker)).filter((h) => h.wageTracker.paydaysSurvived < idx).filter((h) => h.acquiredAtRound === 0 || h.acquiredAtRound < state.round).map((h) => {
+    return allHirelings(state.board).filter((h) => !isExemptFromPayday(h.wageTracker)).filter((h) => h.wageTracker.paydaysSurvived < idx).filter((h) => h.wageTracker.lastPaidRound !== state.round).filter((h) => h.acquiredAtRound === 0 || h.acquiredAtRound < state.round).map((h) => {
       const wage = currentWageDemand(h.wageTracker);
       return {
         hireling: h,
@@ -2503,9 +2525,14 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         `payWage: need ${wage}g, only have ${state.gold}g.`
       );
     }
+    if (hireling.wageTracker.lastPaidRound === state.round) {
+      throw new Error(
+        `payWage: "${hirelingId}" has already been paid at round ${state.round}.`
+      );
+    }
     const updated = {
       ...hireling,
-      wageTracker: survivePayday(hireling.wageTracker)
+      wageTracker: survivePayday(hireling.wageTracker, state.round)
     };
     const slots = state.board.slots.slice();
     slots[slot] = updated;

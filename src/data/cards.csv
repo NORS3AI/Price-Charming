@@ -14,7 +14,7 @@ Sugar Guild,Confectioner,,Medium,5,3,,6,,7,7s,Quickcraft x4 / Haggle,"Quickcraft
 Sugar Guild,Tasting Table,,Medium,4,3,2,4,,,5s,,"When a customer walks away without buying from any hireling, redirect them to this hireling. If they buy, all Sugar Guild allies gain +1 temporary stock."
 Sugar Guild,Frosted Lookout,,Medium,5,3,,5,,,5s,Quickcraft x3,"Quickcraft x3. When an opponent uses Sabotage, immediately trigger your highest potency Sugar Guild ally's ability."
 Sugar Guild,Oven Master,⭐,High,6,3,,7,,7,6s,Quickcraft x5,Quickcraft x5. Allies gain +2 potency (permanent).
-Sugar Guild,Rush Order Cook,,High,6,3,,6,,7,8s,Quickcraft x5,Quickcraft x5. -1s cast time for each other Sugar Guild ally.
+Sugar Guild,Rush Order Cook,,High,6,3,,6,,7,8s,Quickcraft x2,Quickcraft x2. -1s cast time for each other Sugar Guild ally.
 Sugar Guild,Sugar Crash,,High,7,3,,8,,6,7s,Quickcraft x5 / Bewitch,"Quickcraft x5. Once per round, when your total temporary stock hits 20, all customers in the middle zone are Bewitched simultaneously."
 Sugar Guild,The Candy Architect,,High,7,3,,7,,8,8s,Quickcraft x6,"Quickcraft x6. Each time any Sugar Guild ally gains permanent potency this round, this hireling's next Quickcraft generates +2 additional stock."
 Sugar Guild,Gingerbread King,⭐,High,9,2,,8,,12,8s,Quickcraft x10,"Quickcraft x10. After an ally sells, gain +2 potency (permanent)."
