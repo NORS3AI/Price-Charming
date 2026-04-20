@@ -619,6 +619,15 @@ let pcCustomerQueue = [];
 let pcCustomerSpawnIdx = 0;
 let pcTargetPick = null;           // active target-picker (Lucky / Bottle / Polish)
 
+// Difficulty knobs — gold per round drives the opponent's board growth,
+// so their builds scale proportionally to the player's own pacing.
+const PC_DIFF = {
+  easy:   { goldPerRound: 3,  maxPrice: false, customerCount: 4 },
+  normal: { goldPerRound: 5,  maxPrice: true,  customerCount: 5 },
+  hard:   { goldPerRound: 7,  maxPrice: true,  customerCount: 6 },
+  insane: { goldPerRound: 10, maxPrice: true,  customerCount: 8 },
+};
+
 // --- generic helpers -------------------------------------------------
 function $(id){ return document.getElementById(id); }
 function pcFlash(msg){
@@ -655,15 +664,112 @@ window.startGame = function(diff){
 
 function pcStartGame(diff){
   pcDifficulty = diff || "normal";
+  if (!PC_DIFF[pcDifficulty]) pcDifficulty = "normal";
   pcRng = E.mulberry32((Date.now() ^ Math.floor(Math.random()*0xffffffff)) >>> 0);
   pcGame = E.createGame({ rng: pcRng });
-  // Opponent stub in chunk D; for now we leave pcGame.opponent null so
-  // the action phase has no ghost. Chunks after C will fill this in.
-  pcOpponent = null;
-  // Open the first shop so the scaffold has something to render.
+  pcInitOpponent();
+  // Run the opponent's round-1 shop BEFORE the player shop opens, so
+  // their snapshot is ready to contest the first action phase.
+  pcOpponentPlayRound(pcGame.round);
   pcGame = E.startShopPhase(pcGame, pcRng);
   showScreen("game-screen");
   pcRender();
+}
+
+// -- opponent AI -----------------------------------------------------
+function pcInitOpponent(){
+  const active = pcGame.activePotionTypes;
+  pcOpponent = {
+    gold: 0,
+    pool: E.createInitialPool(),
+    board: E.createBoard(),
+    hand: E.createHand(),
+    prices: E.defaultPriceMap(active),
+    active,
+  };
+}
+
+/**
+ * Simulate the opponent's shop phase for a given round:
+ *   1. Add their difficulty-scaled gold income.
+ *   2. Return any leftover offering to pool, reshuffle potion types.
+ *   3. Roll their shop (no spells — simpler ghost behaviour for now).
+ *   4. Greedily buy hirelings until out of gold or hand is full.
+ *   5. Play hirelings into empty board slots; auto-merge Charmed.
+ *   6. Set prices (max tier on normal+, storedPrice on easy).
+ *   7. Install the captured snapshot onto pcGame.opponent.
+ */
+function pcOpponentPlayRound(round){
+  const diff = PC_DIFF[pcDifficulty];
+  let { gold, pool, board, hand, prices, active } = pcOpponent;
+  gold += diff.goldPerRound;
+
+  // Fold any unbought prior offering back into the pool before reshuffle.
+  // (There won't be any in round 1 — opponent has no persistent offering.)
+  pool = E.assignPotionsToPool(pool, active, pcRng);
+  let rolled = E.rollShop(pool, round, pcRng, { spellChance: 0 });
+  let offering = rolled.offering;
+  pool = rolled.pool;
+
+  // Greedy buy: take the first affordable hireling each pass.
+  let guard = 10;
+  while (guard-- > 0 && gold >= 4 && !E.isHandFull(hand)) {
+    const idx = offering.slots.findIndex(s => s && s.card.kind === "hireling");
+    if (idx === -1) break;
+    try {
+      const res = E.buyHirelingFromShop(offering, idx, hand, gold);
+      offering = res.offering; hand = res.hand; gold = res.gold;
+    } catch (_) { break; }
+  }
+
+  // Return unbought copies to the pool so the opponent's pool stays intact.
+  for (const inst of E.offeringInstances(offering)) {
+    pool = E.returnToPool(pool, inst);
+  }
+
+  // Play hirelings into active slots first, then bench.
+  const playOrder = [...E.ACTIVE_SLOTS, ...E.BENCH_SLOTS];
+  let playGuard = 20;
+  while (playGuard-- > 0) {
+    const slot = playOrder.find(s => board.slots[s] === null);
+    if (slot === undefined) break;
+    const hi = hand.cards.findIndex(c => c.card.kind === "hireling");
+    if (hi === -1) break;
+    try {
+      const res = E.playHirelingFromHand(board, hand, hi, slot);
+      board = res.board; hand = res.hand;
+    } catch (_) { break; }
+  }
+
+  // Auto-merge Charmed triples on the opponent's side too.
+  for (let merges = 0; merges < 5; merges++) {
+    const res = E.mergeIfCharmable({ board, hand, pool });
+    if (!res.charmed) break;
+    board = res.board; hand = res.hand; pool = res.pool;
+  }
+
+  // Set prices. Easy keeps whatever's stored (starts at 1g); higher
+  // difficulties push to the current max each round.
+  const panel = E.buildPricingPanel(active, board, prices);
+  for (const row of panel) {
+    const target = diff.maxPrice ? row.currentMax : row.storedPrice;
+    if (target > 0) {
+      prices = E.setPrice(prices, row.potionType, target, row.currentMax);
+    }
+  }
+
+  pcOpponent = { gold, pool, board, hand, prices, active };
+  pcGame = {
+    ...pcGame,
+    opponent: E.captureSnapshot({
+      id: `opp-r${round}-${pcDifficulty}`,
+      round,
+      board,
+      prices,
+      activePotionTypes: active,
+      reputation: 0,
+    }),
+  };
 }
 
 function pcQuit(){
