@@ -8,7 +8,7 @@
 export const STARTING_GOLD = 5;
 
 /** Cost to purchase a hireling from the shop. */
-export const COST_HIRELING = 4;
+export const COST_HIRELING = 2;
 
 /** Cost to purchase a spell from the shop. */
 export const COST_SPELL = 2;

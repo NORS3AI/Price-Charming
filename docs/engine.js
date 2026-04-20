@@ -660,7 +660,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
 
   // src/economy/gold.ts
   var STARTING_GOLD = 5;
-  var COST_HIRELING = 4;
+  var COST_HIRELING = 2;
   var COST_SPELL = 2;
   var COST_REFRESH = 1;
   var SELL_VALUE = 1;

@@ -522,11 +522,25 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .pc-slot.pc-empty{background:rgba(255,255,255,.08);border:1px dashed var(--gold-dim);cursor:default;color:var(--parch-d);align-items:center;justify-content:center}
 .pc-slot.pc-charmed{box-shadow:0 0 15px rgba(255,215,0,.7);border:2px solid gold;animation:pc-sparkle 1.5s ease-in-out infinite}
 @keyframes pc-sparkle{0%,100%{box-shadow:0 0 12px rgba(255,215,0,.5)}50%{box-shadow:0 0 22px rgba(255,215,0,.9)}}
-.pc-slot-name{font-weight:bold;font-size:.8rem;line-height:1.1}
-.pc-slot-potion{font-size:1.2rem;text-align:center;margin:.15rem 0}
+.pc-slot-name{font-weight:bold;font-size:.85rem;line-height:1.15}
+.pc-slot-potion-label{font-size:1rem;text-align:center;margin:.15rem 0;font-weight:600;color:var(--deep)}
+.pc-slot-stats-bold{text-align:center;font-size:1.05rem;font-weight:bold;color:var(--deep);letter-spacing:.04em}
 .pc-slot-stats{display:flex;gap:.3rem;font-size:.7rem;justify-content:space-between}
 .pc-slot-keys{font-size:.65rem;color:var(--purple);margin-top:.15rem}
 .pc-slot-cast{font-size:.7rem;color:var(--deep);font-style:italic}
+.pc-slot-castbar{position:relative;height:.85rem;background:rgba(0,0,0,.15);border-radius:3px;overflow:hidden;margin-top:.2rem}
+.pc-slot-castbar-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--blue),var(--lite));transition:width .08s linear}
+.pc-slot-castbar-text{position:relative;z-index:1;text-align:center;font-size:.68rem;font-weight:bold;color:var(--parch);line-height:.85rem;text-shadow:0 0 3px rgba(0,0,0,.7)}
+.pc-slot-castbar.pc-slot-passive,.pc-slot-castbar.pc-slot-stopped{text-align:center;font-size:.68rem;color:var(--deep);background:rgba(0,0,0,.08);font-style:italic;padding:.05rem 0}
+.pc-slot-guild{margin-top:.2rem;font-size:.62rem;font-weight:bold;text-align:center;padding:.15rem 0;border-radius:0 0 5px 5px;letter-spacing:.05em;text-transform:uppercase;color:#fff}
+.pc-guild-sugar{background:#e88ab8;color:#4a1030}
+.pc-guild-nobles{background:#7a5bb0;color:#fff}
+.pc-guild-thieves{background:#3a3a40;color:#cfcfcf}
+.pc-guild-none{background:#b0b0b0;color:#2a2a2a}
+.pc-hand-potion{font-size:.95rem;font-weight:600;color:var(--deep)}
+.pc-hand-stats{font-size:1rem;font-weight:bold;color:var(--deep);letter-spacing:.04em}
+.pc-shop-potion{font-size:.95rem;font-weight:600;color:var(--deep)}
+.pc-shop-stats{font-size:1rem;font-weight:bold;color:var(--deep);letter-spacing:.04em}
 #pc-pricing{display:flex;gap:.4rem;flex-wrap:wrap;padding:.5rem;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--gold-dim)}
 .pc-price-card{background:var(--parch);color:var(--deep);border-radius:6px;padding:.5rem .6rem;min-width:11rem;display:flex;flex-direction:column;gap:.2rem}
 .pc-price-top{display:flex;align-items:center;gap:.3rem}
@@ -742,7 +756,7 @@ function pcOpponentPlayRound(round){
 
   // Greedy buy: take the first affordable hireling each pass.
   let guard = 10;
-  while (guard-- > 0 && gold >= 4 && !E.isHandFull(hand)) {
+  while (guard-- > 0 && gold >= E.COST_HIRELING && !E.isHandFull(hand)) {
     const idx = offering.slots.findIndex(s => s && s.card.kind === "hireling");
     if (idx === -1) break;
     try {
@@ -845,7 +859,7 @@ function pcFormatCastTime(castTime){
   return "";
 }
 
-function pcBuildSlotCard(inst, slotIdx, isBench){
+function pcBuildSlotCard(inst, slotIdx, isBench, opts){
   const classes = ["pc-slot"];
   if (isBench) classes.push("pc-bench");
   if (!inst) {
@@ -856,17 +870,49 @@ function pcBuildSlotCard(inst, slotIdx, isBench){
     return d;
   }
   if (inst.charmed) classes.push("pc-charmed");
-  const stock = (inst.card.potions[0]?.stock ?? 0) + (inst.permanentStockBonus || 0);
-  const potency = (inst.card.potions[0]?.potency ?? 0) + (inst.permanentPotencyBonus || 0);
+  const baseStock = inst.card.potions[0]?.stock ?? 0;
+  const basePotency = inst.card.potions[0]?.potency ?? 0;
+  const stock = baseStock + (inst.permanentStockBonus || 0);
+  const potency = basePotency + (inst.permanentPotencyBonus || 0);
   const d = document.createElement("div");
   d.className = classes.join(" ");
   d.dataset.slot = String(slotIdx);
+
+  // Action-phase extras: live stock includes temp + sold deltas, and
+  // the cast bar reflects nextCastIn vs the current cycle's baseline.
+  let liveStock = stock;
+  let castBar = "";
+  const hs = opts && opts.hirelingStates ? opts.hirelingStates.get(inst.id) : null;
+  if (hs) {
+    liveStock = stock + (hs.temporaryStock || 0) + (hs.permanentStockGainedThisRound || 0) - (hs.unitsSoldThisRound || 0);
+    const progress = pcCastProgress(inst.card.castTime, hs);
+    if (progress !== null) {
+      castBar = `
+        <div class="pc-slot-castbar" title="${hs.nextCastIn.toFixed(1)}s until next cast">
+          <div class="pc-slot-castbar-fill" style="width:${(progress * 100).toFixed(1)}%"></div>
+          <div class="pc-slot-castbar-text">${hs.nextCastIn.toFixed(1)}s</div>
+        </div>`;
+    } else if (inst.card.castTime.kind === "passive") {
+      castBar = `<div class="pc-slot-castbar pc-slot-passive">Passive</div>`;
+    } else {
+      castBar = `<div class="pc-slot-castbar pc-slot-stopped">Stopped</div>`;
+    }
+  }
+
+  const potionLabel = inst.potionType
+    ? `${pcPotionIcon(inst.potionType)} ${pcPotionName(inst.potionType)}`
+    : "— no potion —";
+  const castText = hs ? "" : pcFormatCastTime(inst.card.castTime);
+  const guildClass = pcGuildClass(inst.card.guild);
+
   d.innerHTML = `
     <div class="pc-slot-name">${inst.card.name}${inst.charmed ? " ✨" : ""}</div>
-    <div class="pc-slot-potion">${pcPotionIcon(inst.potionType)}</div>
-    <div class="pc-slot-stats"><span>📦 ${stock}</span><span>⚗ ${potency}</span></div>
+    <div class="pc-slot-potion-label">${potionLabel}</div>
+    <div class="pc-slot-stats-bold">${liveStock}/${potency}</div>
     ${inst.card.keywords.length ? `<div class="pc-slot-keys">${pcFormatKeywords(inst.card.keywords)}</div>` : ""}
-    <div class="pc-slot-cast">${pcFormatCastTime(inst.card.castTime)}</div>
+    ${castBar}
+    ${castText ? `<div class="pc-slot-cast">${castText}</div>` : ""}
+    <div class="pc-slot-guild ${guildClass}">${inst.card.guild}</div>
   `;
   return d;
 }
@@ -875,8 +921,9 @@ function pcRenderPlayerBoard(){
   const el = $("pc-player-board"); if (!el) return;
   el.innerHTML = "";
   const targeting = !!pcTargetPick;
+  const hs = pcGame.phase === "action" && pcGame.action ? pcGame.action.hirelingStates : null;
   for (let i = 0; i < pcGame.board.slots.length; i++) {
-    const card = pcBuildSlotCard(pcGame.board.slots[i], i, E.isBenchSlot(i));
+    const card = pcBuildSlotCard(pcGame.board.slots[i], i, E.isBenchSlot(i), { hirelingStates: hs });
     const inst = pcGame.board.slots[i];
     if (targeting && inst) {
       card.classList.add("pc-targetable");
@@ -929,7 +976,33 @@ function pcRenderPricingPanel(){
 }
 
 function pcCardCost(inst){
-  return inst.card.kind === "hireling" ? 4 : 2;
+  return inst.card.kind === "hireling" ? E.COST_HIRELING : E.COST_SPELL;
+}
+
+// Guild → CSS class for the color bar at the bottom of each card.
+// Sugar=pink, Nobles=purple, Thieves=dark gray, No Guild=light gray.
+function pcGuildClass(guild){
+  switch (guild) {
+    case "Sugar Guild":   return "pc-guild-sugar";
+    case "Nobles Guild":  return "pc-guild-nobles";
+    case "Thieves Guild": return "pc-guild-thieves";
+    case "No Guild":      return "pc-guild-none";
+    default:              return "pc-guild-none";
+  }
+}
+
+// Cast-bar progress (0 → 1) for a hireling during the action phase.
+// Returns null when the hireling doesn't cast (passive or wound down).
+function pcCastProgress(castTime, hs){
+  if (!hs || hs.nextCastIn === null) return null;
+  let initial = 5;
+  if (castTime.kind === "seconds") initial = castTime.value;
+  else if (castTime.kind === "random") initial = castTime.max;
+  else if (castTime.kind === "decreasing") {
+    initial = Math.max(1, castTime.start - hs.castsSoFar * castTime.decrementPerCast);
+  }
+  if (!Number.isFinite(initial) || initial <= 0) return null;
+  return Math.max(0, Math.min(1, 1 - hs.nextCastIn / initial));
 }
 
 function pcRenderOffering(){
@@ -950,11 +1023,14 @@ function pcRenderOffering(){
     d.dataset.slot = String(i);
     if (!isSpell) {
       const h = inst.card;
+      const p2 = h.potions[1] ? ` · ${h.potions[1].stock}/${h.potions[1].potency}` : "";
       d.innerHTML = `
         <div class="pc-shop-head"><span class="pc-shop-name">${h.name}${h.starRating ? (h.starRating === 2 ? " ⭐⭐" : " ⭐") : ""}</span><span class="pc-shop-cost">${cost}g</span></div>
-        <div class="pc-shop-meta">${h.guild} · ${h.wageTier} wage · ${pcFormatCastTime(h.castTime)}${h.keywords.length ? " · " + pcFormatKeywords(h.keywords) : ""}</div>
-        <div class="pc-shop-meta">${pcPotionIcon(inst.potionType)} ${pcPotionName(inst.potionType)} · 📦${h.potions[0]?.stock ?? 0} ⚗${h.potions[0]?.potency ?? 0}${h.potions[1] ? ` · 📦${h.potions[1].stock} ⚗${h.potions[1].potency}` : ""}</div>
+        <div class="pc-shop-meta">${h.wageTier} wage · ${pcFormatCastTime(h.castTime)}${h.keywords.length ? " · " + pcFormatKeywords(h.keywords) : ""}</div>
+        <div class="pc-shop-potion">${pcPotionIcon(inst.potionType)} ${pcPotionName(inst.potionType)}</div>
+        <div class="pc-shop-stats">${h.potions[0]?.stock ?? 0}/${h.potions[0]?.potency ?? 0}${p2}</div>
         <div class="pc-shop-ability">${h.abilityText || ""}</div>
+        <div class="pc-slot-guild ${pcGuildClass(h.guild)}">${h.guild}</div>
       `;
     } else {
       const s = inst.card;
@@ -999,9 +1075,11 @@ function pcRenderHand(){
       const stock = (inst.card.potions[0]?.stock ?? 0) + (inst.permanentStockBonus || 0);
       const potency = (inst.card.potions[0]?.potency ?? 0) + (inst.permanentPotencyBonus || 0);
       d.innerHTML = `
-        <div style="font-weight:bold;font-size:.85rem">${inst.card.name}${inst.charmed ? " ✨" : ""}</div>
-        <div style="font-size:.75rem">${pcPotionIcon(inst.potionType)} ${pcPotionName(inst.potionType)}</div>
-        <div style="font-size:.7rem;color:var(--purple)">📦${stock} ⚗${potency} · ${pcFormatCastTime(inst.card.castTime)}</div>
+        <div style="font-weight:bold;font-size:.9rem">${inst.card.name}${inst.charmed ? " ✨" : ""}</div>
+        <div class="pc-hand-potion">${pcPotionIcon(inst.potionType)} ${pcPotionName(inst.potionType)}</div>
+        <div class="pc-hand-stats">${stock}/${potency}</div>
+        <div style="font-size:.7rem;color:var(--purple)">${pcFormatCastTime(inst.card.castTime)}</div>
+        <div class="pc-slot-guild ${pcGuildClass(inst.card.guild)}">${inst.card.guild}</div>
       `;
     } else {
       d.innerHTML = `
@@ -1040,6 +1118,8 @@ function pcRenderOppSection(){
   sec.style.display = "";
   const el = $("pc-opp-board"); if (!el) return;
   el.innerHTML = "";
+  // The engine only simulates casts on the player side, so we don't
+  // have opponent hirelingStates — show their static board cards.
   for (let i = 0; i < pcGame.opponent.board.slots.length; i++) {
     el.appendChild(pcBuildSlotCard(pcGame.opponent.board.slots[i], i, E.isBenchSlot(i)));
   }

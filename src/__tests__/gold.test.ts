@@ -10,7 +10,7 @@ import {
 describe("gold economy constants", () => {
   test("match the spec", () => {
     expect(STARTING_GOLD).toBe(5);
-    expect(COST_HIRELING).toBe(4);
+    expect(COST_HIRELING).toBe(2);
     expect(COST_SPELL).toBe(2);
     expect(COST_REFRESH).toBe(1);
     expect(SELL_VALUE).toBe(1);
