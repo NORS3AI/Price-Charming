@@ -1188,8 +1188,8 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   }
 
   // src/shop/purchase.ts
-  function isStarterBroom(instance) {
-    return instance.card.id === "dusty-broom";
+  function disappearsOnSell(instance) {
+    return instance.card.id === "dusty-broom" || instance.charmed;
   }
   function toPoolInstance(instance) {
     return {
@@ -1251,12 +1251,12 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   }
   function sellHirelingFromHandToPool(hand, handIndex, pool, gold) {
     const res = sellHirelingFromHand(hand, handIndex);
-    const nextPool = isStarterBroom(res.sold) ? pool : returnToPool(pool, toPoolInstance(res.sold));
+    const nextPool = disappearsOnSell(res.sold) ? pool : returnToPool(pool, toPoolInstance(res.sold));
     return { hand: res.hand, pool: nextPool, gold: gold + res.sellValue };
   }
   function sellHirelingFromBoardToPool(board, slot, pool, gold) {
     const res = sellHirelingFromBoard(board, slot);
-    const nextPool = isStarterBroom(res.sold) ? pool : returnToPool(pool, toPoolInstance(res.sold));
+    const nextPool = disappearsOnSell(res.sold) ? pool : returnToPool(pool, toPoolInstance(res.sold));
     return { board: res.board, pool: nextPool, gold: gold + res.sellValue };
   }
 

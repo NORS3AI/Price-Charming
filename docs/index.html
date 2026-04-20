@@ -678,6 +678,10 @@ function pcStartGame(diff){
   if (pcBattleTimer) { clearInterval(pcBattleTimer); pcBattleTimer = null; }
   pcRoundSummary = null;
   pcTargetPick = null;
+  pcDrag = null;
+  if (document.body && document.body.classList) {
+    document.body.classList.remove("pc-dragging");
+  }
   const overlay = $("pc-target-overlay");
   if (overlay) overlay.style.display = "none";
 

@@ -15,9 +15,14 @@ import {
 } from "./offering";
 import { RNG } from "../potions/rng";
 
-/** Dusty Broom is the only hireling that disappears on sell. */
-function isStarterBroom(instance: HirelingInstance): boolean {
-  return instance.card.id === "dusty-broom";
+/**
+ * Instances that disappear permanently on sell instead of returning to
+ * the pool: the starter Dusty Broom, and any Charmed hireling produced
+ * by a 3-of-a-kind merge (spec: "The Charmed hireling itself is not
+ * part of the pool. If sold it disappears permanently.").
+ */
+function disappearsOnSell(instance: HirelingInstance): boolean {
+  return instance.card.id === "dusty-broom" || instance.charmed;
 }
 
 /** Convert a sold HirelingInstance back to a PoolInstance shape. */
@@ -133,7 +138,7 @@ export function sellHirelingFromHandToPool(
   gold: number
 ): { hand: Hand; pool: ShopPool; gold: number } {
   const res = sellHirelingFromHand(hand, handIndex);
-  const nextPool = isStarterBroom(res.sold)
+  const nextPool = disappearsOnSell(res.sold)
     ? pool
     : returnToPool(pool, toPoolInstance(res.sold));
   return { hand: res.hand, pool: nextPool, gold: gold + res.sellValue };
@@ -150,7 +155,7 @@ export function sellHirelingFromBoardToPool(
   gold: number
 ): { board: Board; pool: ShopPool; gold: number } {
   const res = sellHirelingFromBoard(board, slot);
-  const nextPool = isStarterBroom(res.sold)
+  const nextPool = disappearsOnSell(res.sold)
     ? pool
     : returnToPool(pool, toPoolInstance(res.sold));
   return { board: res.board, pool: nextPool, gold: gold + res.sellValue };

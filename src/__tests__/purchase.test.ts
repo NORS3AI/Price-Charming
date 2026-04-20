@@ -199,6 +199,36 @@ describe("selling returns to the pool", () => {
     expect(countOfCard(sold.pool, "dusty-broom")).toBe(0);
   });
 
+  test("selling a Charmed hireling disappears permanently (regression)", () => {
+    const doughboy = ALL_HIRELINGS.find((h) => h.name === "Doughboy")!;
+    // Build a Charmed instance directly (as if it came out of a merge).
+    const charmed = createHirelingInstance(doughboy, "charmed-doughboy-x", "love", { charmed: true });
+    const board = placeHireling(createBoard(), 3, charmed);
+    const pool = createInitialPool();
+    const poolBefore = poolSize(pool);
+
+    const sold = sellHirelingFromBoardToPool(board, 3, pool, 5);
+    expect(sold.gold).toBe(5 + SELL_VALUE);
+    expect(sold.board.slots[3]).toBeNull();
+    // Spec: "The Charmed hireling itself is not part of the pool. If
+    // sold it disappears permanently." No pool inflation, no return.
+    expect(poolSize(sold.pool)).toBe(poolBefore);
+    expect(sold.pool.instances.some((i) => i.id === charmed.id)).toBe(false);
+  });
+
+  test("selling a Charmed hireling from the hand also disappears", () => {
+    const doughboy = ALL_HIRELINGS.find((h) => h.name === "Doughboy")!;
+    const charmed = createHirelingInstance(doughboy, "charmed-doughboy-h", "love", { charmed: true });
+    const hand = addToHand(createHand(), charmed);
+    const pool = createInitialPool();
+    const poolBefore = poolSize(pool);
+
+    const sold = sellHirelingFromHandToPool(hand, 0, pool, 5);
+    expect(sold.gold).toBe(5 + SELL_VALUE);
+    expect(handSize(sold.hand)).toBe(0);
+    expect(poolSize(sold.pool)).toBe(poolBefore);
+  });
+
   test("selling a spell is impossible (guarded by Phase 3)", () => {
     const polish = ALL_SPELLS.find((s) => s.name === "Potion Polish")!;
     const hand = addToHand(createHand(), createSpellInstance(polish, "s1"));
