@@ -14,7 +14,8 @@ import { AXES, Customer, CustomerState } from "../customers/types";
 import { RNG } from "../potions/rng";
 import { PotionTypeId } from "../potions/types";
 import { MIN_PRICE } from "../pricing/brackets";
-import { PriceMap, buildPricingPanel } from "../pricing/panel";
+import { PriceMap, applyHaggle, buildPricingPanel } from "../pricing/panel";
+import { rollUnitsPerInteraction } from "../pricing/stock";
 import {
   ActionLogEntry,
   ActionState,
@@ -75,7 +76,39 @@ function freshHirelingState(
     temporaryStock: 0,
     permanentStockGainedThisRound: 0,
     permanentPotencyGainedThisRound: 0,
+    unitsSoldThisRound: 0,
   };
+}
+
+/** Base stock from the CSV + this round's permanent gains - units sold + temp stock. */
+function effectiveStock(
+  inst: HirelingInstance,
+  hs: HirelingActionState
+): number {
+  const base = inst.card.potions[0]?.stock ?? 0;
+  return (
+    base +
+    hs.permanentStockGainedThisRound +
+    hs.temporaryStock -
+    hs.unitsSoldThisRound
+  );
+}
+
+/** Effective potency = base + this round's potency buff gains. */
+function effectivePotency(
+  inst: HirelingInstance,
+  hs: HirelingActionState
+): number {
+  const base = inst.card.potions[0]?.potency ?? 0;
+  return base + hs.permanentPotencyGainedThisRound;
+}
+
+function hasKeyword(inst: HirelingInstance, name: string): boolean {
+  return inst.card.keywords.some((k) => k.name === name);
+}
+
+function knockoffCount(inst: HirelingInstance): number {
+  return inst.card.keywords.find((k) => k.name === "Knockoff")?.count ?? 0;
 }
 
 /**
@@ -87,7 +120,9 @@ export function initializeActionState(
   board: Board,
   prices: PriceMap,
   activePotionTypes: readonly PotionTypeId[],
-  rng: RNG
+  rng: RNG,
+  startingGold = 0,
+  startingReputation = 0
 ): ActionState {
   const states = new Map<string, HirelingActionState>();
   for (const inst of activeHirelings(board)) {
@@ -100,6 +135,8 @@ export function initializeActionState(
     elapsedSeconds: 0,
     hirelingStates: states,
     customers: [],
+    gold: startingGold,
+    reputation: startingReputation,
     log: [],
   };
 }
@@ -268,24 +305,24 @@ export function tick(
   }
 
   // 2. Advance customers.
-  working = advanceCustomers(working, deltaSeconds);
+  working = advanceCustomers(working, deltaSeconds, rng);
 
   return working;
 }
 
 /**
  * Apply passive contributions and patience decay to every unresolved
- * customer. Resolution fires when patience hits zero and a log entry
- * records the outcome.
+ * customer, resolving on expiration. Player-side resolutions trigger a
+ * sale via `executeSale`, which deducts stock, awards gold and
+ * reputation, and fires the Knockoff keyword if applicable.
  */
 function advanceCustomers(
   state: ActionState,
-  deltaSeconds: number
+  deltaSeconds: number,
+  rng: RNG
 ): ActionState {
   if (state.customers.length === 0) return state;
 
-  // Build effective prices once per tick — the board doesn't shift
-  // during the action phase.
   const panel = buildPricingPanel(
     state.activePotionTypes,
     state.board,
@@ -294,16 +331,20 @@ function advanceCustomers(
   const priceByType = new Map(panel.map((e) => [e.potionType, e.effectivePrice]));
   const hirelings = activeHirelings(state.board);
 
-  const log: ActionLogEntry[] = [...state.log];
-  const customers: CustomerState[] = state.customers.map((cs) => {
-    if (isResolved(cs)) return cs;
+  const customersAfter: CustomerState[] = [];
+  let working: ActionState = state;
+
+  for (const cs of state.customers) {
+    if (isResolved(cs)) {
+      customersAfter.push(cs);
+      continue;
+    }
 
     let next = cs;
-    // Player-side passive contributions.
     for (const h of hirelings) {
       const price =
         (h.potionType && priceByType.get(h.potionType)) ?? MIN_PRICE;
-      const contrib = computePassiveContribution(h, price, cs.customer);
+      const contrib = computePassiveContribution(h, price, next.customer);
       for (const axis of AXES) {
         const amount = contrib[axis] * deltaSeconds;
         if (amount > 0) {
@@ -315,15 +356,126 @@ function advanceCustomers(
 
     if (isExpired(next)) {
       next = resolveCustomer(next);
-      log.push({
-        kind: "customer-resolved",
-        customerId: next.customer.id,
-        atSeconds: state.elapsedSeconds,
-        resolution: next.resolvedFor!,
-      });
+      working = {
+        ...working,
+        log: [
+          ...working.log,
+          {
+            kind: "customer-resolved",
+            customerId: next.customer.id,
+            atSeconds: state.elapsedSeconds,
+            resolution: next.resolvedFor!,
+          },
+        ],
+      };
+      if (next.resolvedFor === "player") {
+        working = executeSale(working, next, priceByType, rng);
+      }
     }
-    return next;
-  });
+    customersAfter.push(next);
+  }
 
-  return { ...state, customers, log };
+  return { ...working, customers: customersAfter };
+}
+
+/**
+ * Pick the hireling that rings up this customer: among active hirelings
+ * matching the customer's desired potion type and carrying at least one
+ * unit of effective stock, choose the highest effective potency. Ties
+ * broken by active-slot order. Returns null when nobody can sell.
+ */
+function pickSalesHireling(
+  state: ActionState,
+  desiredType: string
+): HirelingInstance | null {
+  let best: HirelingInstance | null = null;
+  let bestPotency = -1;
+  for (const h of activeHirelings(state.board)) {
+    if (h.potionType !== desiredType) continue;
+    const hs = state.hirelingStates.get(h.id);
+    if (!hs) continue;
+    if (effectiveStock(h, hs) <= 0) continue;
+    const pot = effectivePotency(h, hs);
+    if (pot > bestPotency) {
+      best = h;
+      bestPotency = pot;
+    }
+  }
+  return best;
+}
+
+/**
+ * Execute a player-win sale: deplete stock, add gold, add reputation,
+ * apply Haggle (+3g, -1 rep per sale), trigger Knockoff (if current
+ * potency < 10, gain +N permanent stock this round). Emits `sale` and
+ * optional `knockoff` log entries.
+ */
+function executeSale(
+  state: ActionState,
+  customerState: CustomerState,
+  priceByType: Map<string, number>,
+  rng: RNG
+): ActionState {
+  const hireling = pickSalesHireling(state, customerState.customer.desiredType);
+  if (!hireling) return state; // Nothing to sell — resolve stands, no gold/rep.
+
+  const hs = state.hirelingStates.get(hireling.id)!;
+  const available = effectiveStock(hireling, hs);
+  const units = rollUnitsPerInteraction(available, rng);
+  if (units <= 0) return state;
+
+  const basePrice = priceByType.get(hireling.potionType!) ?? MIN_PRICE;
+  const haggled = hasKeyword(hireling, "Haggle");
+  const pricePerUnit = applyHaggle(basePrice, hireling);
+  const goldEarned = units * pricePerUnit;
+  const reputationDelta =
+    customerState.customer.reputationStars - (haggled ? 1 : 0);
+
+  const log: ActionLogEntry[] = [
+    ...state.log,
+    {
+      kind: "sale",
+      customerId: customerState.customer.id,
+      instanceId: hireling.id,
+      unitsSold: units,
+      pricePerUnit,
+      goldEarned,
+      reputationDelta,
+      haggled,
+      atSeconds: state.elapsedSeconds,
+    },
+  ];
+
+  // Update hireling action state: consume stock.
+  let nextHs: HirelingActionState = {
+    ...hs,
+    unitsSoldThisRound: hs.unitsSoldThisRound + units,
+  };
+
+  // Knockoff: after sell, if current potency < 10, gain +N permanent stock.
+  const knockoff = knockoffCount(hireling);
+  if (knockoff > 0 && effectivePotency(hireling, hs) < 10) {
+    nextHs = {
+      ...nextHs,
+      permanentStockGainedThisRound:
+        nextHs.permanentStockGainedThisRound + knockoff,
+    };
+    log.push({
+      kind: "knockoff",
+      instanceId: hireling.id,
+      stockGained: knockoff,
+      atSeconds: state.elapsedSeconds,
+    });
+  }
+
+  const hirelingStates = new Map(state.hirelingStates);
+  hirelingStates.set(hireling.id, nextHs);
+
+  return {
+    ...state,
+    hirelingStates,
+    gold: state.gold + goldEarned,
+    reputation: state.reputation + reputationDelta,
+    log,
+  };
 }

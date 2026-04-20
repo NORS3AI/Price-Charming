@@ -47,7 +47,14 @@ describe("addCustomer", () => {
   test("appends a fresh CustomerState and logs arrival", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Pantry Stocker", "love");
-    const s0 = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
+    const s0 = initializeActionState(
+      b,
+      defaultPriceMap(ACTIVE),
+      ACTIVE,
+      mulberry32(1),
+      5,
+      0
+    );
     const s1 = addCustomer(s0, makeCustomer());
     expect(s1.customers).toHaveLength(1);
     expect(s1.customers[0].customer.id).toBe("c1");
@@ -143,5 +150,106 @@ describe("tick — passive contributions + resolution", () => {
     s = addCustomer(s, makeCustomer({ patienceSeconds: 1 }));
     s = tick(s, 1, mulberry32(1));
     expect(s.customers[0].resolvedFor).toBe("no-sale");
+  });
+});
+
+describe("sale execution", () => {
+  test("player win drives a sale: units, gold, reputation, stock consumed", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Pantry Stocker", "love"); // stock 2, potency 3
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(
+      b,
+      prices,
+      ACTIVE,
+      mulberry32(1),
+      /*gold*/ 0,
+      /*rep*/ 0
+    );
+    s = addCustomer(s, makeCustomer({ patienceSeconds: 3, reputationStars: 4 }));
+    s = tick(s, 3, mulberry32(1));
+
+    const sale = s.log.find(
+      (e): e is Extract<ActionLogEntry, { kind: "sale" }> => e.kind === "sale"
+    );
+    expect(sale).toBeDefined();
+    expect(sale!.instanceId).toBe("Pantry Stocker-3");
+    expect(sale!.unitsSold).toBeGreaterThanOrEqual(1);
+    expect(sale!.unitsSold).toBeLessThanOrEqual(2);
+    expect(sale!.pricePerUnit).toBe(1);
+    expect(sale!.goldEarned).toBe(sale!.unitsSold * 1);
+    expect(sale!.haggled).toBe(false);
+    expect(sale!.reputationDelta).toBe(4);
+    expect(s.gold).toBe(sale!.goldEarned);
+    expect(s.reputation).toBe(4);
+
+    const hs = s.hirelingStates.get("Pantry Stocker-3")!;
+    expect(hs.unitsSoldThisRound).toBe(sale!.unitsSold);
+  });
+
+  test("Haggle sale bumps price by 3g and costs -1 reputation", () => {
+    let b = createBoard();
+    // Almost-A-Knight carries Haggle, potency 3, stock 4.
+    b = placeAt(b, 3, "Almost-A-Knight", "love");
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(
+      b,
+      prices,
+      ACTIVE,
+      mulberry32(1),
+      0,
+      0
+    );
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 3, budget: 20 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const sale = s.log.find(
+      (e): e is Extract<ActionLogEntry, { kind: "sale" }> => e.kind === "sale"
+    )!;
+    expect(sale.haggled).toBe(true);
+    expect(sale.pricePerUnit).toBe(1 + 3);
+    expect(sale.reputationDelta).toBe(2); // 3 stars - 1 Haggle penalty
+    expect(s.reputation).toBe(2);
+  });
+
+  test("Knockoff triggers after sale when potency < 10", () => {
+    let b = createBoard();
+    // Robbin Goblin: Knockoff x1, potency 2 (< 10).
+    b = placeAt(b, 3, "Robbin Goblin", "love");
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+
+    const knockoff = s.log.find(
+      (e): e is Extract<ActionLogEntry, { kind: "knockoff" }> =>
+        e.kind === "knockoff"
+    );
+    expect(knockoff?.stockGained).toBe(1);
+    const hs = s.hirelingStates.get("Robbin Goblin-3")!;
+    expect(hs.permanentStockGainedThisRound).toBe(1);
+  });
+
+  test("no sale happens when no hireling of matching type has stock", () => {
+    let b = createBoard();
+    // Wrong-type hireling — cannot sell.
+    b = placeAt(b, 3, "Pantry Stocker", "luck");
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(s, makeCustomer({ patienceSeconds: 2 }));
+    s = tick(s, 2, mulberry32(1));
+    expect(s.customers[0].resolvedFor).toBe("no-sale");
+    expect(s.gold).toBe(0);
+    expect(s.reputation).toBe(0);
+    expect(s.log.some((e) => e.kind === "sale")).toBe(false);
   });
 });

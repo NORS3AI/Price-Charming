@@ -25,6 +25,8 @@ export interface HirelingActionState {
   permanentStockGainedThisRound: number;
   /** Permanent potency gained this round. */
   permanentPotencyGainedThisRound: number;
+  /** Units sold this round — depletes effective stock. */
+  unitsSoldThisRound: number;
 }
 
 /** Structured log entries emitted by the tick loop for tests and UI. */
@@ -58,6 +60,25 @@ export type ActionLogEntry =
       customerId: string;
       atSeconds: number;
       resolution: Resolution;
+    }
+  | {
+      kind: "sale";
+      customerId: string;
+      instanceId: string;
+      unitsSold: number;
+      pricePerUnit: number;
+      /** Total gold earned from this sale (unitsSold × pricePerUnit). */
+      goldEarned: number;
+      /** Reputation delta — customer stars, minus 1 if Haggle. */
+      reputationDelta: number;
+      haggled: boolean;
+      atSeconds: number;
+    }
+  | {
+      kind: "knockoff";
+      instanceId: string;
+      stockGained: number;
+      atSeconds: number;
     };
 
 /**
@@ -77,6 +98,10 @@ export interface ActionState {
   hirelingStates: ReadonlyMap<string, HirelingActionState>;
   /** Customers currently in the marketplace (resolved or not). */
   customers: readonly CustomerState[];
+  /** Player gold accumulated so far this round (+ starting gold). */
+  gold: number;
+  /** Player reputation delta accumulated so far this round. */
+  reputation: number;
   /** Append-only event log for tests and UI replay. */
   log: readonly ActionLogEntry[];
 }
