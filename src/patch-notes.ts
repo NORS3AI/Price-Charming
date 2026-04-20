@@ -13,6 +13,21 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.2.0-alpha",
+    date: "2026-04-20",
+    title: "Phase 4 — Shop System (pool, potions, Spring Cleaning)",
+    changes: [
+      "4A Potion types: 7 PotionTypeMeta entries with icons and flavor; ACTIVE_POTION_COUNT=5; selectActivePotionTypes chooses 5 of 7 at game start; PotionDiscovery tracker for the hover panel; mulberry32 seeded RNG, shuffle, pick helpers.",
+      "4B Shop pool: ShopPool as a list of PoolInstance copies (one per card-copy, with ids like 'doughboy#0'); createInitialPool excludes Dusty Broom and Charm cards; takeFromPool / returnToPool / removeFromPoolWhere for lifecycle; poolAvailableAtRound respects each card's roundAvailable (Spring Cleaning gates at round 6, general spells available from any round).",
+      "4C Potion assignment: HirelingInstance now carries potionType; assignPotionsToPool re-rolls potion types for every hireling copy at the start of each shop phase (refresh does NOT re-roll); assignHirelingPotion for singletons like the starter Dusty Broom.",
+      "4D Shop offering: ShopOffering with DEFAULT_SHOP_SIZE=5 slots; rollShop draws uniformly without replacement from round-eligible pool with at most one spell slot per roll (DEFAULT_SPELL_CHANCE=0.25); refreshShop returns the prior offering to the pool and re-rolls; takeFromOffering for purchases.",
+      "4E Purchase & sell wiring: buyHirelingFromShop / buySpellFromShop deduct 4g / 2g and hand-full-check; refreshShopWithCost charges 1g; sellHirelingFromBoardToPool / sellHirelingFromHandToPool add +1g and return the copy to the pool carrying its potion type; Dusty Broom disappears permanently on sell.",
+      "4F Spring Cleaning: castSpringCleaning dispatches by spell id — base removes all Low-wage (Tier 1) hirelings and drops an upgraded copy into the pool with a deterministic id ('spring-cleaning-upgraded#from-<cast-id>'); Spring Cleaning (Upgraded) removes all Medium-wage (Tier 2) hirelings. The upgraded form starts excluded from the initial pool and only appears after a base cast.",
+      "End-to-end verified: from 5 starting gold, Dusty Broom at slot 4, the flow selects potions → reshuffles pool → rolls a round-3 shop → buys a hireling → casts Spring Cleaning → watches 74 Low-wage hirelings leave the pool.",
+      "77 new Jest tests across potions, pool, assignment, offering, purchase, and Spring Cleaning (181 total); dist smoke-tested.",
+    ],
+  },
+  {
     version: "V0.1.9-alpha",
     date: "2026-04-20",
     title: "Phase 3 — Board & Hand Layout",

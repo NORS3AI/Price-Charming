@@ -33,10 +33,21 @@ src/
     wages.ts        — Wage tier table + per-hireling WageTracker
     payday.ts       — Payday schedule (rounds 3/6/9/12/15) and line-item builder
   board/
-    types.ts        — HirelingInstance, SpellInstance, Hand, Board
+    types.ts        — HirelingInstance (now includes potionType), SpellInstance, Hand, Board
     hand.ts         — Hand operations (max 8 cards, hirelings + spells)
     board.ts        — 7-slot board with bench/active helpers, play/sell/rearrange
     starter.ts      — Dusty Broom starter placement (center active slot)
+  potions/
+    types.ts        — 7 potion types with icons + flavor, ACTIVE_POTION_COUNT=5
+    rng.ts          — RNG type, mulberry32 (seeded), shuffle, pick
+    selection.ts    — selectActivePotionTypes (5 of 7)
+    discovery.ts    — PotionDiscovery tracker for the hover panel
+  shop/
+    pool.ts         — Copy-instance pool (excludes Dusty Broom + Upgraded Spring Cleaning)
+    assignment.ts   — Per-shop-phase potion-type reshuffle
+    offering.ts     — rollShop / refreshShop / takeFromOffering (≤1 spell per roll)
+    purchase.ts     — buy/sell wiring with gold and hand/board state
+    spring-cleaning.ts — Cast effect: removes a wage tier from the pool; base upgrades itself
   data/
     cards.csv       — Master card data (Guild, Wage Tier, Round Available, Pool Count,
                       Potion 1/2 Stock & Potency, Cast Time, Keywords, Ability Text)

@@ -40,22 +40,32 @@ describe("createInitialPool", () => {
     }
   });
 
-  test("every pooled spell contributes exactly poolCount copies", () => {
+  test("every pooled spell contributes exactly poolCount copies (except the upgraded form)", () => {
     for (const card of ALL_SPELLS) {
       if (card.poolCount === null) continue;
+      if (card.id === "spring-cleaning-upgraded") {
+        expect(countOfCard(pool, card.id)).toBe(0);
+        continue;
+      }
       expect(countOfCard(pool, card.id)).toBe(card.poolCount);
     }
   });
 
-  test("total pool size matches the sum of pool counts", () => {
+  test("total pool size matches the sum of pool counts (excluding upgraded Spring Cleaning)", () => {
     let expected = 0;
     for (const card of ALL_HIRELINGS) {
       if (card.id !== "dusty-broom") expected += card.poolCount;
     }
     for (const card of ALL_SPELLS) {
-      if (card.poolCount !== null) expected += card.poolCount;
+      if (card.poolCount === null) continue;
+      if (card.id === "spring-cleaning-upgraded") continue;
+      expected += card.poolCount;
     }
     expect(poolSize(pool)).toBe(expected);
+  });
+
+  test("Spring Cleaning (Upgraded) starts outside the pool", () => {
+    expect(countOfCard(pool, "spring-cleaning-upgraded")).toBe(0);
   });
 
   test("every pool instance has a distinct id and a null potion type", () => {

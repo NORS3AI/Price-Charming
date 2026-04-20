@@ -24,6 +24,12 @@ export interface ShopPool {
 const EXCLUDED_HIRELING_IDS = new Set(["dusty-broom"]);
 
 /**
+ * Spell ids not in the initial pool. Spring Cleaning (Upgraded) only
+ * appears after a base Spring Cleaning is cast.
+ */
+const EXCLUDED_SPELL_IDS = new Set(["spring-cleaning-upgraded"]);
+
+/**
  * Build the initial pool from the card data. Dusty Broom is excluded
  * (pre-placed as starter, never in the pool). Charm spells are excluded
  * (poolCount === null — delivered only by Charmed hirelings). Every
@@ -46,6 +52,7 @@ export function createInitialPool(): ShopPool {
 
   for (const card of ALL_SPELLS) {
     if (card.poolCount === null) continue;
+    if (EXCLUDED_SPELL_IDS.has(card.id)) continue;
     for (let i = 0; i < card.poolCount; i++) {
       instances.push({
         id: instanceIdFor(card, i),

@@ -172,3 +172,9 @@ export {
   sellHirelingFromBoardToPool,
   sellHirelingFromHandToPool,
 } from "./shop/purchase";
+export {
+  SPRING_CLEANING_ID,
+  SPRING_CLEANING_UPGRADED_ID,
+  castSpringCleaning,
+  isSpringCleaningId,
+} from "./shop/spring-cleaning";
