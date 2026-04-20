@@ -72,7 +72,9 @@ export function nextCastDelay(
  * cards alter their own cast time based on allies:
  *
  *   - rush-order-cook: "-1s cast time for each other Sugar Guild ally."
- *     Minimum 1s so the cast loop can't divide by zero or spin.
+ *     Minimum 1s. A zero-second cast time would spin the fireCast loop
+ *     (`currentTimer <= remainingDt` would be 0 <= positive forever,
+ *     since subtracting 0 doesn't reduce remainingDt).
  *
  * The board is immutable during the action phase, so the result is
  * stable across a round — callers may cache it, but we recompute each
