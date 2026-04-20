@@ -3,6 +3,7 @@ import { createBoard, placeHireling } from "../board/board";
 import { createHirelingInstance } from "../board/hand";
 import { Board } from "../board/types";
 import { mulberry32 } from "../potions/rng";
+import { defaultPriceMap } from "../pricing/panel";
 import {
   firstCastDelay,
   initializeActionState,
@@ -55,7 +56,7 @@ describe("initializeActionState", () => {
     b = placeAt(b, 3, "Doughboy"); // active
     b = placeAt(b, 6, "Doughboy"); // bench
 
-    const state = initializeActionState(b, mulberry32(1));
+    const state = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     expect(state.elapsedSeconds).toBe(0);
     expect(state.hirelingStates.size).toBe(1);
     expect(state.hirelingStates.has("Doughboy-3")).toBe(true);
@@ -65,14 +66,14 @@ describe("initializeActionState", () => {
   test("schedules the first cast at the card's cast time", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Doughboy"); // 5s cast time
-    const state = initializeActionState(b, mulberry32(1));
+    const state = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     expect(state.hirelingStates.get("Doughboy-3")!.nextCastIn).toBe(5);
   });
 
   test("passive hirelings get null nextCastIn", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Pantry Stocker"); // Passive
-    const state = initializeActionState(b, mulberry32(1));
+    const state = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     expect(state.hirelingStates.get("Pantry Stocker-3")!.nextCastIn).toBeNull();
   });
 });
@@ -81,14 +82,14 @@ describe("tick", () => {
   test("zero-length tick returns the same state", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Doughboy");
-    const s = initializeActionState(b, mulberry32(1));
+    const s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     expect(tick(s, 0, mulberry32(1))).toBe(s);
   });
 
   test("rejects negative, NaN, and infinite delta", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Doughboy");
-    const s = initializeActionState(b, mulberry32(1));
+    const s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     expect(() => tick(s, -1, mulberry32(1))).toThrow();
     expect(() => tick(s, NaN, mulberry32(1))).toThrow();
     expect(() => tick(s, Infinity, mulberry32(1))).toThrow();
@@ -97,7 +98,7 @@ describe("tick", () => {
   test("advances elapsed time and decrements cast timers", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Doughboy"); // 5s cast
-    let s = initializeActionState(b, mulberry32(1));
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     s = tick(s, 2, mulberry32(1));
     expect(s.elapsedSeconds).toBe(2);
     expect(s.hirelingStates.get("Doughboy-3")!.nextCastIn).toBe(3);
@@ -106,7 +107,7 @@ describe("tick", () => {
   test("fires a cast exactly when the timer hits 0 and reschedules", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Doughboy"); // 5s, Quickcraft x2
-    let s = initializeActionState(b, mulberry32(1));
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     s = tick(s, 5, mulberry32(1));
     const hs = s.hirelingStates.get("Doughboy-3")!;
     expect(hs.castsSoFar).toBe(1);
@@ -128,7 +129,7 @@ describe("tick", () => {
   test("a long tick fires multiple casts and carries overshoot", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Doughboy"); // 5s cast, Quickcraft x2
-    let s = initializeActionState(b, mulberry32(1));
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     s = tick(s, 12, mulberry32(1)); // enough for 2 casts (10s), 2s into the 3rd
     const hs = s.hirelingStates.get("Doughboy-3")!;
     expect(hs.castsSoFar).toBe(2);
@@ -143,7 +144,7 @@ describe("tick", () => {
     // After the 7th cast the next delay would be 7 - 7 = 0 → null, stopped.
     let b = createBoard();
     b = placeAt(b, 3, "The Grand Vizier");
-    let s = initializeActionState(b, mulberry32(1));
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     s = tick(s, 60, mulberry32(1));
     const hs = s.hirelingStates.get("The Grand Vizier-3")!;
     expect(hs.castsSoFar).toBe(7);
@@ -155,7 +156,7 @@ describe("tick", () => {
   test("passive hireling never logs a cast", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Pantry Stocker");
-    let s = initializeActionState(b, mulberry32(1));
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
     s = tick(s, 100, mulberry32(1));
     expect(s.log.filter((e) => e.kind === "cast").length).toBe(0);
   });
@@ -163,8 +164,8 @@ describe("tick", () => {
   test("determinism under a seeded RNG for random cast times", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Royal Advisor"); // 1-8s random
-    const a = tick(initializeActionState(b, mulberry32(5)), 30, mulberry32(5));
-    const c = tick(initializeActionState(b, mulberry32(5)), 30, mulberry32(5));
+    const a = tick(initializeActionState(b, defaultPriceMap([]), [], mulberry32(5)), 30, mulberry32(5));
+    const c = tick(initializeActionState(b, defaultPriceMap([]), [], mulberry32(5)), 30, mulberry32(5));
     expect(a.log.map((e) => e.atSeconds)).toEqual(c.log.map((e) => e.atSeconds));
   });
 });

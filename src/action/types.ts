@@ -1,4 +1,7 @@
 import { Board } from "../board/types";
+import { Customer, CustomerState, Resolution } from "../customers/types";
+import { PriceMap } from "../pricing/panel";
+import { PotionTypeId } from "../potions/types";
 
 /**
  * Per-hireling state that lives only during the action phase. Base stats
@@ -44,6 +47,17 @@ export type ActionLogEntry =
       instanceId: string;
       atSeconds: number;
       reason: "decreasing-zero" | "passive";
+    }
+  | {
+      kind: "customer-arrived";
+      customerId: string;
+      atSeconds: number;
+    }
+  | {
+      kind: "customer-resolved";
+      customerId: string;
+      atSeconds: number;
+      resolution: Resolution;
     };
 
 /**
@@ -53,10 +67,18 @@ export type ActionLogEntry =
 export interface ActionState {
   /** The board configuration (active + bench). Drawn from end-of-shop. */
   board: Board;
+  /** Player-set price per active potion type. */
+  prices: PriceMap;
+  /** The 5 active potion types for this run. */
+  activePotionTypes: readonly PotionTypeId[];
   /** Total seconds that have elapsed since the round began. */
   elapsedSeconds: number;
   /** Per-active-hireling action state, keyed by instance id. */
   hirelingStates: ReadonlyMap<string, HirelingActionState>;
+  /** Customers currently in the marketplace (resolved or not). */
+  customers: readonly CustomerState[];
   /** Append-only event log for tests and UI replay. */
   log: readonly ActionLogEntry[];
 }
+
+export type { Customer };

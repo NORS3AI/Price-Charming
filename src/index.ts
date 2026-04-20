@@ -248,6 +248,7 @@ export type {
   HirelingActionState,
 } from "./action/types";
 export {
+  addCustomer,
   firstCastDelay,
   initializeActionState,
   nextCastDelay,
