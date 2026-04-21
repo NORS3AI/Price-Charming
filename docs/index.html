@@ -554,6 +554,8 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .pc-price-icon{font-size:1.3rem}
 .pc-price-name{font-weight:bold;font-size:.85rem;flex:1}
 .pc-price-stats{font-size:.72rem;color:var(--purple)}
+.pc-price-stat{font-weight:normal}
+.pc-price-stat-active{font-weight:bold;color:#1a6b1a}
 .pc-price-controls{display:flex;align-items:center;gap:.3rem;margin-top:.2rem}
 .pc-price-btn{width:1.6rem;height:1.6rem;border:none;background:var(--gold);color:var(--deep);border-radius:3px;font-weight:bold;cursor:pointer}
 .pc-price-btn:disabled{opacity:.35;cursor:not-allowed}
@@ -639,7 +641,7 @@ body.pc-dragging .pc-board{outline:2px dashed var(--gold);outline-offset:4px;bor
 <div class="tooltip" id="tooltip"></div>
 <div class="modal-overlay" id="report-overlay" onclick="closeReport()"><div class="modal-box" onclick="event.stopPropagation()"><h2>Last Round Report</h2><div id="report-content"></div><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div></div></div>
 <div class="modal-overlay" id="modal-overlay" onclick="cancelModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="cancelModal()">Cancel</button></div></div>
-<script src="engine.js?v=0ea12d09b1"></script>
+<script src="engine.js?v=73b2ec468b"></script>
 <script>
 "use strict";
 // ==============================================================
@@ -1073,15 +1075,30 @@ function pcRenderPricingPanel(){
     const d = document.createElement("div");
     d.className = "pc-price-card";
     let status = "";
-    if (row.status.kind === "no-stock") status = "No hireling sells this type";
-    else if (row.status.kind === "at-cap") status = "Price cap reached";
-    else status = `+${row.status.potencyToNextTier} potency → next tier`;
+    if (row.status.kind === "no-stock") {
+      status = "No hireling sells this type";
+    } else if (row.status.kind === "at-cap") {
+      status = "Price cap reached";
+    } else {
+      // The bracket is unlocked by whichever stat is higher, so tell
+      // the player which one they'd need to push to hit the next tier
+      // (the "limiting" stat — the one that currently drives the tier).
+      const statLabel = row.status.limitingStat === "stock" ? "stock" : "potency";
+      status = `+${row.status.amountToNextTier} ${statLabel} → next tier`;
+    }
+    // Highlight the stat currently driving the tier.
+    const stockCls = row.combinedStock >= row.combinedPotency && row.tierValue > 0 ? " pc-price-stat-active" : "";
+    const potCls = row.combinedPotency > row.combinedStock ? " pc-price-stat-active" : "";
     d.innerHTML = `
       <div class="pc-price-top">
         <span class="pc-price-icon">${pcPotionIcon(row.potionType)}</span>
         <span class="pc-price-name">${pcPotionName(row.potionType)}</span>
       </div>
-      <div class="pc-price-stats">Potency: ${row.combinedPotency} · Max: ${row.currentMax}g</div>
+      <div class="pc-price-stats">
+        <span class="pc-price-stat${stockCls}">Stock: ${row.combinedStock}</span> ·
+        <span class="pc-price-stat${potCls}">Potency: ${row.combinedPotency}</span> ·
+        Max: ${row.currentMax}g
+      </div>
       <div class="pc-price-controls">
         <button class="pc-price-btn" data-type="${row.potionType}" data-delta="-1" ${row.storedPrice <= E.MIN_PRICE ? "disabled" : ""}>−</button>
         <div class="pc-price-current">${row.effectivePrice}g</div>

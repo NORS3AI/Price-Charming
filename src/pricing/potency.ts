@@ -30,6 +30,27 @@ export function combinedPotencyForType(
   return total;
 }
 
+/**
+ * Sum of stock across all active-slot hirelings that currently sell a
+ * given potion type. Mirrors `combinedPotencyForType` but walks the
+ * stock field. Includes permanent stock bonus; temporary Quickcraft
+ * stock is NOT counted here — pricing tiers are set at the START of
+ * the shop phase and reflect the durable potion capacity the player
+ * has built up, not transient in-round buffs.
+ */
+export function combinedStockForType(
+  hirelings: readonly HirelingInstance[],
+  type: PotionTypeId
+): number {
+  let total = 0;
+  for (const h of hirelings) {
+    if (h.potionType !== type) continue;
+    const [slot] = h.card.potions;
+    if (slot) total += slot.stock + h.permanentStockBonus;
+  }
+  return total;
+}
+
 /** Convenience: combined potency per type across the active slots only. */
 export function combinedPotencyFromBoard(
   board: Board,
@@ -50,6 +71,19 @@ export function combinedPotencyMap(
   const result = new Map<PotionTypeId, number>();
   for (const type of activeTypes) {
     result.set(type, combinedPotencyForType(hirelings, type));
+  }
+  return result;
+}
+
+/** Parallel to combinedPotencyMap for stock. */
+export function combinedStockMap(
+  board: Board,
+  activeTypes: readonly PotionTypeId[]
+): Map<PotionTypeId, number> {
+  const hirelings = activeHirelings(board);
+  const result = new Map<PotionTypeId, number>();
+  for (const type of activeTypes) {
+    result.set(type, combinedStockForType(hirelings, type));
   }
   return result;
 }

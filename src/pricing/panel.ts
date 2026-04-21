@@ -1,12 +1,12 @@
 import { Board, HirelingInstance } from "../board/types";
 import { PotionTypeId } from "../potions/types";
 import {
-  CAP_POTENCY,
+  CAP_VALUE,
   MIN_PRICE,
-  maxPriceForPotency,
-  potencyToNextBracket,
+  amountToNextBracket,
+  maxPriceForStatValue,
 } from "./brackets";
-import { combinedPotencyMap } from "./potency";
+import { combinedPotencyMap, combinedStockMap } from "./potency";
 
 /** Player-set price per active potion type. */
 export interface PriceMap {
@@ -15,14 +15,22 @@ export interface PriceMap {
 
 /** Status text the pricing panel shows beneath each potion type. */
 export type PricingStatus =
-  | { kind: "below-cap"; potencyToNextTier: number }
+  | { kind: "below-cap"; amountToNextTier: number; limitingStat: "stock" | "potency" }
   | { kind: "at-cap" }
   | { kind: "no-stock" };
 
 /** A single row of the shop-phase pricing panel. */
 export interface PricingPanelEntry {
   potionType: PotionTypeId;
+  /** Summed potency across active-slot hirelings selling this type. */
   combinedPotency: number;
+  /** Summed stock across active-slot hirelings selling this type. */
+  combinedStock: number;
+  /**
+   * max(combinedStock, combinedPotency) — the value used to pick the
+   * price bracket. Either stat can unlock the tier.
+   */
+  tierValue: number;
   /** Player's stored price (raw, may exceed currentMax if the board changed). */
   storedPrice: number;
   /** Effective price actually used by sales — clamped to [MIN_PRICE, currentMax]. */
@@ -81,28 +89,40 @@ export function buildPricingPanel(
   prices: PriceMap
 ): PricingPanelEntry[] {
   const potencies = combinedPotencyMap(board, activeTypes);
+  const stocks = combinedStockMap(board, activeTypes);
   return activeTypes.map((type) => {
     const combinedPotency = potencies.get(type) ?? 0;
-    const currentMax = maxPriceForPotency(combinedPotency);
+    const combinedStock = stocks.get(type) ?? 0;
+    // Bracket is unlocked by the LARGER of the two — stock OR potency.
+    const tierValue = Math.max(combinedStock, combinedPotency);
+    const currentMax = maxPriceForStatValue(tierValue);
     const stored = priceFor(prices, type);
     const effectivePrice =
       currentMax === 0 ? 0 : Math.max(MIN_PRICE, Math.min(currentMax, stored));
 
     let status: PricingStatus;
-    if (combinedPotency === 0) {
+    if (tierValue === 0) {
       status = { kind: "no-stock" };
-    } else if (combinedPotency >= CAP_POTENCY) {
+    } else if (tierValue >= CAP_VALUE) {
       status = { kind: "at-cap" };
     } else {
+      // Tell the player WHICH stat is closest to the next tier so they
+      // know where to invest (stock vs. potency). Whichever is higher
+      // is the one that determined the current tier.
+      const limitingStat: "stock" | "potency" =
+        combinedStock >= combinedPotency ? "stock" : "potency";
       status = {
         kind: "below-cap",
-        potencyToNextTier: potencyToNextBracket(combinedPotency)!,
+        amountToNextTier: amountToNextBracket(tierValue)!,
+        limitingStat,
       };
     }
 
     return {
       potionType: type,
       combinedPotency,
+      combinedStock,
+      tierValue,
       storedPrice: stored,
       effectivePrice,
       currentMax,

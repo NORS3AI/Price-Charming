@@ -208,13 +208,15 @@ Seven total — each with a unique icon:
 - Only the 5 active potion types have prices to set.
 - Pricing panel (shop phase) shows for each active type:
   - Icon and name
-  - Combined potency total across all hirelings selling that type
+  - Combined **stock** and combined **potency** totals across all hirelings selling that type (the higher of the two drives the tier)
   - Current price (player-adjustable)
-  - Status: `+X potency needed for next price tier` or `Price cap reached` (when combined potency ≥ 63).
+  - Status: `+X stock → next tier` or `+X potency → next tier` (whichever is currently the limiting stat), or `Price cap reached` at the top bracket.
 
 ### Price brackets
 
-| Combined Potency | Max Price |
+The tier is unlocked by **max(combined stock, combined potency)** — either stat is enough to hit the bracket.
+
+| max(Stock, Potency) | Max Price |
 | --- | --- |
 | 1–8 | 1g |
 | 9–16 | 2g |
@@ -226,7 +228,7 @@ Seven total — each with a unique icon:
 | 63+ | 8g (cap) |
 
 - Player can set any price between 1g and the current max.
-- Combined potency is recalculated at the start of each shop phase to reflect permanent buffs gained during the previous action phase.
+- Both totals are recalculated at the start of each shop phase to reflect permanent buffs gained during the previous action phase.
 - **Haggle** sales add +3g on top of the set price (per-hireling modifier; not in the pricing panel).
 
 ### Stock effect on customer purchases

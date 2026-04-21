@@ -1314,34 +1314,37 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
 
   // src/pricing/brackets.ts
   var PRICE_BRACKETS = Object.freeze([
-    { minPotency: 1, maxPrice: 1 },
-    { minPotency: 9, maxPrice: 2 },
-    { minPotency: 17, maxPrice: 3 },
-    { minPotency: 25, maxPrice: 4 },
-    { minPotency: 33, maxPrice: 5 },
-    { minPotency: 41, maxPrice: 6 },
-    { minPotency: 51, maxPrice: 7 },
-    { minPotency: 63, maxPrice: 8 }
+    { minValue: 1, maxPrice: 1 },
+    { minValue: 9, maxPrice: 2 },
+    { minValue: 17, maxPrice: 3 },
+    { minValue: 25, maxPrice: 4 },
+    { minValue: 33, maxPrice: 5 },
+    { minValue: 41, maxPrice: 6 },
+    { minValue: 51, maxPrice: 7 },
+    { minValue: 63, maxPrice: 8 }
   ]);
   var MIN_PRICE = 1;
   var MAX_PRICE = PRICE_BRACKETS[PRICE_BRACKETS.length - 1].maxPrice;
-  var CAP_POTENCY = PRICE_BRACKETS[PRICE_BRACKETS.length - 1].minPotency;
-  function maxPriceForPotency(combinedPotency) {
-    if (combinedPotency <= 0) return 0;
+  var CAP_VALUE = PRICE_BRACKETS[PRICE_BRACKETS.length - 1].minValue;
+  function maxPriceForStatValue(combinedStat) {
+    if (combinedStat <= 0) return 0;
     let max = MIN_PRICE;
     for (const bracket of PRICE_BRACKETS) {
-      if (combinedPotency >= bracket.minPotency) max = bracket.maxPrice;
+      if (combinedStat >= bracket.minValue) max = bracket.maxPrice;
     }
     return max;
   }
-  function potencyToNextBracket(combinedPotency) {
+  function amountToNextBracket(combinedStat) {
     for (const bracket of PRICE_BRACKETS) {
-      if (combinedPotency < bracket.minPotency) {
-        return bracket.minPotency - combinedPotency;
+      if (combinedStat < bracket.minValue) {
+        return bracket.minValue - combinedStat;
       }
     }
     return null;
   }
+  var maxPriceForPotency = maxPriceForStatValue;
+  var potencyToNextBracket = amountToNextBracket;
+  var CAP_POTENCY = CAP_VALUE;
 
   // src/pricing/potency.ts
   function combinedPotencyForType(hirelings, type) {
@@ -1353,6 +1356,15 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return total;
   }
+  function combinedStockForType(hirelings, type) {
+    let total = 0;
+    for (const h of hirelings) {
+      if (h.potionType !== type) continue;
+      const [slot] = h.card.potions;
+      if (slot) total += slot.stock + h.permanentStockBonus;
+    }
+    return total;
+  }
   function combinedPotencyFromBoard(board, type) {
     return combinedPotencyForType(activeHirelings(board), type);
   }
@@ -1361,6 +1373,14 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     const result = /* @__PURE__ */ new Map();
     for (const type of activeTypes) {
       result.set(type, combinedPotencyForType(hirelings, type));
+    }
+    return result;
+  }
+  function combinedStockMap(board, activeTypes) {
+    const hirelings = activeHirelings(board);
+    const result = /* @__PURE__ */ new Map();
+    for (const type of activeTypes) {
+      result.set(type, combinedStockForType(hirelings, type));
     }
     return result;
   }
@@ -1389,26 +1409,33 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   }
   function buildPricingPanel(activeTypes, board, prices) {
     const potencies = combinedPotencyMap(board, activeTypes);
+    const stocks = combinedStockMap(board, activeTypes);
     return activeTypes.map((type) => {
-      var _a;
+      var _a, _b;
       const combinedPotency = (_a = potencies.get(type)) != null ? _a : 0;
-      const currentMax = maxPriceForPotency(combinedPotency);
+      const combinedStock = (_b = stocks.get(type)) != null ? _b : 0;
+      const tierValue = Math.max(combinedStock, combinedPotency);
+      const currentMax = maxPriceForStatValue(tierValue);
       const stored = priceFor(prices, type);
       const effectivePrice = currentMax === 0 ? 0 : Math.max(MIN_PRICE, Math.min(currentMax, stored));
       let status;
-      if (combinedPotency === 0) {
+      if (tierValue === 0) {
         status = { kind: "no-stock" };
-      } else if (combinedPotency >= CAP_POTENCY) {
+      } else if (tierValue >= CAP_VALUE) {
         status = { kind: "at-cap" };
       } else {
+        const limitingStat = combinedStock >= combinedPotency ? "stock" : "potency";
         status = {
           kind: "below-cap",
-          potencyToNextTier: potencyToNextBracket(combinedPotency)
+          amountToNextTier: amountToNextBracket(tierValue),
+          limitingStat
         };
       }
       return {
         potionType: type,
         combinedPotency,
+        combinedStock,
+        tierValue,
         storedPrice: stored,
         effectivePrice,
         currentMax,

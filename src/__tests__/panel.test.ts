@@ -95,17 +95,47 @@ describe("buildPricingPanel", () => {
 
   test("computes max price and below-cap status from active hirelings", () => {
     let b = createBoard();
-    // Two Sugar Sprinklers (potency 5 each) sell Love → combined 10 → max 2g.
+    // Two Sugar Sprinklers (potency 5, stock 0 each — they're Quickcraft-less
+    // passives with 0 stock in slot 0) sell Love → combined potency 10,
+    // combined stock 0 → tierValue = max(0,10) = 10 → max 2g.
     b = placeAt(b, 2, "Sugar Sprinkler", "love");
     b = placeAt(b, 3, "Sugar Sprinkler", "love");
 
     const rows = buildPricingPanel(ACTIVE, b, defaultPriceMap(ACTIVE));
     const love = rows.find((r) => r.potionType === "love")!;
     expect(love.combinedPotency).toBe(10);
+    expect(love.tierValue).toBe(10);
     expect(love.currentMax).toBe(2);
     expect(love.status).toEqual({
       kind: "below-cap",
-      potencyToNextTier: 7, // 10 → next bracket 17
+      amountToNextTier: 7, // 10 → next bracket 17
+      limitingStat: "potency", // potency is the higher of the two
+    });
+  });
+
+  test("stock alone can unlock a tier (regression: either stat suffices)", () => {
+    // Use Pantry Stocker: potency 3, stock 2 per instance. Stack 5 on
+    // active slots. Combined stock = 10, combined potency = 15 →
+    // tierValue = 15 → max 2g. Then imagine a hireling with high stock
+    // but low potency: we simulate with a stock-only scenario.
+    const pantry = ALL_HIRELINGS.find((h) => h.name === "Pantry Stocker")!;
+    // Synthesize a hireling with high stock, low potency to make stock
+    // the larger value.
+    const stockHeavy = { ...pantry, potions: [{ stock: 20, potency: 1 }] };
+    let b = createBoard();
+    b = placeHireling(b, 3, createHirelingInstance(stockHeavy, "s1", "love"));
+
+    const rows = buildPricingPanel(ACTIVE, b, defaultPriceMap(ACTIVE));
+    const love = rows.find((r) => r.potionType === "love")!;
+    expect(love.combinedPotency).toBe(1);
+    expect(love.combinedStock).toBe(20);
+    expect(love.tierValue).toBe(20);
+    // Bracket 17-24 → 3g.
+    expect(love.currentMax).toBe(3);
+    expect(love.status).toEqual({
+      kind: "below-cap",
+      amountToNextTier: 5, // 20 → next bracket 25
+      limitingStat: "stock", // stock drove the tier up
     });
   });
 
