@@ -734,6 +734,8 @@ function pcStartGame(diff){
   pcStarPowerCharges = 0;
   pcStarPowerCastThisShop = false;
   pcFreeRefreshPending = false;
+  pcOppAction = null;
+  pcOppRng = null;
   if (document.body && document.body.classList) {
     document.body.classList.remove("pc-dragging");
   }
