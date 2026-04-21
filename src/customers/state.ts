@@ -152,7 +152,9 @@ export function axesLedBy(state: CustomerState, side: Side): number {
  * scale keeps the math simple while still giving the top axis 4x the
  * influence of the bottom one.
  */
-export const AXIS_PRIORITY_WEIGHTS: readonly number[] = [4, 3, 2, 1];
+export const AXIS_PRIORITY_WEIGHTS: readonly number[] = Object.freeze([
+  4, 3, 2, 1,
+]);
 
 /**
  * Weighted sum of axis leads for a side: each axis this side leads

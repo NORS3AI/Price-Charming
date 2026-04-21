@@ -1559,7 +1559,12 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return count;
   }
-  var AXIS_PRIORITY_WEIGHTS = [4, 3, 2, 1];
+  var AXIS_PRIORITY_WEIGHTS = Object.freeze([
+    4,
+    3,
+    2,
+    1
+  ]);
   function weightedLeadScore(state, side) {
     var _a;
     let score = 0;
