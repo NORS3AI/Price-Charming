@@ -222,6 +222,7 @@ export {
   MIN_REPUTATION_STARS,
 } from "./customers/types";
 export {
+  AXIS_PRIORITY_WEIGHTS,
   applyContribution,
   axesLedBy,
   axisLeader,
@@ -229,6 +230,7 @@ export {
   determineWinner,
   isExpired,
   isResolved,
+  weightedLeadScore,
   reputationReward,
   resolveCustomer,
   tickPatience,

@@ -585,7 +585,8 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .pc-cust-meta{font-size:.7rem;color:var(--purple)}
 .pc-cust-bars{display:flex;flex-direction:column;gap:.1rem;margin-top:.2rem}
 .pc-cust-bar{display:flex;align-items:center;gap:.3rem;font-size:.65rem}
-.pc-cust-bar-label{width:3rem;color:var(--deep)}
+.pc-cust-bar-label{width:5.5rem;color:var(--deep);display:flex;gap:.25rem;align-items:center}
+.pc-cust-bar-pips{font-size:.55rem;color:var(--gold);letter-spacing:-.05em}
 .pc-cust-bar-track{flex:1;height:.4rem;background:rgba(0,0,0,.1);border-radius:2px;position:relative;overflow:hidden}
 .pc-cust-bar-p,.pc-cust-bar-o{position:absolute;top:0;bottom:0}
 .pc-cust-bar-p{left:0;background:var(--green)}
@@ -641,7 +642,7 @@ body.pc-dragging .pc-board{outline:2px dashed var(--gold);outline-offset:4px;bor
 <div class="tooltip" id="tooltip"></div>
 <div class="modal-overlay" id="report-overlay" onclick="closeReport()"><div class="modal-box" onclick="event.stopPropagation()"><h2>Last Round Report</h2><div id="report-content"></div><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div></div></div>
 <div class="modal-overlay" id="modal-overlay" onclick="cancelModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="cancelModal()">Cancel</button></div></div>
-<script src="engine.js?v=73b2ec468b"></script>
+<script src="engine.js?v=9114c31c12"></script>
 <script>
 "use strict";
 // ==============================================================
@@ -1284,13 +1285,26 @@ function pcRenderCustomers(){
                         cs.resolvedFor === "no-sale" ? "— Walked away" :
                         `⏳ ${cs.patienceRemaining.toFixed(1)}s`;
     const stars = "★".repeat(c.reputationStars) + "☆".repeat(5 - c.reputationStars);
-    const bars = PC_AXES.map(axis => {
+    // Render bars in the customer's personal priority order — top =
+    // most important. Weights [4,3,2,1] indicate sway in the purchase
+    // decision. A small pip column lets the player read priority at a
+    // glance (★★★★ for the top axis down to ★ for the bottom).
+    const priority = c.axisPriority && c.axisPriority.length === 4
+      ? c.axisPriority
+      : PC_AXES;
+    const weights = [4, 3, 2, 1];
+    const bars = priority.map((axis, i) => {
       const bar = cs.axes[axis];
       const pPct = Math.min(100, Math.max(0, bar.playerFill / 2));
       const oPct = Math.min(100, Math.max(0, bar.opponentFill / 2));
+      const weight = weights[i];
+      const pips = "★".repeat(weight) + "☆".repeat(4 - weight);
       return `
         <div class="pc-cust-bar">
-          <span class="pc-cust-bar-label">${axis}</span>
+          <span class="pc-cust-bar-label">
+            <span class="pc-cust-bar-pips" title="Priority weight ${weight}×">${pips}</span>
+            ${axis}
+          </span>
           <div class="pc-cust-bar-track">
             <div class="pc-cust-bar-p" style="width:${pPct}%"></div>
             <div class="pc-cust-bar-o" style="width:${oPct}%"></div>

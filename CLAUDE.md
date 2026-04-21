@@ -251,7 +251,16 @@ Stock determines how many units a customer purchases per interaction:
 
 ## Customers (4-Axis Tug-of-War)
 
-Each customer is influenced by four axes; each side fills bars toward winning the customer. Customers list these in order of personal importance.
+Each customer is influenced by four axes; each side fills bars toward winning the customer. Every customer spawns with their **own randomized priority order** of the four axes — the first axis carries the most sway in the purchase decision, the last carries the least. The UI displays bars in priority order with pip indicators (★★★★ for the top axis down to ★ for the bottom).
+
+### Weighted decision
+Each axis is worth points equal to its priority weight. Default weights are `[4, 3, 2, 1]` — top axis is 4× the bottom. The side with the higher **weighted lead score** wins the customer.
+
+- Leading the top axis alone (4) beats an opponent who leads any two of the lower three axes.
+- Leading the top axis alone (4) loses to an opponent who leads the other three (3 + 2 + 1 = 6).
+- Tied scores fall back to axis priority — the first-listed axis with a leader decides.
+
+### Axes
 
 - **Focus** — which side has the customer's attention. **Bewitch** = bursts of focus. Passive hirelings bleed focus toward your side just by existing.
 - **Type** — binary. You either have the potion or you don't. If only one side does, that side has a massive advantage and the customer may abandon their preference.

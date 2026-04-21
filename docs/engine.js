@@ -27,6 +27,7 @@ var PriceCharming = (() => {
     ALL_KEYWORDS: () => ALL_KEYWORDS,
     ALL_SPELLS: () => ALL_SPELLS,
     AXES: () => AXES,
+    AXIS_PRIORITY_WEIGHTS: () => AXIS_PRIORITY_WEIGHTS,
     AXIS_THRESHOLD: () => AXIS_THRESHOLD,
     BENCH_SLOTS: () => BENCH_SLOTS,
     BOARD_SIZE: () => BOARD_SIZE,
@@ -213,7 +214,8 @@ var PriceCharming = (() => {
     tickWeather: () => tickWeather,
     toCsv: () => toCsv,
     unitsRange: () => unitsRange,
-    wageFor: () => wageFor
+    wageFor: () => wageFor,
+    weightedLeadScore: () => weightedLeadScore
   });
 
   // src/cards/keywords.ts
@@ -1557,11 +1559,23 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return count;
   }
+  var AXIS_PRIORITY_WEIGHTS = [4, 3, 2, 1];
+  function weightedLeadScore(state, side) {
+    var _a;
+    let score = 0;
+    for (let i = 0; i < state.customer.axisPriority.length; i++) {
+      const axis = state.customer.axisPriority[i];
+      if (axisLeader(state, axis) === side) {
+        score += (_a = AXIS_PRIORITY_WEIGHTS[i]) != null ? _a : 0;
+      }
+    }
+    return score;
+  }
   function determineWinner(state) {
-    const playerLeads = axesLedBy(state, "player");
-    const opponentLeads = axesLedBy(state, "opponent");
-    if (playerLeads > opponentLeads) return "player";
-    if (opponentLeads > playerLeads) return "opponent";
+    const playerScore = weightedLeadScore(state, "player");
+    const opponentScore = weightedLeadScore(state, "opponent");
+    if (playerScore > opponentScore) return "player";
+    if (opponentScore > playerScore) return "opponent";
     for (const axis of state.customer.axisPriority) {
       const leader = axisLeader(state, axis);
       if (leader) return leader;

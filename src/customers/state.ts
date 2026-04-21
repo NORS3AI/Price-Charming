@@ -147,17 +147,50 @@ export function axesLedBy(state: CustomerState, side: Side): number {
 }
 
 /**
+ * Per-axis weights based on the customer's priority list. The first
+ * axis carries the most sway; the last carries the least. Linear 4→1
+ * scale keeps the math simple while still giving the top axis 4x the
+ * influence of the bottom one.
+ */
+export const AXIS_PRIORITY_WEIGHTS: readonly number[] = [4, 3, 2, 1];
+
+/**
+ * Weighted sum of axis leads for a side: each axis this side leads
+ * contributes its priority-based weight. A side leading the top-
+ * priority axis earns 4 points toward its weighted score, while the
+ * bottom-priority axis is worth only 1.
+ */
+export function weightedLeadScore(
+  state: CustomerState,
+  side: Side
+): number {
+  let score = 0;
+  for (let i = 0; i < state.customer.axisPriority.length; i++) {
+    const axis = state.customer.axisPriority[i];
+    if (axisLeader(state, axis) === side) {
+      score += AXIS_PRIORITY_WEIGHTS[i] ?? 0;
+    }
+  }
+  return score;
+}
+
+/**
  * Decide who wins the customer right now without mutating state:
- *  1. Whoever leads on more axes.
- *  2. If tied, the customer's axisPriority breaks it — the first-listed
- *     axis with a leader decides.
+ *  1. Whoever has the higher weighted lead score — axes are weighted by
+ *     the customer's priority list (top = 4, bottom = 1). This means a
+ *     player leading just the top-priority axis can still beat an
+ *     opponent leading the three lower-priority axes (4 vs. 3+2+1=6 —
+ *     actually no; a single top axis only beats any TWO of the lower
+ *     three). Overall, priority order strongly steers the outcome.
+ *  2. If weighted scores tie, the customer's axisPriority still breaks
+ *     it — the first-listed axis with a leader decides.
  *  3. If nobody leads on any axis, return null (nobody wins).
  */
 export function determineWinner(state: CustomerState): Side | null {
-  const playerLeads = axesLedBy(state, "player");
-  const opponentLeads = axesLedBy(state, "opponent");
-  if (playerLeads > opponentLeads) return "player";
-  if (opponentLeads > playerLeads) return "opponent";
+  const playerScore = weightedLeadScore(state, "player");
+  const opponentScore = weightedLeadScore(state, "opponent");
+  if (playerScore > opponentScore) return "player";
+  if (opponentScore > playerScore) return "opponent";
 
   for (const axis of state.customer.axisPriority) {
     const leader = axisLeader(state, axis);
