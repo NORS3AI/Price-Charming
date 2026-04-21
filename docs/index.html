@@ -1016,10 +1016,11 @@ function pcTooltipHtml(inst, hs){
         <div><b>Potion 2:</b> ${slots[1].stock}/${slots[1].potency}</div>
       </div>`;
   }
-  // Permanent buff summary — always show totals so the player can
-  // audit stat carryover round-to-round.
-  const permStock = inst.permanentStockBonus || 0;
-  const permPotency = inst.permanentPotencyBonus || 0;
+  // Permanent buff summary — shows cross-round bonus PLUS this-round
+  // gains so the tooltip matches the card's green slot badge (both
+  // fields roll into the displayed stats).
+  const permStock = (inst.permanentStockBonus || 0) + (hs ? (hs.permanentStockGainedThisRound || 0) : 0);
+  const permPotency = (inst.permanentPotencyBonus || 0) + (hs ? (hs.permanentPotencyGainedThisRound || 0) : 0);
   const permLine = (permStock !== 0 || permPotency !== 0)
     ? `<div class="pc-tooltip-perm"><b>Permanent buffs:</b> ${permStock >= 0 ? "+" : ""}${permStock} stock · ${permPotency >= 0 ? "+" : ""}${permPotency} potency</div>`
     : "";
