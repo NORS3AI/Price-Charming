@@ -1740,6 +1740,8 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     if (stockGained === 0 && potencyGained === 0) return state;
     const hs = state.hirelingStates.get(targetId);
     if (!hs) return state;
+    const target = findInstance(state.board, targetId);
+    if ((target == null ? void 0 : target.card.id) === "dusty-broom") return state;
     const next = {
       ...hs,
       permanentStockGainedThisRound: hs.permanentStockGainedThisRound + stockGained,
@@ -1805,6 +1807,8 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     if (amount <= 0) return state;
     const hs = state.hirelingStates.get(targetId);
     if (!hs) return state;
+    const target = findInstance(state.board, targetId);
+    if ((target == null ? void 0 : target.card.id) === "dusty-broom") return state;
     const states = new Map(state.hirelingStates);
     states.set(targetId, { ...hs, temporaryStock: hs.temporaryStock + amount });
     return { ...state, hirelingStates: states };
@@ -1948,6 +1952,19 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       }
       case "grumblegut-dragon":
         return applyGrumbleguDragonCast(state, caster, atSeconds);
+      case "the-queen": {
+        const customers = state.customers.map((cs) => {
+          if (cs.resolvedFor !== null) return cs;
+          return {
+            ...cs,
+            customer: {
+              ...cs.customer,
+              reputationStars: cs.customer.reputationStars + 1
+            }
+          };
+        });
+        return { ...state, customers };
+      }
       default:
         return state;
     }

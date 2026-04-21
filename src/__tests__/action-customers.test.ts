@@ -508,6 +508,38 @@ describe("sale execution", () => {
     expect(pp.temporaryStock).toBe(2);
   });
 
+  test("Pickpocket Pixie: opponent Thieves hirelings count too", () => {
+    const { setOpponent, addCustomer, initializeActionState, tick } = require("../action/state");
+    const { captureSnapshot } = require("../opponent/snapshot");
+    // Player: just Pickpocket Pixie (1 Thieves).
+    let pb = createBoard();
+    pb = placeAt(pb, 3, "Pickpocket Pixie", "love");
+    // Opponent: 2 Thieves on active slots.
+    let ob = createBoard();
+    ob = placeAt(ob, 2, "Robbin Goblin", "luck");
+    ob = placeAt(ob, 3, "Snatchling", "dragons-breath");
+    const oppSnapshot = captureSnapshot({
+      id: "opp",
+      round: 1,
+      board: ob,
+      prices: defaultPriceMap(ACTIVE),
+      activePotionTypes: ACTIVE,
+      reputation: 0,
+    });
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 2);
+    let s = initializeActionState(pb, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = setOpponent(s, oppSnapshot);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const pp = s.hirelingStates.get("Pickpocket Pixie-3")!;
+    // 1 player Thieves + 2 opponent Thieves = 3 temp stock.
+    expect(pp.temporaryStock).toBe(3);
+  });
+
   test("The Page: +1 temporary stock when any ally sells", () => {
     let b = createBoard();
     b = placeAt(b, 2, "Jumping Jack", "love");       // base stock 3 → sells

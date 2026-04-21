@@ -273,6 +273,12 @@ function buffHireling(
   if (stockGained === 0 && potencyGained === 0) return state;
   const hs = state.hirelingStates.get(targetId);
   if (!hs) return state;
+  // Dusty Broom ability text: "Cannot be Sabotaged. Cannot be buffed."
+  // Applies uniformly — positive OR negative buffs from every source
+  // (Sugar Sprinkler's adjacency, Oven Master's all-ally, Lord
+  // Chamberlain's Nobles filter, Grumblegut Dragon's eat, etc.).
+  const target = findInstance(state.board, targetId);
+  if (target?.card.id === "dusty-broom") return state;
   const next: HirelingActionState = {
     ...hs,
     permanentStockGainedThisRound:
@@ -358,7 +364,7 @@ function applyPostSaleAbility(
   }
 }
 
-/** Add to a target active hireling's temporary stock pool. Returns state unchanged if target isn't on an active slot. */
+/** Add to a target active hireling's temporary stock pool. Returns state unchanged if target isn't on an active slot or is Dusty Broom (cannot be buffed). */
 function addTemporaryStock(
   state: ActionState,
   targetId: string,
@@ -367,6 +373,8 @@ function addTemporaryStock(
   if (amount <= 0) return state;
   const hs = state.hirelingStates.get(targetId);
   if (!hs) return state;
+  const target = findInstance(state.board, targetId);
+  if (target?.card.id === "dusty-broom") return state;
   const states = new Map(state.hirelingStates);
   states.set(targetId, { ...hs, temporaryStock: hs.temporaryStock + amount });
   return { ...state, hirelingStates: states };
@@ -618,6 +626,23 @@ function applyPostCastAbility(
       //  ("Cannot be buffed.") and caps eaten at the neighbor's current
       //  effective potency (can't eat more than they have).
       return applyGrumbleguDragonCast(state, caster, atSeconds);
+    case "the-queen": {
+      // "Bewitch. Grant all customers currently in the middle zone +1
+      //  reputation." Middle zone = all currently-unresolved customers
+      //  (per user clarification). Each cast adds +1 rep star per
+      //  customer, which the player earns when selling to them.
+      const customers = state.customers.map((cs) => {
+        if (cs.resolvedFor !== null) return cs;
+        return {
+          ...cs,
+          customer: {
+            ...cs.customer,
+            reputationStars: cs.customer.reputationStars + 1,
+          },
+        };
+      });
+      return { ...state, customers };
+    }
     default:
       return state;
   }

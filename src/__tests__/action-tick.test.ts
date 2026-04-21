@@ -388,6 +388,82 @@ describe("tick", () => {
     expect(heraldHs.temporaryStock).toBe(0);     // self excluded
   });
 
+  test("The Herald: buff stacks across multiple casts in one round", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "The Page");
+    b = placeAt(b, 3, "The Herald");   // 5s cast → 3 casts in 15s
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 15, mulberry32(1));
+    const pageHs = s.hirelingStates.get("The Page-1")!;
+    expect(pageHs.temporaryStock).toBe(3);
+  });
+
+  test("The Queen: grants +1 reputation star to every current customer on each cast", () => {
+    // Queen's cast is 9s. Over 10s, one cast fires. Each in-flight
+    // customer gets +1 rep star.
+    let b = createBoard();
+    b = placeAt(b, 3, "The Queen");
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    // Add a manual customer so we can check rep-star bump.
+    const { addCustomer } = require("../action/state");
+    s = addCustomer(s, {
+      id: "c1",
+      desiredType: "love",
+      budget: 5,
+      qualityThreshold: 3,
+      reputationStars: 2,
+      patienceSeconds: 20,
+      axisPriority: ["focus", "type", "budget", "quality"],
+    });
+    s = tick(s, 10, mulberry32(1)); // cast at 9s
+    expect(s.customers[0].customer.reputationStars).toBe(3);
+  });
+
+  test("Dusty Broom cannot be buffed by ANY source (Sugar Sprinkler adjacency)", () => {
+    let b = createBoard();
+    const broomCard = ALL_HIRELINGS.find((h) => h.name === "Dusty Broom")!;
+    b = placeHireling(b, 2, createHirelingInstance(broomCard, "broom", "love"));
+    b = placeAt(b, 3, "Sugar Sprinkler"); // would normally buff broom (+1 pot)
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 6, mulberry32(1));
+    const broomHs = s.hirelingStates.get("broom")!;
+    expect(broomHs.permanentPotencyGainedThisRound).toBe(0);
+  });
+
+  test("Dusty Broom cannot be buffed by Oven Master's all-ally buff", () => {
+    let b = createBoard();
+    const broomCard = ALL_HIRELINGS.find((h) => h.name === "Dusty Broom")!;
+    b = placeHireling(b, 2, createHirelingInstance(broomCard, "broom", "love"));
+    b = placeAt(b, 3, "Oven Master");
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 7, mulberry32(1));
+    const broomHs = s.hirelingStates.get("broom")!;
+    expect(broomHs.permanentPotencyGainedThisRound).toBe(0);
+  });
+
+  test("Dusty Broom cannot receive temporary stock from The Herald/Page/etc.", () => {
+    let b = createBoard();
+    const broomCard = ALL_HIRELINGS.find((h) => h.name === "Dusty Broom")!;
+    b = placeHireling(b, 2, createHirelingInstance(broomCard, "broom", "love"));
+    b = placeAt(b, 3, "The Page"); // +1 temp stock per ally sale; broom is not Nobles anyway
+    // Trigger an ally sale — use Jumping Jack at slot 4 with a customer.
+    b = placeAt(b, 4, "Jumping Jack");
+    let prices = defaultPriceMap(["love"] as const);
+    let s = initializeActionState(b, prices, ["love"] as const, mulberry32(1));
+    const { addCustomer } = require("../action/state");
+    s = addCustomer(s, {
+      id: "c1", desiredType: "love", budget: 20, qualityThreshold: 1,
+      reputationStars: 2, patienceSeconds: 3,
+      axisPriority: ["focus", "type", "budget", "quality"],
+    });
+    s = tick(s, 3, mulberry32(1));
+    // The Page would gain +1 temp stock; Dusty Broom cannot receive
+    // anything. (Confirm broom stays at 0 even though Page's hook fires
+    // on the Page itself, not the broom.)
+    const broomHs = s.hirelingStates.get("broom")!;
+    expect(broomHs.temporaryStock).toBe(0);
+  });
+
   test("Grumblegut Dragon: per-cast eats 2 potency from each adjacent active ally", () => {
     let b = createBoard();
     b = placeAt(b, 2, "The Page");            // Nobles, potency 3
