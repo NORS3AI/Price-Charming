@@ -1678,7 +1678,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     for (const inst of activeHirelings(board)) {
       states.set(inst.id, freshHirelingState(inst, board, rng));
     }
-    return {
+    let state = {
       board,
       prices,
       activePotionTypes,
@@ -1691,6 +1691,10 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       opponent: null,
       log: []
     };
+    for (const inst of activeHirelings(board)) {
+      state = applyRoundStartAbility(state, inst, 0);
+    }
+    return state;
   }
   function setOpponent(state, snapshot) {
     return { ...state, opponent: snapshot };
@@ -1772,15 +1776,84 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       case "street-rat":
         if (!haggled) return state;
         return buffHireling(state, hireling.id, hireling.id, 2, 0, atSeconds);
+      case "cookie-seller": {
+        const saleCount = state.log.filter(
+          (e) => e.kind === "sale" && e.instanceId === hireling.id
+        ).length;
+        if (saleCount !== 1) return state;
+        return { ...state, gold: state.gold + 1 };
+      }
+      case "almost-a-knight":
+        if (!haggled) return state;
+        return addTemporaryStock(state, hireling.id, 2);
+      case "pickpocket-pixie": {
+        const playerThieves = state.board.slots.filter(
+          (s) => s && s.card.kind === "hireling" && s.card.guild === "Thieves Guild"
+        ).length;
+        const oppThieves = state.opponent ? state.opponent.board.slots.filter(
+          (s) => s && s.card.kind === "hireling" && s.card.guild === "Thieves Guild"
+        ).length : 0;
+        const total = playerThieves + oppThieves;
+        if (total <= 0) return state;
+        return addTemporaryStock(state, hireling.id, total);
+      }
       default:
         return state;
     }
+  }
+  function addTemporaryStock(state, targetId, amount) {
+    if (amount <= 0) return state;
+    const hs = state.hirelingStates.get(targetId);
+    if (!hs) return state;
+    const states = new Map(state.hirelingStates);
+    states.set(targetId, { ...hs, temporaryStock: hs.temporaryStock + amount });
+    return { ...state, hirelingStates: states };
   }
   function applyOnAllySaleAbility(state, reactor, seller, atSeconds) {
     if (reactor.id === seller.id) return state;
     switch (reactor.card.id) {
       case "gingerbread-king":
         return buffHireling(state, seller.id, reactor.id, 0, 2, atSeconds);
+      case "the-page":
+        return addTemporaryStock(state, reactor.id, 1);
+      default:
+        return state;
+    }
+  }
+  function applyOnAllyCastAbility(state, reactor, caster, atSeconds) {
+    if (reactor.id === caster.id) return state;
+    switch (reactor.card.id) {
+      case "apprentice-baker":
+        if (quickcraftCount(caster) <= 0) return state;
+        return addTemporaryStock(state, reactor.id, 1);
+      default:
+        return state;
+    }
+  }
+  function applyOnNoPlayerSaleAbility(state, reactor, atSeconds) {
+    switch (reactor.card.id) {
+      case "nimble-ned": {
+        const otherThieves = activeHirelings(state.board).filter(
+          (h) => h.id !== reactor.id && h.card.kind === "hireling" && h.card.guild === "Thieves Guild"
+        ).length;
+        if (otherThieves < 2) return state;
+        return { ...state, gold: state.gold + 1 };
+      }
+      default:
+        return state;
+    }
+  }
+  function applyRoundStartAbility(state, inst, atSeconds) {
+    switch (inst.card.id) {
+      case "goblin-king": {
+        const robbin = activeHirelings(state.board).find(
+          (h) => h.card.id === "robbin-goblin"
+        );
+        if (!robbin) return state;
+        let working = buffHireling(state, inst.id, inst.id, 3, 1, atSeconds);
+        working = buffHireling(working, inst.id, robbin.id, 3, 1, atSeconds);
+        return working;
+      }
       default:
         return state;
     }
@@ -1800,6 +1873,20 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           return buffHireling(state, inst.id, inst.id, 0, 3, atSeconds);
         }
         return state;
+      }
+      case "pantry-stocker":
+        return buffHireling(state, inst.id, inst.id, 1, 0, atSeconds);
+      case "royal-treasurer": {
+        let soldNobles = 0;
+        for (const ally of activeHirelings(state.board)) {
+          if (ally.id === inst.id) continue;
+          if (ally.card.kind !== "hireling") continue;
+          if (ally.card.guild !== "Nobles Guild") continue;
+          const aHs = state.hirelingStates.get(ally.id);
+          if (aHs && aHs.unitsSoldThisRound > 0) soldNobles++;
+        }
+        if (soldNobles <= 0) return state;
+        return { ...state, gold: state.gold + soldNobles };
       }
       default:
         return state;
@@ -1849,9 +1936,43 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         );
       case "the-duchess":
         return applyDuchessBuffs(state, caster, atSeconds);
+      case "the-herald": {
+        let working = state;
+        for (const ally of activeHirelings(state.board)) {
+          if (ally.id === caster.id) continue;
+          if (ally.card.kind !== "hireling") continue;
+          if (ally.card.guild !== "Nobles Guild") continue;
+          working = addTemporaryStock(working, ally.id, 1);
+        }
+        return working;
+      }
+      case "grumblegut-dragon":
+        return applyGrumbleguDragonCast(state, caster, atSeconds);
       default:
         return state;
     }
+  }
+  function applyGrumbleguDragonCast(state, caster, atSeconds) {
+    const casterSlot = state.board.slots.findIndex((s) => (s == null ? void 0 : s.id) === caster.id);
+    if (casterSlot === -1) return state;
+    let working = state;
+    let totalEaten = 0;
+    for (const neighborSlot of [casterSlot - 1, casterSlot + 1]) {
+      if (neighborSlot < 0 || neighborSlot >= state.board.slots.length) continue;
+      const neighbor = state.board.slots[neighborSlot];
+      if (!neighbor) continue;
+      if (!working.hirelingStates.has(neighbor.id)) continue;
+      if (neighbor.card.id === "dusty-broom") continue;
+      const hs = working.hirelingStates.get(neighbor.id);
+      const eaten = Math.min(2, Math.max(0, effectivePotency(neighbor, hs)));
+      if (eaten === 0) continue;
+      working = buffHireling(working, caster.id, neighbor.id, 0, -eaten, atSeconds);
+      totalEaten += eaten;
+    }
+    if (totalEaten > 0) {
+      working = buffHireling(working, caster.id, caster.id, totalEaten, 0, atSeconds);
+    }
+    return working;
   }
   function applyDuchessBuffs(state, caster, atSeconds) {
     const casterSlot = state.board.slots.findIndex((s) => (s == null ? void 0 : s.id) === caster.id);
@@ -1953,12 +2074,22 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     };
     const hirelingStates = new Map(state.hirelingStates);
     hirelingStates.set(instanceId, nextHireling);
-    const withCasterState = {
+    let withCasterState = {
       ...state,
       hirelingStates,
       log
     };
-    return applyPostCastAbility(withCasterState, inst, atSeconds);
+    withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
+    for (const ally of activeHirelings(withCasterState.board)) {
+      if (ally.id === inst.id) continue;
+      withCasterState = applyOnAllyCastAbility(
+        withCasterState,
+        ally,
+        inst,
+        atSeconds
+      );
+    }
+    return withCasterState;
   }
   function finalizeRound(state) {
     if (state.customers.every((c) => c.resolvedFor !== null)) return state;
@@ -1992,6 +2123,10 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       };
       if (next.resolvedFor === "player") {
         working = executeSale(working, next, priceByType, deterministicMinRng);
+      } else {
+        for (const ally of activeHirelings(working.board)) {
+          working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+        }
       }
       resolvedCustomers.push(next);
     }
@@ -2118,6 +2253,10 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         };
         if (next.resolvedFor === "player") {
           working = executeSale(working, next, priceByType, rng);
+        } else {
+          for (const ally of activeHirelings(working.board)) {
+            working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+          }
         }
       }
       customersAfter.push(next);
@@ -2154,7 +2293,11 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     const haggled = hasKeyword(hireling, "Haggle");
     const pricePerUnit = applyHaggle(basePrice, hireling);
     const goldEarned = units * pricePerUnit;
-    const reputationDelta = customerState.customer.reputationStars - (haggled ? 1 : 0);
+    const confessorOnBoard = activeHirelings(state.board).some(
+      (h) => h.card.id === "crooked-confessor"
+    );
+    const haggleRepPenalty = haggled && !confessorOnBoard ? 1 : 0;
+    const reputationDelta = customerState.customer.reputationStars - haggleRepPenalty;
     const log = [
       ...state.log,
       {

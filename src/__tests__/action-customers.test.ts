@@ -434,6 +434,177 @@ describe("sale execution", () => {
     expect(gl.permanentPotencyGainedThisRound).toBe(0);
   });
 
+  test("Cookie Seller: first sale grants +1 gold, second sale does not", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Cookie Seller", "love"); // stock 4, potency 1, Passive
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 1);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // First customer: +1 gold bonus from Cookie Seller's ability.
+    s = addCustomer(
+      s,
+      makeCustomer({
+        id: "c-first",
+        patienceSeconds: 3,
+        reputationStars: 2,
+        budget: 20,
+        qualityThreshold: 1,
+      })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const goldAfterFirst = s.gold;
+    // Second customer: no bonus — sale happens but first-sale has passed.
+    s = addCustomer(
+      s,
+      makeCustomer({
+        id: "c-second",
+        patienceSeconds: 3,
+        reputationStars: 2,
+        budget: 20,
+        qualityThreshold: 1,
+      })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const goldAfterSecond = s.gold;
+    // Both sales earn the same price per unit (1g). Only difference is
+    // the +1 cookie bonus. Second sale gain == first gain - 1.
+    const firstSaleGain = goldAfterFirst - 0;
+    const secondSaleGain = goldAfterSecond - goldAfterFirst;
+    expect(firstSaleGain - secondSaleGain).toBe(1);
+  });
+
+  test("Almost-A-Knight: +2 temporary stock only on Haggled sale", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Almost-A-Knight", "love"); // Haggle, stock 4
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 2);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const hs = s.hirelingStates.get("Almost-A-Knight-3")!;
+    // Note: temporaryStock is added AFTER the sale consumes units, so
+    // the field reflects the +2 buff even if stock was depleted.
+    expect(hs.temporaryStock).toBe(2);
+  });
+
+  test("Pickpocket Pixie: +1 temp stock per Thieves hireling on sale", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Robbin Goblin", "luck");       // Thieves ally (diff potion)
+    b = placeAt(b, 3, "Pickpocket Pixie", "love");    // Thieves, 4s cast, stock 2
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 2);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const pp = s.hirelingStates.get("Pickpocket Pixie-3")!;
+    // 2 Thieves hirelings on player's board (Pickpocket Pixie + Robbin
+    // Goblin). No opponent. Temp stock gained = 2.
+    expect(pp.temporaryStock).toBe(2);
+  });
+
+  test("The Page: +1 temporary stock when any ally sells", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Jumping Jack", "love");       // base stock 3 → sells
+    b = placeAt(b, 3, "The Page", "luck");            // different potion, won't sell
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const page = s.hirelingStates.get("The Page-3")!;
+    expect(page.temporaryStock).toBe(1);
+  });
+
+  test("Royal Treasurer: +1 gold per Noble ally that sold at end of round", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "The Page", "love");           // Noble, base stock 2 — will sell
+    b = placeAt(b, 3, "Royal Treasurer", "luck");    // Noble passive
+    b = placeAt(b, 5, "Lady's Maid", "flutterfix");  // Noble, won't have matching customer
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    const goldBefore = s.gold;
+    const { finalizeRound, applyEndOfRoundHooks } = require("../action/state");
+    const fin = applyEndOfRoundHooks(finalizeRound(s));
+    // Exactly one Noble ally sold (The Page); Royal Treasurer excludes
+    // itself. +1 gold.
+    expect(fin.gold).toBe(goldBefore + 1);
+  });
+
+  test("Crooked Confessor: ally Haggle sale does NOT cost -1 reputation", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Crooked Confessor", "luck");    // presence waives rep cost
+    b = placeAt(b, 3, "Almost-A-Knight", "love");      // Haggle seller
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 2);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 3, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+    );
+    s = tick(s, 3, mulberry32(1));
+    // Customer pays 2 rep stars; haggle penalty waived → +2 rep, not +1.
+    expect(s.reputation).toBe(2);
+  });
+
+  test("Nimble Ned: +1 gold on no-player-sale if 2+ other Thieves allies present", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "Robbin Goblin", "luck");        // Thieves ally 1
+    b = placeAt(b, 2, "Snatchling", "dragons-breath"); // Thieves ally 2
+    b = placeAt(b, 3, "Nimble Ned", "luck");           // Thieves ally 3 (self)
+    // Add a customer for a potion type NO hireling carries so they walk
+    // away with no sale.
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 5);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({
+        desiredType: "love",
+        patienceSeconds: 2,
+        reputationStars: 2,
+        budget: 20,
+        qualityThreshold: 1,
+      })
+    );
+    s = tick(s, 2, mulberry32(1));
+    expect(s.customers[0].resolvedFor).toBe("no-sale");
+    expect(s.gold).toBe(1); // pickpocketed +1g
+  });
+
+  test("Nimble Ned: no pickpocket when fewer than 2 other Thieves allies", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "Robbin Goblin", "luck");  // only ONE other Thieves
+    b = placeAt(b, 3, "Nimble Ned", "luck");
+    let prices = defaultPriceMap(ACTIVE);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    s = addCustomer(
+      s,
+      makeCustomer({
+        desiredType: "love",
+        patienceSeconds: 2,
+        reputationStars: 2,
+        budget: 20,
+      })
+    );
+    s = tick(s, 2, mulberry32(1));
+    expect(s.gold).toBe(0); // not enough allies
+  });
+
   test("no sale happens when no hireling of matching type has stock", () => {
     let b = createBoard();
     // Wrong-type hireling — cannot sell.

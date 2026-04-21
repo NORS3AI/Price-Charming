@@ -373,6 +373,99 @@ describe("tick", () => {
     expect(qc?.count).toBe(2);
   });
 
+  test("The Herald: each cast grants +1 temporary stock to Nobles allies only", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "The Page");           // Nobles
+    b = placeAt(b, 3, "The Herald");         // 5s cast
+    b = placeAt(b, 5, "Pantry Stocker");     // Sugar passive — not buffed, no Quickcraft noise
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 6, mulberry32(1));           // one cast at 5s
+    const pageHs = s.hirelingStates.get("The Page-1")!;
+    const stockerHs = s.hirelingStates.get("Pantry Stocker-5")!;
+    const heraldHs = s.hirelingStates.get("The Herald-3")!;
+    expect(pageHs.temporaryStock).toBe(1);
+    expect(stockerHs.temporaryStock).toBe(0);    // Sugar ally unaffected
+    expect(heraldHs.temporaryStock).toBe(0);     // self excluded
+  });
+
+  test("Grumblegut Dragon: per-cast eats 2 potency from each adjacent active ally", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "The Page");            // Nobles, potency 3
+    b = placeAt(b, 3, "Grumblegut Dragon");   // 7s cast
+    b = placeAt(b, 4, "Jumping Jack");         // Neutral, potency 3
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 8, mulberry32(1));             // one cast at 7s
+    const pageHs = s.hirelingStates.get("The Page-2")!;
+    const jjHs = s.hirelingStates.get("Jumping Jack-4")!;
+    const dragonHs = s.hirelingStates.get("Grumblegut Dragon-3")!;
+    expect(pageHs.permanentPotencyGainedThisRound).toBe(-2);
+    expect(jjHs.permanentPotencyGainedThisRound).toBe(-2);
+    // Dragon gains +2 stock per neighbor (1 stock per potency eaten × 2 each).
+    expect(dragonHs.permanentStockGainedThisRound).toBe(4);
+  });
+
+  test("Grumblegut Dragon: does NOT eat potency from Dusty Broom", () => {
+    // Place Dusty Broom adjacent. "Cannot be buffed" includes negative buffs.
+    let b = createBoard();
+    const broomCard = ALL_HIRELINGS.find((h) => h.name === "Dusty Broom")!;
+    const broomInst = createHirelingInstance(broomCard, "broom", "love");
+    b = placeHireling(b, 2, broomInst);
+    b = placeAt(b, 3, "Grumblegut Dragon");
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 8, mulberry32(1));
+    const broomHs = s.hirelingStates.get("broom")!;
+    const dragonHs = s.hirelingStates.get("Grumblegut Dragon-3")!;
+    expect(broomHs.permanentPotencyGainedThisRound).toBe(0);
+    // No potency eaten anywhere → no stock gained.
+    expect(dragonHs.permanentStockGainedThisRound).toBe(0);
+  });
+
+  test("Apprentice Baker: gains +1 temp stock for each Quickcraft cast by an ally", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Apprentice Baker");  // Passive reactor — but wait, 4s cast
+    b = placeAt(b, 3, "Doughboy");           // 5s cast, Quickcraft x2
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    // Tick 11s: Doughboy casts at t=5 and t=10 (2 Quickcraft events).
+    s = tick(s, 11, mulberry32(1));
+    const abHs = s.hirelingStates.get("Apprentice Baker-2")!;
+    // +1 temp stock per Doughboy cast × 2 = 2. Apprentice Baker itself
+    // casts at t=4 and t=8 — not counted as a Quickcraft ally pulse.
+    expect(abHs.temporaryStock).toBeGreaterThanOrEqual(2);
+  });
+
+  test("Goblin King: round-start mutual buff only when Robbin Goblin is on an active slot", () => {
+    // No Robbin Goblin — nobody buffed.
+    let bAlone = createBoard();
+    bAlone = placeAt(bAlone, 3, "Goblin King");
+    const sAlone = initializeActionState(bAlone, defaultPriceMap([]), [], mulberry32(1));
+    const gkSoloHs = sAlone.hirelingStates.get("Goblin King-3")!;
+    expect(gkSoloHs.permanentStockGainedThisRound).toBe(0);
+    expect(gkSoloHs.permanentPotencyGainedThisRound).toBe(0);
+
+    // Both active → both get +3/+1.
+    let b = createBoard();
+    b = placeAt(b, 2, "Robbin Goblin");
+    b = placeAt(b, 3, "Goblin King");
+    const s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    const gkHs = s.hirelingStates.get("Goblin King-3")!;
+    const rgHs = s.hirelingStates.get("Robbin Goblin-2")!;
+    expect(gkHs.permanentStockGainedThisRound).toBe(3);
+    expect(gkHs.permanentPotencyGainedThisRound).toBe(1);
+    expect(rgHs.permanentStockGainedThisRound).toBe(3);
+    expect(rgHs.permanentPotencyGainedThisRound).toBe(1);
+  });
+
+  test("Pantry Stocker: +1 permanent stock at end of round", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Pantry Stocker");  // Passive
+    let s = initializeActionState(b, defaultPriceMap([]), [], mulberry32(1));
+    s = tick(s, 5, mulberry32(1));
+    const { finalizeRound, applyEndOfRoundHooks } = require("../action/state");
+    const fin = applyEndOfRoundHooks(finalizeRound(s));
+    const psHs = fin.hirelingStates.get("Pantry Stocker-3")!;
+    expect(psHs.permanentStockGainedThisRound).toBe(1);
+  });
+
   test("determinism under a seeded RNG for random cast times", () => {
     let b = createBoard();
     b = placeAt(b, 3, "Royal Advisor"); // 1-8s random

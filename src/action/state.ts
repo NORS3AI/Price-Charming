@@ -166,7 +166,7 @@ export function initializeActionState(
   for (const inst of activeHirelings(board)) {
     states.set(inst.id, freshHirelingState(inst, board, rng));
   }
-  return {
+  let state: ActionState = {
     board,
     prices,
     activePotionTypes,
@@ -179,6 +179,12 @@ export function initializeActionState(
     opponent: null,
     log: [],
   };
+  // Run per-card round-start abilities (e.g. Goblin King + Robbin
+  // Goblin mutual buff) once per round.
+  for (const inst of activeHirelings(board)) {
+    state = applyRoundStartAbility(state, inst, 0);
+  }
+  return state;
 }
 
 /**
@@ -318,9 +324,52 @@ function applyPostSaleAbility(
       // Haggle sales only.
       if (!haggled) return state;
       return buffHireling(state, hireling.id, hireling.id, 2, 0, atSeconds);
+    case "cookie-seller": {
+      // "First sale each round grants +1 gold." Count sale log entries
+      // — the current sale is already logged, so count === 1 means this
+      // was the first one this round.
+      const saleCount = state.log.filter(
+        (e) => e.kind === "sale" && e.instanceId === hireling.id
+      ).length;
+      if (saleCount !== 1) return state;
+      return { ...state, gold: state.gold + 1 };
+    }
+    case "almost-a-knight":
+      // "Haggle. If Haggled sale succeeds, gain +2 temporary stock."
+      if (!haggled) return state;
+      return addTemporaryStock(state, hireling.id, 2);
+    case "pickpocket-pixie": {
+      // "After this sells, gain +1 temporary stock for every Thieves
+      // hireling in play (including opponent's)." Counts self.
+      const playerThieves = state.board.slots.filter(
+        (s) => s && s.card.kind === "hireling" && s.card.guild === "Thieves Guild"
+      ).length;
+      const oppThieves = state.opponent
+        ? state.opponent.board.slots.filter(
+            (s) => s && s.card.kind === "hireling" && s.card.guild === "Thieves Guild"
+          ).length
+        : 0;
+      const total = playerThieves + oppThieves;
+      if (total <= 0) return state;
+      return addTemporaryStock(state, hireling.id, total);
+    }
     default:
       return state;
   }
+}
+
+/** Add to a target active hireling's temporary stock pool. Returns state unchanged if target isn't on an active slot. */
+function addTemporaryStock(
+  state: ActionState,
+  targetId: string,
+  amount: number
+): ActionState {
+  if (amount <= 0) return state;
+  const hs = state.hirelingStates.get(targetId);
+  if (!hs) return state;
+  const states = new Map(state.hirelingStates);
+  states.set(targetId, { ...hs, temporaryStock: hs.temporaryStock + amount });
+  return { ...state, hirelingStates: states };
 }
 
 /**
@@ -340,6 +389,95 @@ function applyOnAllySaleAbility(
   switch (reactor.card.id) {
     case "gingerbread-king":
       return buffHireling(state, seller.id, reactor.id, 0, 2, atSeconds);
+    case "the-page":
+      // "When an ally sells, gain +1 temporary stock."
+      return addTemporaryStock(state, reactor.id, 1);
+    default:
+      return state;
+  }
+}
+
+/**
+ * Per-card reactive hook fired when any OTHER active ally casts. Used
+ * by cards like Apprentice Baker whose buff triggers on Quickcraft
+ * pulses from teammates.
+ *
+ *   - apprentice-baker: "After an ally uses Quickcraft, gain +1
+ *                        temporary stock." (Only fires if the caster
+ *                        actually produced Quickcraft stock.)
+ */
+function applyOnAllyCastAbility(
+  state: ActionState,
+  reactor: HirelingInstance,
+  caster: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  if (reactor.id === caster.id) return state;
+  switch (reactor.card.id) {
+    case "apprentice-baker":
+      // Only react if the caster had Quickcraft (otherwise the cast
+      // wasn't a Quickcraft cast).
+      if (quickcraftCount(caster) <= 0) return state;
+      return addTemporaryStock(state, reactor.id, 1);
+    default:
+      return state;
+  }
+}
+
+/**
+ * Per-card reactive hook for customer resolutions that did NOT go to
+ * the player (no-sale or opponent win). Fires once per unresolved → no-
+ * player-sale transition in tick and finalizeRound.
+ *
+ *   - nimble-ned: "When a customer buys nothing from your hirelings,
+ *                  pickpocket +1 gold from them, if you have at least
+ *                  2 other Thieves Guild allies in play." (Active slots.)
+ */
+function applyOnNoPlayerSaleAbility(
+  state: ActionState,
+  reactor: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  switch (reactor.card.id) {
+    case "nimble-ned": {
+      const otherThieves = activeHirelings(state.board).filter(
+        (h) =>
+          h.id !== reactor.id &&
+          h.card.kind === "hireling" &&
+          h.card.guild === "Thieves Guild"
+      ).length;
+      if (otherThieves < 2) return state;
+      return { ...state, gold: state.gold + 1 };
+    }
+    default:
+      return state;
+  }
+}
+
+/**
+ * Round-start ability hook. Runs once per active hireling at
+ * initializeActionState, before any cast fires.
+ *
+ *   - goblin-king: "If Robbin Goblin is on your board, both gain +3
+ *                   permanent stock and +1 permanent potency." Only
+ *                   applies when BOTH are on active slots (bench
+ *                   hirelings don't participate in the action phase).
+ */
+function applyRoundStartAbility(
+  state: ActionState,
+  inst: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  switch (inst.card.id) {
+    case "goblin-king": {
+      const robbin = activeHirelings(state.board).find(
+        (h) => h.card.id === "robbin-goblin"
+      );
+      if (!robbin) return state;
+      let working = buffHireling(state, inst.id, inst.id, 3, 1, atSeconds);
+      working = buffHireling(working, inst.id, robbin.id, 3, 1, atSeconds);
+      return working;
+    }
     default:
       return state;
   }
@@ -378,6 +516,26 @@ function applyEndOfRoundAbility(
         return buffHireling(state, inst.id, inst.id, 0, 3, atSeconds);
       }
       return state;
+    }
+    case "pantry-stocker":
+      // "+1 stock each round." Passive — fires unconditionally at the
+      // end of every action round this hireling is on an active slot.
+      return buffHireling(state, inst.id, inst.id, 1, 0, atSeconds);
+    case "royal-treasurer": {
+      // "At the end of each action round, gain +1 gold for each Noble
+      // ally that sold at least once last round." Counts distinct Noble
+      // allies with unitsSoldThisRound > 0 (excluding self — Royal
+      // Treasurer is Passive, never sells).
+      let soldNobles = 0;
+      for (const ally of activeHirelings(state.board)) {
+        if (ally.id === inst.id) continue;
+        if (ally.card.kind !== "hireling") continue;
+        if (ally.card.guild !== "Nobles Guild") continue;
+        const aHs = state.hirelingStates.get(ally.id);
+        if (aHs && aHs.unitsSoldThisRound > 0) soldNobles++;
+      }
+      if (soldNobles <= 0) return state;
+      return { ...state, gold: state.gold + soldNobles };
     }
     default:
       return state;
@@ -443,9 +601,54 @@ function applyPostCastAbility(
       //  permanent potency." Self-buff clause requires a Nobles ally on
       //  both sides.
       return applyDuchessBuffs(state, caster, atSeconds);
+    case "the-herald": {
+      // "All Nobles Guild allies gain +1 temporary stock." (Per cast.)
+      let working = state;
+      for (const ally of activeHirelings(state.board)) {
+        if (ally.id === caster.id) continue;
+        if (ally.card.kind !== "hireling") continue;
+        if (ally.card.guild !== "Nobles Guild") continue;
+        working = addTemporaryStock(working, ally.id, 1);
+      }
+      return working;
+    }
+    case "grumblegut-dragon":
+      // "Eat +2 potency permanently from each adjacent hireling. Gain
+      //  +1 permanent stock per potency eaten." Skips Dusty Broom
+      //  ("Cannot be buffed.") and caps eaten at the neighbor's current
+      //  effective potency (can't eat more than they have).
+      return applyGrumbleguDragonCast(state, caster, atSeconds);
     default:
       return state;
   }
+}
+
+/** Grumblegut Dragon: devour adjacent active allies' potency permanently. */
+function applyGrumbleguDragonCast(
+  state: ActionState,
+  caster: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  const casterSlot = state.board.slots.findIndex((s) => s?.id === caster.id);
+  if (casterSlot === -1) return state;
+  let working = state;
+  let totalEaten = 0;
+  for (const neighborSlot of [casterSlot - 1, casterSlot + 1]) {
+    if (neighborSlot < 0 || neighborSlot >= state.board.slots.length) continue;
+    const neighbor = state.board.slots[neighborSlot];
+    if (!neighbor) continue;
+    if (!working.hirelingStates.has(neighbor.id)) continue;
+    if (neighbor.card.id === "dusty-broom") continue; // Cannot be buffed.
+    const hs = working.hirelingStates.get(neighbor.id)!;
+    const eaten = Math.min(2, Math.max(0, effectivePotency(neighbor, hs)));
+    if (eaten === 0) continue;
+    working = buffHireling(working, caster.id, neighbor.id, 0, -eaten, atSeconds);
+    totalEaten += eaten;
+  }
+  if (totalEaten > 0) {
+    working = buffHireling(working, caster.id, caster.id, totalEaten, 0, atSeconds);
+  }
+  return working;
 }
 
 /**
@@ -607,12 +810,24 @@ function fireCast(
   // After updating the caster's own state, fire per-card ability
   // effects (e.g. Sugar Sprinkler buffs adjacent allies). These may
   // mutate OTHER hirelings' action states.
-  const withCasterState: ActionState = {
+  let withCasterState: ActionState = {
     ...state,
     hirelingStates,
     log,
   };
-  return applyPostCastAbility(withCasterState, inst, atSeconds);
+  withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
+  // Reactive hook for OTHER active allies (e.g. Apprentice Baker: +1
+  // temp stock whenever an ally uses Quickcraft).
+  for (const ally of activeHirelings(withCasterState.board)) {
+    if (ally.id === inst.id) continue;
+    withCasterState = applyOnAllyCastAbility(
+      withCasterState,
+      ally,
+      inst,
+      atSeconds
+    );
+  }
+  return withCasterState;
 }
 
 /**
@@ -660,6 +875,10 @@ export function finalizeRound(state: ActionState): ActionState {
       // shouldn't consume RNG drawn for gameplay ticks. Any caller that
       // wants randomized finalize sales can tick until natural expiry.
       working = executeSale(working, next, priceByType, deterministicMinRng);
+    } else {
+      for (const ally of activeHirelings(working.board)) {
+        working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+      }
     }
     resolvedCustomers.push(next);
   }
@@ -859,6 +1078,12 @@ function advanceCustomers(
       };
       if (next.resolvedFor === "player") {
         working = executeSale(working, next, priceByType, rng);
+      } else {
+        // Non-player resolution → fire reactive hooks (e.g. Nimble Ned
+        // pickpockets +1 gold from a walk-away).
+        for (const ally of activeHirelings(working.board)) {
+          working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+        }
       }
     }
     customersAfter.push(next);
@@ -922,8 +1147,15 @@ function executeSale(
   const haggled = hasKeyword(hireling, "Haggle");
   const pricePerUnit = applyHaggle(basePrice, hireling);
   const goldEarned = units * pricePerUnit;
+  // Crooked Confessor: "all ally Haggle sales no longer cost Reputation."
+  // Waives the -1 haggle penalty whenever a Crooked Confessor is on any
+  // active slot on the player's board.
+  const confessorOnBoard = activeHirelings(state.board).some(
+    (h) => h.card.id === "crooked-confessor"
+  );
+  const haggleRepPenalty = haggled && !confessorOnBoard ? 1 : 0;
   const reputationDelta =
-    customerState.customer.reputationStars - (haggled ? 1 : 0);
+    customerState.customer.reputationStars - haggleRepPenalty;
 
   const log: ActionLogEntry[] = [
     ...state.log,
