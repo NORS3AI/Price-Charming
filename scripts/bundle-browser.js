@@ -7,7 +7,15 @@
  * src/data/cards.csv, which doesn't work in a browser. We substitute a
  * tiny shim at bundle time that inlines the CSV as a string constant,
  * so the bundled engine carries the card data with it.
+ *
+ * After writing the bundle we also rewrite the <script src="engine.js">
+ * tag in docs/index.html to include `?v=<hash>`. Without this, returning
+ * players who had the page loaded once would be served the cached old
+ * engine.js and see fixed bugs reappear — GitHub Pages sends no strict
+ * no-cache headers, so the version query is what actually invalidates
+ * the browser cache.
  */
+const crypto = require("crypto");
 const esbuild = require("esbuild");
 const fs = require("fs");
 const path = require("path");
@@ -16,6 +24,7 @@ const root = path.resolve(__dirname, "..");
 const csvPath = path.join(root, "src", "data", "cards.csv");
 const loaderPath = path.join(root, "src", "cards", "loader.ts");
 const outFile = path.join(root, "docs", "engine.js");
+const htmlFile = path.join(root, "docs", "index.html");
 
 const csvContents = fs.readFileSync(csvPath, "utf8");
 
@@ -61,6 +70,20 @@ export function loadCards(_filepath?: string): Card[] {
     logLevel: "info",
   });
   const size = fs.statSync(outFile).size;
+  // Hash the bundle and rewrite the script tag's `?v=` query so every
+  // rebuild forces a fresh fetch. Truncated to 10 hex chars — enough
+  // entropy for cache invalidation.
+  const bundleBuf = fs.readFileSync(outFile);
+  const hash = crypto.createHash("sha256").update(bundleBuf).digest("hex").slice(0, 10);
+  const html = fs.readFileSync(htmlFile, "utf8");
+  const updated = html.replace(
+    /<script src="engine\.js(\?v=[^"]*)?"><\/script>/,
+    `<script src="engine.js?v=${hash}"></script>`
+  );
+  if (updated !== html) {
+    fs.writeFileSync(htmlFile, updated);
+    console.log(`Updated index.html script tag → engine.js?v=${hash}`);
+  }
   console.log(
     `Bundled engine → ${path.relative(root, outFile)} (${(size / 1024).toFixed(1)} KB)`
   );
