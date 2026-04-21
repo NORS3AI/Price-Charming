@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Price Charming</title>
 <style>
 :root{--gold:#d4a843;--gold-dim:#a67c2e;--purple:#4a2060;--deep:#2a0e3a;--lite:#6b3a8a;--parch:#f5e6c8;--parch-d:#e8d4a8;--green:#3a7a3a;--red:#a03030;--blue:#3a6a9a}
@@ -529,6 +532,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .pc-slot-stats-bold.pc-stat-loss{color:#a01515}
 .pc-slot-stats{display:flex;gap:.3rem;font-size:.7rem;justify-content:space-between}
 .pc-slot-buff{margin-top:.2rem;text-align:center;font-size:.7rem;font-weight:bold;color:#1a6b1a;background:rgba(80,200,80,.15);border:1px solid rgba(80,200,80,.4);border-radius:3px;padding:.1rem .25rem;letter-spacing:.02em}
+.pc-slot-buff-neg{color:#a01515;background:rgba(200,80,80,.15);border-color:rgba(200,80,80,.4)}
 .pc-slot-keys{font-size:.65rem;color:var(--purple);margin-top:.15rem}
 .pc-slot-cast{font-size:.7rem;color:var(--deep);font-style:italic}
 .pc-slot-castbar{position:relative;height:.85rem;background:rgba(0,0,0,.15);border-radius:3px;overflow:hidden;margin-top:.2rem}
@@ -602,6 +606,8 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .pc-slot:hover .pc-slot-tooltip{display:block}
 .pc-tooltip-head{color:var(--gold);font-weight:bold;font-size:.8rem;margin-bottom:.15rem}
 .pc-tooltip-meta{color:var(--parch-d);font-style:italic;font-size:.65rem;margin-bottom:.3rem}
+.pc-tooltip-slots{margin:.25rem 0;padding:.3rem;background:rgba(255,255,255,.08);border-radius:3px;font-size:.68rem;color:var(--parch)}
+.pc-tooltip-perm{margin:.25rem 0;padding:.25rem .4rem;background:rgba(80,200,80,.2);border:1px solid rgba(80,200,80,.45);border-radius:3px;font-size:.68rem;color:#cfe8cf}
 .pc-tooltip-ability{margin:.25rem 0;color:var(--parch)}
 .pc-tooltip-cast{margin:.25rem 0;padding:.2rem .3rem;background:rgba(90,138,186,.25);border-left:2px solid var(--blue);border-radius:2px;color:var(--parch)}
 .pc-tooltip-kw{margin-top:.2rem;padding-top:.2rem;border-top:1px dashed rgba(212,168,67,.35)}
@@ -633,7 +639,7 @@ body.pc-dragging .pc-board{outline:2px dashed var(--gold);outline-offset:4px;bor
 <div class="tooltip" id="tooltip"></div>
 <div class="modal-overlay" id="report-overlay" onclick="closeReport()"><div class="modal-box" onclick="event.stopPropagation()"><h2>Last Round Report</h2><div id="report-content"></div><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div></div></div>
 <div class="modal-overlay" id="modal-overlay" onclick="cancelModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="cancelModal()">Cancel</button></div></div>
-<script src="engine.js?v=6de0f65d92"></script>
+<script src="engine.js?v=0ea12d09b1"></script>
 <script>
 "use strict";
 // ==============================================================
@@ -946,17 +952,20 @@ function pcBuildSlotCard(inst, slotIdx, isBench, opts){
     ? "pc-slot-stats-bold pc-stat-loss"
     : "pc-slot-stats-bold";
 
-  // Surface only the PERMANENT buff delta (cross-round bonus + this-round
-  // gains), not temp Quickcraft or units sold — otherwise Quickcraft would
-  // falsely read as a permanent buff and a well-sold hireling with a real
-  // buff would drop its badge.
+  // Surface the PERMANENT buff delta (cross-round bonus + this-round
+  // gains), not temp Quickcraft or units sold. Shows negative buffs too
+  // (e.g. Grumblegut Dragon eating adjacent potency) in red so the
+  // player can audit every stat change.
   const permStock = (inst.permanentStockBonus || 0) + (hs ? (hs.permanentStockGainedThisRound || 0) : 0);
   const permPotency = (inst.permanentPotencyBonus || 0) + (hs ? (hs.permanentPotencyGainedThisRound || 0) : 0);
   const buffBits = [];
-  if (permStock > 0) buffBits.push(`+${permStock} stock`);
-  if (permPotency > 0) buffBits.push(`+${permPotency} pot`);
+  if (permStock !== 0) buffBits.push(`${permStock >= 0 ? "+" : ""}${permStock} stock`);
+  if (permPotency !== 0) buffBits.push(`${permPotency >= 0 ? "+" : ""}${permPotency} pot`);
+  const buffClass = (permStock < 0 || permPotency < 0)
+    ? "pc-slot-buff pc-slot-buff-neg"
+    : "pc-slot-buff";
   const buffBadge = buffBits.length
-    ? `<div class="pc-slot-buff">${buffBits.join(" · ")}</div>`
+    ? `<div class="${buffClass}">${buffBits.join(" · ")}</div>`
     : "";
 
   d.innerHTML = `
@@ -993,10 +1002,34 @@ function pcTooltipHtml(inst, hs){
   const ability = inst.card.abilityText
     ? `<div class="pc-tooltip-ability">${inst.card.abilityText}</div>`
     : "";
+
+  // Surface BOTH potion slots when the card carries two. Currently the
+  // engine only tracks slot 0 at runtime, so slot 1's stats are shown
+  // as informational. This at least makes clear that the card has a
+  // second set of stats on its template.
+  const slots = inst.card.potions || [];
+  let slotInfo = "";
+  if (slots.length >= 2) {
+    slotInfo = `
+      <div class="pc-tooltip-slots">
+        <div><b>Potion 1:</b> ${slots[0].stock}/${slots[0].potency} (active)</div>
+        <div><b>Potion 2:</b> ${slots[1].stock}/${slots[1].potency}</div>
+      </div>`;
+  }
+  // Permanent buff summary — always show totals so the player can
+  // audit stat carryover round-to-round.
+  const permStock = inst.permanentStockBonus || 0;
+  const permPotency = inst.permanentPotencyBonus || 0;
+  const permLine = (permStock !== 0 || permPotency !== 0)
+    ? `<div class="pc-tooltip-perm"><b>Permanent buffs:</b> ${permStock >= 0 ? "+" : ""}${permStock} stock · ${permPotency >= 0 ? "+" : ""}${permPotency} potency</div>`
+    : "";
+
   return `
     <div class="pc-slot-tooltip">
       <div class="pc-tooltip-head">${inst.card.name}${inst.charmed ? " ✨ (Charmed)" : ""}</div>
       <div class="pc-tooltip-meta">${inst.card.guild} · ${inst.card.wageTier} tier · ${pcFormatCastTime(inst.card.castTime)}</div>
+      ${slotInfo}
+      ${permLine}
       ${ability}
       ${castLine}
       ${keywordDefs}

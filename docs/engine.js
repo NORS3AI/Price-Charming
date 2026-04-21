@@ -2125,7 +2125,13 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         resolvedCustomers.push(cs);
         continue;
       }
-      const next = resolveCustomer(cs);
+      let next = resolveCustomer(cs);
+      if (next.resolvedFor === "player") {
+        const seller = pickSalesHireling(working, next.customer.desiredType);
+        if (!seller) {
+          next = { ...next, resolvedFor: "no-sale" };
+        }
+      }
       working = {
         ...working,
         log: [
@@ -2256,6 +2262,12 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       next = tickPatience(next, deltaSeconds);
       if (isExpired(next)) {
         next = resolveCustomer(next);
+        if (next.resolvedFor === "player") {
+          const seller = pickSalesHireling(working, next.customer.desiredType);
+          if (!seller) {
+            next = { ...next, resolvedFor: "no-sale" };
+          }
+        }
         working = {
           ...working,
           log: [

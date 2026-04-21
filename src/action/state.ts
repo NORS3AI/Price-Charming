@@ -882,7 +882,14 @@ export function finalizeRound(state: ActionState): ActionState {
       resolvedCustomers.push(cs);
       continue;
     }
-    const next = resolveCustomer(cs);
+    let next = resolveCustomer(cs);
+    // Demote bogus player wins (no seller on the board) to no-sale.
+    if (next.resolvedFor === "player") {
+      const seller = pickSalesHireling(working, next.customer.desiredType);
+      if (!seller) {
+        next = { ...next, resolvedFor: "no-sale" };
+      }
+    }
     working = {
       ...working,
       log: [
@@ -1089,6 +1096,17 @@ function advanceCustomers(
 
     if (isExpired(next)) {
       next = resolveCustomer(next);
+      // If the axes declared a player win but no hireling can actually
+      // fulfill (no matching potion type on the board, or the only
+      // matching hireling is out of stock), demote to "no-sale".
+      // Otherwise the UI happily shows "✓ Won" without any gold/stock
+      // change — the sale never really happened.
+      if (next.resolvedFor === "player") {
+        const seller = pickSalesHireling(working, next.customer.desiredType);
+        if (!seller) {
+          next = { ...next, resolvedFor: "no-sale" };
+        }
+      }
       working = {
         ...working,
         log: [

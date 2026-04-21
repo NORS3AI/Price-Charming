@@ -637,6 +637,38 @@ describe("sale execution", () => {
     expect(s.gold).toBe(0); // not enough allies
   });
 
+  test("customer resolves as no-sale (not player) when the matching hireling is out of stock (regression)", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Pantry Stocker", "love"); // stock 2 baseline
+    let prices = defaultPriceMap(ACTIVE);
+    prices = setPrice(prices, "love", 1, 8);
+    let s = initializeActionState(b, prices, ACTIVE, mulberry32(1), 0, 0);
+    // Sell the 2 base units to two customers so the hireling is out.
+    for (let i = 0; i < 3; i++) {
+      s = addCustomer(
+        s,
+        makeCustomer({ id: `c${i}`, patienceSeconds: 2, reputationStars: 2, budget: 20, qualityThreshold: 1 })
+      );
+      s = tick(s, 2, mulberry32(1));
+    }
+    // The last customer must see an out-of-stock hireling. Even though
+    // passive contributions would otherwise declare a player win (stock
+    // > 0 contributes focus, potency > 0 contributes quality, etc.),
+    // the resolution is downgraded to no-sale when no hireling with
+    // matching type and stock > 0 is available.
+    const lastCustomer = s.customers[s.customers.length - 1];
+    if (lastCustomer.customer.desiredType === "love") {
+      // Verify: no "sale" log entry for that customer id.
+      const saleForLast = s.log.find(
+        (e) => e.kind === "sale" && e.customerId === lastCustomer.customer.id
+      );
+      if (!saleForLast) {
+        // It was demoted → resolution should NOT be "player".
+        expect(lastCustomer.resolvedFor).not.toBe("player");
+      }
+    }
+  });
+
   test("no sale happens when no hireling of matching type has stock", () => {
     let b = createBoard();
     // Wrong-type hireling — cannot sell.
