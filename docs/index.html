@@ -655,6 +655,8 @@ let pcGame = null;                 // GameState from the engine
 let pcDifficulty = "normal";
 let pcRng = null;                  // seeded RNG shared across the game
 let pcOpponent = null;             // opponent's own pool / gold / board (pre-snapshot)
+let pcOppAction = null;            // visual-only ActionState tracking opponent cast timers during action phase
+let pcOppRng = null;               // dedicated RNG for opponent tick — keeps player sim deterministic
 let pcBattleTimer = null;
 let pcCustomerQueue = [];
 let pcCustomerSpawnIdx = 0;
@@ -1257,10 +1259,14 @@ function pcRenderOppSection(){
   sec.style.display = "";
   const el = $("pc-opp-board"); if (!el) return;
   el.innerHTML = "";
-  // The engine only simulates casts on the player side, so we don't
-  // have opponent hirelingStates — show their static board cards.
+  // Visual-only opponent ActionState drives the cast bars. Engine
+  // sims don't run against it (no sales, no customers) — we just
+  // tick it alongside pcGame.action so timers stay synchronized.
+  const oppHs = pcOppAction ? pcOppAction.hirelingStates : null;
   for (let i = 0; i < pcGame.opponent.board.slots.length; i++) {
-    el.appendChild(pcBuildSlotCard(pcGame.opponent.board.slots[i], i, E.isBenchSlot(i)));
+    el.appendChild(
+      pcBuildSlotCard(pcGame.opponent.board.slots[i], i, E.isBenchSlot(i), { hirelingStates: oppHs })
+    );
   }
 }
 
@@ -1830,6 +1836,28 @@ function pcStartBattle(){
     pcGame = E.endShopPhase(pcGame, pcRng);
   } catch (err) { pcFlash(err.message); return; }
 
+  // Visual-only ActionState for the opponent's board so the UI can
+  // animate their cast bars. The engine treats the opponent as a
+  // passive ghost (passive axis contributions only) — no sales or
+  // customer-resolution run against this state. It gets ticked
+  // alongside pcGame.action so timers stay in sync, but only
+  // `hirelingStates` (cast-timer info) is read during render.
+  if (pcGame.opponent) {
+    // Independent RNG so opponent's random-cast-time hirelings don't
+    // drain player RNG draws. Seed derived from the player RNG once at
+    // battle start so reload-to-replay stays reasonably deterministic.
+    pcOppRng = E.mulberry32(Math.floor(pcRng() * 1e9));
+    pcOppAction = E.initializeActionState(
+      pcGame.opponent.board,
+      pcGame.opponent.prices,
+      pcGame.opponent.activePotionTypes,
+      pcOppRng
+    );
+  } else {
+    pcOppAction = null;
+    pcOppRng = null;
+  }
+
   pcCustomerQueue = pcBuildCustomerSchedule();
   pcCustomerSpawnIdx = 0;
   pcRender();
@@ -1858,6 +1886,15 @@ function pcBattleTick(){
 
   try { pcGame = E.tickAction(pcGame, 0.1, pcRng); }
   catch (err) { clearInterval(pcBattleTimer); pcBattleTimer = null; pcFlash(err.message); return; }
+
+  // Advance the opponent's visual cast timers. Uses engine.tick
+  // directly (not the GameState wrapper) so nothing about the player
+  // state is touched; the opponent has zero customers, so no sales
+  // fire and no extra RNG draws that would affect the player sim.
+  if (pcOppAction && pcOppRng) {
+    try { pcOppAction = E.tick(pcOppAction, 0.1, pcOppRng); }
+    catch (_) { /* non-fatal — just skip this frame's opponent tick */ }
+  }
 
   pcRender();
 
