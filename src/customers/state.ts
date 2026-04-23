@@ -203,6 +203,42 @@ export function determineWinner(state: CustomerState): Side | null {
 }
 
 /**
+ * Minimum weighted-score advantage required to early-resolve a
+ * customer before their patience expires. 5 = half the total weighted
+ * score of 10 (weights [4,3,2,1]). A decisive lead means the other
+ * side can't realistically flip the outcome even with a full contest
+ * of the remaining axes, so the customer commits to the sale now
+ * instead of standing around for the rest of their patience.
+ *
+ * Concrete examples:
+ *  - Player leads top axis (4) + second axis (3) = 7 vs. opponent 0 →
+ *    diff 7, early-resolve fires.
+ *  - Player leads top axis (4) alone vs. opponent bottom axis (1) →
+ *    diff 3, waits for patience (either side could still flip it).
+ *  - Solo Dusty Broom vs. empty opponent: player leads all 4 axes
+ *    (10 vs. 0) as soon as any axis bar ticks up → fires early.
+ */
+export const EARLY_RESOLVE_MIN_DIFF = 5;
+
+/**
+ * Early-resolution helper: returns the side that should win right now
+ * if their weighted lead exceeds the loser's by at least
+ * EARLY_RESOLVE_MIN_DIFF. Used by the action-round tick so customers
+ * don't idle when a decisive winner is already locked in. Returns null
+ * when the lead is too small to commit — fall back to natural
+ * patience-expiry resolution.
+ */
+export function determineEarlyWinner(state: CustomerState): Side | null {
+  if (state.resolvedFor !== null) return null;
+  const playerScore = weightedLeadScore(state, "player");
+  const opponentScore = weightedLeadScore(state, "opponent");
+  const diff = playerScore - opponentScore;
+  if (diff >= EARLY_RESOLVE_MIN_DIFF) return "player";
+  if (-diff >= EARLY_RESOLVE_MIN_DIFF) return "opponent";
+  return null;
+}
+
+/**
  * Lock in the customer's decision. If `state.resolvedFor` is already
  * set, the state is returned unchanged. Otherwise the resolution is
  * either the winning Side or `"no-sale"` when no axis has a leader.

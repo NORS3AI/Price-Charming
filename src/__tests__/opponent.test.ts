@@ -202,11 +202,14 @@ describe("finalizeRound + settleRound", () => {
     s = addCustomer(s, makeCustomer({ id: "c-win", patienceSeconds: 2 }));
     s = addCustomer(s, makeCustomer({ id: "c-pending", patienceSeconds: 100 }));
     s = tick(s, 3, mulberry32(1));
+    // Both customers should resolve for player in a 3s tick now that
+    // early-resolve fires as soon as the weighted lead hits 5. The
+    // short-patience customer expires at t=2 and the long-patience one
+    // early-resolves once Pantry Stocker has contested all four axes.
     expect(s.customers[0].resolvedFor).toBe("player");
-    expect(s.customers[1].resolvedFor).toBeNull();
+    expect(s.customers[1].resolvedFor).not.toBeNull();
 
     const final = finalizeRound(s);
-    // Still-unresolved customer gets resolved with its current fills.
     expect(final.customers[1].resolvedFor).not.toBeNull();
 
     const result = settleRound(final);
@@ -217,7 +220,11 @@ describe("finalizeRound + settleRound", () => {
 
   test("finalizeRound executes the sale for a player-leading straggler (regression)", () => {
     // Player with Pantry Stocker selling Love; customer with a long
-    // patience so they haven't expired yet when we finalize.
+    // patience. With early-resolve in place the customer no longer
+    // lingers — the sale fires during `tick` as soon as the weighted
+    // lead hits 5. finalizeRound remains a safe no-op. Prior to
+    // early-resolve the test pinned patience-expiry semantics; now we
+    // just assert the sale happened (whether via tick or finalize).
     let playerBoard = createBoard();
     playerBoard = placeAt(playerBoard, 3, "Pantry Stocker", "love");
     const prices = setPrice(defaultPriceMap(ACTIVE), "love", 1, 8);
@@ -227,19 +234,11 @@ describe("finalizeRound + settleRound", () => {
       makeCustomer({ id: "straggler", patienceSeconds: 100, reputationStars: 2 })
     );
     s = tick(s, 5, mulberry32(1));
-    // Customer is leading for player on every axis, but patience is
-    // nowhere near expiring.
-    expect(s.customers[0].resolvedFor).toBeNull();
-    expect(s.gold).toBe(0);
-
     const finalState = finalizeRound(s);
     expect(finalState.customers[0].resolvedFor).toBe("player");
-
-    // The sale must fire: gold and reputation should both tick up.
     expect(finalState.gold).toBeGreaterThan(0);
     expect(finalState.reputation).toBe(2);
 
-    // And a customer-resolved log entry should have been emitted.
     const resolvedLog = finalState.log.find(
       (e): e is Extract<ActionLogEntry, { kind: "customer-resolved" }> =>
         e.kind === "customer-resolved" && e.customerId === "straggler"

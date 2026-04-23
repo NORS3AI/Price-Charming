@@ -223,10 +223,12 @@ export {
 } from "./customers/types";
 export {
   AXIS_PRIORITY_WEIGHTS,
+  EARLY_RESOLVE_MIN_DIFF,
   applyContribution,
   axesLedBy,
   axisLeader,
   createCustomerState,
+  determineEarlyWinner,
   determineWinner,
   isExpired,
   isResolved,

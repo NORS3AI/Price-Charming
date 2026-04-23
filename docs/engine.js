@@ -44,6 +44,7 @@ var PriceCharming = (() => {
     DEFAULT_EXPORT_FILENAME: () => DEFAULT_EXPORT_FILENAME,
     DEFAULT_SHOP_SIZE: () => DEFAULT_SHOP_SIZE,
     DEFAULT_SPELL_CHANCE: () => DEFAULT_SPELL_CHANCE,
+    EARLY_RESOLVE_MIN_DIFF: () => EARLY_RESOLVE_MIN_DIFF,
     EXPORT_COLUMNS: () => EXPORT_COLUMNS,
     FIRST_ROUND: () => FIRST_ROUND,
     GLOW_ROUNDS: () => GLOW_ROUNDS,
@@ -118,6 +119,7 @@ var PriceCharming = (() => {
     currentWageDemand: () => currentWageDemand,
     defaultPriceMap: () => defaultPriceMap,
     defaultRng: () => defaultRng,
+    determineEarlyWinner: () => determineEarlyWinner,
     determineWinner: () => determineWinner,
     discoveredCount: () => discoveredCount,
     downloadCardsExport: () => downloadCardsExport,
@@ -1591,6 +1593,16 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return null;
   }
+  var EARLY_RESOLVE_MIN_DIFF = 5;
+  function determineEarlyWinner(state) {
+    if (state.resolvedFor !== null) return null;
+    const playerScore = weightedLeadScore(state, "player");
+    const opponentScore = weightedLeadScore(state, "opponent");
+    const diff = playerScore - opponentScore;
+    if (diff >= EARLY_RESOLVE_MIN_DIFF) return "player";
+    if (-diff >= EARLY_RESOLVE_MIN_DIFF) return "opponent";
+    return null;
+  }
   function resolveCustomer(state) {
     if (state.resolvedFor !== null) return state;
     const winner = determineWinner(state);
@@ -2358,8 +2370,17 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         }
       }
       next = tickPatience(next, deltaSeconds);
-      if (isExpired(next)) {
-        next = resolveCustomer(next);
+      if (next.resolvedFor === null && !isExpired(next)) {
+        const earlyWinner = determineEarlyWinner(next);
+        if (earlyWinner === "player") {
+          const seller = pickSalesHireling(working, next.customer.desiredType);
+          if (seller) next = { ...next, resolvedFor: "player" };
+        } else if (earlyWinner === "opponent") {
+          next = { ...next, resolvedFor: "opponent" };
+        }
+      }
+      if (isExpired(next) || next.resolvedFor !== null) {
+        if (next.resolvedFor === null) next = resolveCustomer(next);
         if (next.resolvedFor === "player") {
           const seller = pickSalesHireling(working, next.customer.desiredType);
           if (!seller) {

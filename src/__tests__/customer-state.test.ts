@@ -244,6 +244,39 @@ describe("determineWinner / resolveCustomer", () => {
     expect(determineWinner(s2)).toBe("opponent");
   });
 
+  test("determineEarlyWinner: requires at least +5 weighted diff", () => {
+    const {
+      determineEarlyWinner,
+      EARLY_RESOLVE_MIN_DIFF,
+    } = require("../customers/state");
+    expect(EARLY_RESOLVE_MIN_DIFF).toBe(5);
+
+    // Tied (0-0) — no winner, no early resolve.
+    let s = createCustomerState(makeCustomer());
+    expect(determineEarlyWinner(s)).toBeNull();
+
+    // Player leads top axis only: +4. Not enough (< 5).
+    s = applyContribution(s, "focus", "player", 30);
+    expect(determineEarlyWinner(s)).toBeNull();
+
+    // Player adds second axis: +4 +3 = 7. Decisive.
+    s = applyContribution(s, "type", "player", 30);
+    expect(determineEarlyWinner(s)).toBe("player");
+
+    // Already resolved → null (no re-resolve).
+    s = { ...s, resolvedFor: "player" as const };
+    expect(determineEarlyWinner(s)).toBeNull();
+  });
+
+  test("determineEarlyWinner: opponent side uses the same threshold", () => {
+    const { determineEarlyWinner } = require("../customers/state");
+    // Opponent leads top + bottom: 4 + 1 = 5. Exactly at threshold.
+    let s = createCustomerState(makeCustomer());
+    s = applyContribution(s, "focus", "opponent", 30);
+    s = applyContribution(s, "quality", "opponent", 30);
+    expect(determineEarlyWinner(s)).toBe("opponent");
+  });
+
   test("axis priority still breaks a tied weighted score", () => {
     const customer = makeCustomer({
       axisPriority: ["quality", "budget", "type", "focus"],

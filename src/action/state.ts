@@ -5,6 +5,7 @@ import { computePassiveContribution } from "../customers/contributions";
 import {
   applyContribution,
   createCustomerState,
+  determineEarlyWinner,
   isExpired,
   isResolved,
   resolveCustomer,
@@ -1169,8 +1170,27 @@ function advanceCustomers(
     }
     next = tickPatience(next, deltaSeconds);
 
-    if (isExpired(next)) {
-      next = resolveCustomer(next);
+    // Early-resolution: once one side holds a decisive weighted lead
+    // (>= EARLY_RESOLVE_MIN_DIFF, i.e. at least half the 10-point max),
+    // the customer commits now instead of standing around for the rest
+    // of their patience. Without this, Dusty Broom with its base stock
+    // of 5 couldn't visibly sell until patience expiry even when it
+    // had already passively locked in all 4 axes.
+    if (next.resolvedFor === null && !isExpired(next)) {
+      const earlyWinner = determineEarlyWinner(next);
+      if (earlyWinner === "player") {
+        // Only early-resolve a player win if a seller actually exists;
+        // otherwise fall back to patience expiry (and the expiry path's
+        // demote-to-no-sale guard).
+        const seller = pickSalesHireling(working, next.customer.desiredType);
+        if (seller) next = { ...next, resolvedFor: "player" };
+      } else if (earlyWinner === "opponent") {
+        next = { ...next, resolvedFor: "opponent" };
+      }
+    }
+
+    if (isExpired(next) || next.resolvedFor !== null) {
+      if (next.resolvedFor === null) next = resolveCustomer(next);
       // If the axes declared a player win but no hireling can actually
       // fulfill (no matching potion type on the board, or the only
       // matching hireling is out of stock), demote to "no-sale".
