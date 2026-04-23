@@ -13,6 +13,53 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.3.2-alpha",
+    date: "2026-04-21",
+    title: "Tutorial back + Sandbox retired",
+    changes: [
+      "Removed the Sandbox menu item — never wired into the current build and confusing alongside Play and Show Off.",
+      "Tutorial button now opens a real How-to-Play screen (previously a placeholder flash). Explains the shop phase, action phase, 4-axis weighted-priority customer tug-of-war, stock-OR-potency pricing brackets, Bewitch, Show Off, and the new early-resolve rule.",
+      "Patch-notes discipline: a new CLAUDE.md note requires every engine/UI commit to land with a patch-notes entry first so the in-app changelog stays in sync with the codebase.",
+    ],
+  },
+  {
+    version: "V0.3.1-alpha",
+    date: "2026-04-21",
+    title: "Early customer resolution (Dusty Broom finally sells fast)",
+    changes: [
+      "Customers now commit to a sale as soon as one side holds a decisive weighted lead (>= 5 on the 10-point scale) instead of always idling until patience expiry. Dusty Broom's base-stock 5 finally converts in the first few seconds of round 1 against a matching-type customer.",
+      "New engine helper: `determineEarlyWinner(state)` returns the leading side when `weightedLeadScore(winner) - weightedLeadScore(loser) >= EARLY_RESOLVE_MIN_DIFF` (5). Player wins only early-resolve when `pickSalesHireling` can actually fulfill; opponent wins resolve unconditionally (ghost always fulfills).",
+      "Tick loop checks early-resolve every iteration after applying passive contributions.",
+      "Two straggler tests updated to reflect the new semantics; two new tests pin the +5 threshold + opponent-side symmetry + already-resolved guard. 439 → 441 tests.",
+    ],
+  },
+  {
+    version: "V0.3.0-alpha",
+    date: "2026-04-21",
+    title: "Show Off: persistent card collection",
+    changes: [
+      "New Show Off screen on the title menu: a grid of every collectible card (hirelings + spells). Discovered cards render as full tiles clickable to read ability/keyword detail; undiscovered render as dashed outlines with a centered `?`.",
+      "`pcCollection` keyed by `card.id`, persisted to localStorage under `pc-collection-v1`. Scans run from every `pcAfterChange` and at game start (so Dusty Broom + pre-placed hirelings count).",
+      "Dusty Broom excluded from the grid (always given). Charmed hirelings tag the base card id, so merging doesn't hide the original from the collection.",
+      "Audit followups: collection reads use an Object.create(null)-protected map to avoid prototype-chain pollution; ESC closes the card-detail modal; unknown guilds (future Merlin's Academy) render in a dynamically-appended trailing group.",
+    ],
+  },
+  {
+    version: "V0.2.9-alpha",
+    date: "2026-04-21",
+    title: "Weighted axes + stock-OR-potency pricing + opponent cast bars",
+    changes: [
+      "Customer axes are now rendered in each customer's personal priority order with ★-pip weight indicators. The top axis has 4x the pull of the bottom one — leading just the top axis beats leading the two lowest (4 vs 3), but loses to leading the other three (4 vs 3+2+1=6).",
+      "Pricing brackets unlock on `max(combined stock, combined potency)` across all hirelings selling that potion type. Same breakpoints (1-8, 9-16, ..., 63+); either stat alone suffices. The panel now shows both totals side-by-side with the currently-driving stat highlighted.",
+      "Opponent cast bars tick alongside the player's via a visual-only ActionState. Uses an independent RNG so random-cast-time opponent hirelings don't drain the player sim's draws.",
+      "Dusty Broom's \"Cannot be buffed\" clause now centralized in `buffHireling` + `addTemporaryStock`. Sugar Sprinkler, Oven Master, Lord Chamberlain, Fence Master, Ogreachiever, Confectioner, The Duchess, The Page, The Herald, Almost-A-Knight, Pickpocket Pixie, Apprentice Baker all inherit the immunity automatically.",
+      "The Queen wired: per-cast grants +1 reputation star to every unresolved customer (on top of her Bewitch keyword).",
+      "Payday double-billing fix + cache-bust: introduced `lastPaidRound` on WageTracker so a hireling acquired between paydays is no longer billed two (or more) retroactive wages in one round. Bundle script now hashes engine.js and stamps the script tag's `?v=` query so updates bypass browser cache.",
+      "9 more hireling abilities wired (Pantry Stocker end-of-round, Cookie Seller first-sale, The Page on-ally-sale, The Herald per-cast, Apprentice Baker on-ally-Quickcraft, Almost-A-Knight on-haggled-sale, Pickpocket Pixie on-sale, Royal Treasurer end-of-round, Goblin King round-start, Grumblegut Dragon per-cast, Crooked Confessor passive, Nimble Ned on-no-sale).",
+      "Out-of-stock sale bug fixed: a customer that lost on axes could previously show \"✓ Won\" without any actual gold/stock change when no matching-type hireling had stock. Both `tick` and `finalizeRound` now demote that resolution to `\"no-sale\"` before the log.",
+    ],
+  },
+  {
     version: "V0.2.8-alpha",
     date: "2026-04-21",
     title: "Part-2 Phase 1 — Bewitch primitive",

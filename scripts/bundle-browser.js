@@ -58,6 +58,20 @@ export function loadCards(_filepath?: string): Card[] {
 };
 
 (async () => {
+  // Regenerate docs/patch-notes.json from src/patch-notes.ts so the
+  // in-app changelog on the title screen always matches the latest
+  // engine state. Runs before the bundle so anyone who rebuilt gets
+  // both artifacts updated in lockstep.
+  try {
+    const genNotesPath = path.join(__dirname, "gen-patch-notes.js");
+    if (fs.existsSync(genNotesPath)) {
+      const { execSync } = require("child_process");
+      execSync(`node ${JSON.stringify(genNotesPath)}`, { stdio: "inherit" });
+    }
+  } catch (err) {
+    console.warn("gen-patch-notes failed (continuing):", err.message);
+  }
+
   await esbuild.build({
     entryPoints: [path.join(root, "src", "index.ts")],
     bundle: true,

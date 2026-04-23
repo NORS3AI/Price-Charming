@@ -317,6 +317,8 @@ Hireling row columns: `Guild, Name, Wage Tier, Round Available, Pool Count, Poti
 
 Patch notes are tracked in `src/patch-notes.ts`. Versions follow `V0.0.X-alpha` format, incrementing to 100 before becoming `V0.1.0-alpha`.
 
+**Patch-notes discipline — update BEFORE every commit.** Any commit that touches the engine, the UI, or gameplay rules must prepend a new entry at the top of the `PATCH_NOTES` array in `src/patch-notes.ts`. `npm run gen-notes` regenerates `docs/patch-notes.json`, which the title screen fetches at boot — the bundle script also runs this automatically, so `node scripts/bundle-browser.js` keeps the in-app changelog synchronized with `src/patch-notes.ts`. Pure test-only, internal-docs, or README-only commits can skip the entry.
+
 ## 11-Phase Rollout Plan (complete)
 
 The core game build was split into 11 bite-sized phases, all shipped:

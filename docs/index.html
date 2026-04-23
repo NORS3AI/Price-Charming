@@ -62,6 +62,17 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .diff-card.df-hard{border-color:#ba6a2a}.diff-card.df-hard:hover{border-color:#da8a4a;box-shadow:0 0 20px rgba(186,106,42,.4)}
 .diff-card.df-insane{border-color:#aa2a4a}.diff-card.df-insane:hover{border-color:#da3a5a;box-shadow:0 0 20px rgba(170,42,74,.4)}
 
+/* TUTORIAL SCREEN */
+#tutorial-screen{align-items:center;padding:2rem 1rem;background:var(--deep);overflow-y:auto}
+.tut-title{color:var(--gold);font-size:1.8rem;margin-bottom:.25rem;text-align:center;width:100%}
+.tut-sub{color:var(--gold-dim);font-size:.85rem;margin-bottom:1.5rem;text-align:center}
+#tut-body{max-width:720px;width:100%;display:flex;flex-direction:column;gap:1rem}
+.tut-section{background:var(--parch);color:var(--deep);padding:.9rem 1.1rem;border-radius:6px;border:1px solid var(--gold-dim)}
+.tut-section h2{color:var(--purple);font-size:1rem;margin-bottom:.5rem;letter-spacing:.04em;border-bottom:1px solid rgba(74,32,96,.2);padding-bottom:.25rem}
+.tut-section p{font-size:.82rem;line-height:1.4;margin-bottom:.4rem}
+.tut-section ul{font-size:.82rem;margin-left:1.25rem;line-height:1.4}
+.tut-section b{color:var(--purple)}
+
 /* SHOW OFF SCREEN */
 #showoff-screen{align-items:center;padding:2rem 1rem;background:var(--deep);overflow-y:auto}
 .so-title{color:var(--gold);font-size:1.8rem;margin-bottom:.25rem;text-align:center;width:100%}
@@ -113,13 +124,6 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .sett-toggle.on::after{left:22px}
 .sett-saves{display:flex;flex-direction:column;gap:.5rem}
 .sett-save-slot{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.2);padding:.5rem;border-radius:6px;font-size:.8rem;color:var(--parch-d)}
-
-/* SANDBOX SCREEN */
-#sandbox-screen{align-items:center;padding:2rem 1rem;background:var(--deep)}
-.sb-title{color:var(--gold);font-size:1.8rem;margin-bottom:.5rem}
-.sb-sub{color:var(--parch-d);font-size:.85rem;margin-bottom:1rem}
-.sb-pool{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;max-width:800px;margin-bottom:1rem}
-.sb-board{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;min-height:130px;max-width:800px;background:rgba(0,0,0,.2);border:2px dashed var(--gold-dim);border-radius:8px;padding:.75rem;margin-bottom:1rem}
 
 /* TOP BAR */
 #top-bar{background:var(--purple);border-bottom:3px solid var(--gold);padding:.6rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
@@ -349,7 +353,6 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <button class="btn" onclick="showScreen('diff-screen')">Play</button>
     <button class="btn btn-purple" onclick="pcOpenShowOff()">Show Off</button>
     <button class="btn btn-purple" onclick="showScreen('leader-screen')">Leaderboard</button>
-    <button class="btn btn-purple" onclick="showScreen('sandbox-screen')">Sandbox</button>
     <button class="btn btn-ghost" onclick="showScreen('settings-screen')">Settings</button>
   </div>
   <div id="title-patch">
@@ -412,6 +415,77 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <button class="btn btn-ghost btn-sm" onclick="showScreen('title-screen')" style="margin-top:1rem">Back to Menu</button>
 </div>
 
+<!-- TUTORIAL / HOW TO PLAY -->
+<div class="screen" id="tutorial-screen">
+  <div class="tut-title">How to Play</div>
+  <div class="tut-sub">Everything you need to run a profitable potion shop.</div>
+  <div id="tut-body">
+
+    <div class="tut-section">
+      <h2>The two phases</h2>
+      <p><b>Shop phase.</b> Buy hirelings (2g each) and spells (2g each) into your 8-card hand, drag them onto the 7-slot board (bench ↔ active), set potion prices, and resolve payday on certain rounds. Hit <i>Start Battle</i> when you're ready.</p>
+      <p><b>Action phase.</b> Customers walk up to your stall and the 4-axis tug-of-war begins. Hirelings auto-cast on their timers, Quickcraft hirelings pulse out temp stock, Bewitch pulls customer focus, Knockoff bumps permanent stock after a sale. You can't rearrange the board here.</p>
+    </div>
+
+    <div class="tut-section">
+      <h2>The 4 customer axes (weighted)</h2>
+      <p>Every customer is decided by four axes: <b>Focus</b>, <b>Type</b>, <b>Budget</b>, <b>Quality</b>. Each customer spawns with their own <i>priority order</i> of these axes, shown on the customer card from top (most important) to bottom (least).</p>
+      <p>Axes are <b>weighted</b>: top = 4×, second = 3×, third = 2×, bottom = 1×. Leading just the top axis alone beats leading the two lowest, but loses to leading the other three (4 vs 3+2+1=6). Pay attention to each customer's ★-pip column — that's their priority.</p>
+      <p><b>Early resolve:</b> as soon as one side holds a decisive lead (≥ 5 of the 10-point max), the customer buys immediately instead of idling until patience runs out. Stock 5 on Dusty Broom is no longer dead weight in the first few seconds.</p>
+    </div>
+
+    <div class="tut-section">
+      <h2>Pricing — stock OR potency</h2>
+      <p>Set a price per potion type (not per hireling). The bracket you can charge at is unlocked by <b>max(combined stock, combined potency)</b> across all your hirelings that sell that type — either stat alone suffices.</p>
+      <p>Bracket table:</p>
+      <ul>
+        <li><b>1–8</b> → 1g</li>
+        <li><b>9–16</b> → 2g</li>
+        <li><b>17–24</b> → 3g</li>
+        <li><b>25–32</b> → 4g</li>
+        <li><b>33–40</b> → 5g</li>
+        <li><b>41–50</b> → 6g</li>
+        <li><b>51–62</b> → 7g</li>
+        <li><b>63+</b> → 8g (cap)</li>
+      </ul>
+      <p>The panel shows both stock and potency totals with the <b>currently-driving stat highlighted</b>. Status tells you exactly which stat is closest to the next tier.</p>
+    </div>
+
+    <div class="tut-section">
+      <h2>Keywords on hirelings</h2>
+      <p><b>Quickcraft xN</b> — base stock is 0; after every cast, gain +N temporary stock (round-only).</p>
+      <p><b>Knockoff xN</b> — after a sale, if your potency is below 10, gain +N permanent stock.</p>
+      <p><b>Haggle</b> — sales from this hireling charge +3g above the posted price but cost −1 reputation each. <i>Crooked Confessor on any active slot waives the rep penalty.</i></p>
+      <p><b>Bewitch</b> — every cast pushes the customer's Focus axis for the player (+40 per customer targeted) and tags the customer. After this hireling sells to a Bewitched customer, its next Bewitch targets an additional customer (max 2 at a time).</p>
+      <p><b>Sabotage</b> — slows an opponent's cast. (Not yet wired in this build — coming in Part-2 Phase 3.)</p>
+    </div>
+
+    <div class="tut-section">
+      <h2>Payday & wages</h2>
+      <p>Paydays resolve on rounds <b>5, 8, 11, 14</b>. Each non-starter hireling demands a wage based on their tier (Low 2g / Medium 4g / High 6g as starters) that grows by +2g every payday they survive.</p>
+      <p>A hireling acquired on a payday round skips that round's wage (fresh hirelings don't owe retroactively). A hireling is only ever billed <b>once</b> per payday round, even if it's caught up multiple pay cycles.</p>
+      <p>Per hireling you can <b>Pay</b> (deduct gold) or <b>Sell</b> (return to pool, +1g).</p>
+    </div>
+
+    <div class="tut-section">
+      <h2>Charmed hirelings</h2>
+      <p>Owning 3 copies of the same hireling with the same potion type — across hand, board, and bench in any combination — instantly merges them into a <b>Charmed</b> hireling (stats summed, cast time from base). Plays into your hand with a random Charm card attached.</p>
+    </div>
+
+    <div class="tut-section">
+      <h2>Reputation, win, lose</h2>
+      <p>Reputation starts at 0 and climbs with every sale (customer stars − 1 if Haggled). Reach <b>100 reputation</b> to win outright. Otherwise, at round 15 you win if you beat the opponent's customer count.</p>
+    </div>
+
+    <div class="tut-section">
+      <h2>Show Off</h2>
+      <p>The <b>Show Off</b> menu item on the title screen displays every card you've ever had in your hand or on your board, across every game. Undiscovered cards show as dashed outlines with a "?" — tap any unlocked card to read its full ability and keywords.</p>
+    </div>
+
+  </div>
+  <button class="btn btn-ghost btn-sm" onclick="showScreen('diff-screen')" style="margin-top:1rem">Back</button>
+</div>
+
 <!-- Card detail modal for Show Off -->
 <div id="so-detail" style="display:none">
   <div id="so-detail-backdrop" onclick="pcCloseShowOffDetail()"></div>
@@ -445,20 +519,6 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <div class="sett-row"><label>Reset all data</label><button class="btn btn-sm btn-danger" onclick="resetAllData()">Reset</button></div>
   </div>
   <div style="margin-top:1rem"><button class="btn btn-ghost btn-sm" onclick="leaveSettings()">Back</button></div>
-</div>
-
-<!-- SANDBOX -->
-<div class="screen" id="sandbox-screen">
-  <div class="sb-title">Sandbox — Deck Builder</div>
-  <div class="sb-sub">Click cards to add to your deck. Test combos before battle.</div>
-  <div class="sb-pool" id="sb-pool"></div>
-  <div style="color:var(--gold);font-size:.85rem;margin-bottom:.3rem">Your Deck (max 5)</div>
-  <div class="sb-board" id="sb-board"></div>
-  <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center">
-    <button class="btn btn-sm" onclick="sbClear()">Clear Deck</button>
-    <button class="btn btn-sm btn-blue" onclick="sbTestBattle()">Test Battle</button>
-    <button class="btn btn-sm btn-ghost" onclick="showScreen('title-screen')">Back</button>
-  </div>
 </div>
 
 <!-- GAME SCREEN (engine-driven) -->
@@ -793,7 +853,7 @@ window.openSettingsFromShop = function(){ showScreen("settings-screen"); };
 window.closeReport = function(){ const o = $("report-overlay"); if (o) o.style.display = "none"; };
 window.cancelModal  = function(){ const o = $("modal-overlay");  if (o) o.style.display = "none"; };
 window.openReport   = function(){};
-window.startTutorial = function(){ pcFlash("Tutorial not available in this build."); };
+window.startTutorial = function(){ showScreen("tutorial-screen"); };
 window.saveVictory  = function(){ /* redirected later to pcSaveToLeaderboard */ };
 
 // --- Play-button flow: landed on difficulty card --------------------
