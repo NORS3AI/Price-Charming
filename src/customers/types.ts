@@ -78,4 +78,11 @@ export interface CustomerState {
    * `"player"` / `"opponent"` / `"no-sale"`.
    */
   resolvedFor: Resolution | null;
+  /**
+   * Instance IDs of player-side hirelings that have Bewitched this
+   * customer this round. Used so a hireling gets its +1 bewitchLevel
+   * after selling to someone it previously Bewitched, and so the UI
+   * can tag the customer card with a sparkle.
+   */
+  bewitchedByIds: readonly string[];
 }

@@ -250,7 +250,10 @@ export type {
   HirelingActionState,
 } from "./action/types";
 export {
+  BEWITCH_FOCUS_BURST,
+  MAX_BEWITCH_LEVEL,
   addCustomer,
+  applyEndOfRoundHooks,
   finalizeRound,
   firstCastDelay,
   initializeActionState,

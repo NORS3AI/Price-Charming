@@ -57,6 +57,7 @@ export function createCustomerState(customer: Customer): CustomerState {
     axes,
     patienceRemaining: customer.patienceSeconds,
     resolvedFor: null,
+    bewitchedByIds: [],
   };
 }
 

@@ -30,6 +30,7 @@ var PriceCharming = (() => {
     AXIS_PRIORITY_WEIGHTS: () => AXIS_PRIORITY_WEIGHTS,
     AXIS_THRESHOLD: () => AXIS_THRESHOLD,
     BENCH_SLOTS: () => BENCH_SLOTS,
+    BEWITCH_FOCUS_BURST: () => BEWITCH_FOCUS_BURST,
     BOARD_SIZE: () => BOARD_SIZE,
     CAP_POTENCY: () => CAP_POTENCY,
     CHARM_MERGE_COUNT: () => CHARM_MERGE_COUNT,
@@ -47,6 +48,7 @@ var PriceCharming = (() => {
     FIRST_ROUND: () => FIRST_ROUND,
     GLOW_ROUNDS: () => GLOW_ROUNDS,
     LUCKY_POTENCY_BONUS: () => LUCKY_POTENCY_BONUS,
+    MAX_BEWITCH_LEVEL: () => MAX_BEWITCH_LEVEL,
     MAX_HAND_SIZE: () => MAX_HAND_SIZE,
     MAX_PAYDAYS: () => MAX_PAYDAYS,
     MAX_PRICE: () => MAX_PRICE,
@@ -74,6 +76,7 @@ var PriceCharming = (() => {
     allExportRows: () => allExportRows,
     allHirelings: () => allHirelings,
     applyContribution: () => applyContribution,
+    applyEndOfRoundHooks: () => applyEndOfRoundHooks,
     applyHaggle: () => applyHaggle,
     assignHirelingPotion: () => assignHirelingPotion,
     assignPotionsToPool: () => assignPotionsToPool,
@@ -1510,7 +1513,8 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       customer,
       axes,
       patienceRemaining: customer.patienceSeconds,
-      resolvedFor: null
+      resolvedFor: null,
+      bewitchedByIds: []
     };
   }
   function setAxis(state, axis, bar) {
@@ -1699,7 +1703,8 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       temporaryStock: 0,
       permanentStockGainedThisRound: 0,
       permanentPotencyGainedThisRound: 0,
-      unitsSoldThisRound: 0
+      unitsSoldThisRound: 0,
+      bewitchLevel: 1
     };
   }
   function effectiveStock(inst, hs) {
@@ -1942,6 +1947,50 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return state;
     }
   }
+  var BEWITCH_FOCUS_BURST = 40;
+  var MAX_BEWITCH_LEVEL = 2;
+  function applyBewitch(state, caster, atSeconds) {
+    var _a;
+    const casterHs = state.hirelingStates.get(caster.id);
+    if (!casterHs) return state;
+    const level = Math.min(MAX_BEWITCH_LEVEL, (_a = casterHs.bewitchLevel) != null ? _a : 1);
+    const targets = [];
+    for (const cs of state.customers) {
+      if (targets.length >= level) break;
+      if (cs.resolvedFor !== null) continue;
+      if (cs.bewitchedByIds.includes(caster.id)) continue;
+      targets.push(cs);
+    }
+    if (targets.length === 0) return state;
+    const targetIdSet = new Set(targets.map((cs) => cs.customer.id));
+    const customers = state.customers.map((cs) => {
+      if (!targetIdSet.has(cs.customer.id)) return cs;
+      const focus = cs.axes.focus;
+      const nextFocus = {
+        playerFill: Math.min(
+          AXIS_THRESHOLD,
+          focus.playerFill + BEWITCH_FOCUS_BURST
+        ),
+        opponentFill: focus.opponentFill
+      };
+      return {
+        ...cs,
+        axes: { ...cs.axes, focus: nextFocus },
+        bewitchedByIds: [...cs.bewitchedByIds, caster.id]
+      };
+    });
+    const log = [
+      ...state.log,
+      {
+        kind: "bewitch",
+        casterId: caster.id,
+        customerIds: targets.map((cs) => cs.customer.id),
+        focusBurst: BEWITCH_FOCUS_BURST,
+        atSeconds
+      }
+    ];
+    return { ...state, customers, log };
+  }
   function applyPostCastAbility(state, caster, atSeconds) {
     switch (caster.card.id) {
       case "sugar-sprinkler":
@@ -2143,6 +2192,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       log
     };
     withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
+    if (hasKeyword(inst, "Bewitch")) {
+      withCasterState = applyBewitch(withCasterState, inst, atSeconds);
+    }
     for (const ally of activeHirelings(withCasterState.board)) {
       if (ally.id === inst.id) continue;
       withCasterState = applyOnAllyCastAbility(
@@ -2403,6 +2455,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         stockGained: knockoff,
         atSeconds: state.elapsedSeconds
       });
+    }
+    if (customerState.bewitchedByIds.includes(hireling.id) && nextHs.bewitchLevel < MAX_BEWITCH_LEVEL) {
+      nextHs = { ...nextHs, bewitchLevel: nextHs.bewitchLevel + 1 };
     }
     const hirelingStates = new Map(state.hirelingStates);
     hirelingStates.set(hireling.id, nextHs);

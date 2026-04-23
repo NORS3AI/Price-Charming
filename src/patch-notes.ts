@@ -13,6 +13,20 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.2.8-alpha",
+    date: "2026-04-21",
+    title: "Part-2 Phase 1 — Bewitch primitive",
+    changes: [
+      "Added Bewitch engine primitive: every cast of a hireling with the Bewitch keyword pushes the player's focus axis by BEWITCH_FOCUS_BURST (40) on up to `bewitchLevel` unresolved customers, and tags those customers with the caster's instance id.",
+      "HirelingActionState: new `bewitchLevel` field, default 1, capped at MAX_BEWITCH_LEVEL (2). Bumps by +1 when this hireling sells to a customer it previously Bewitched, matching the keyword spec (\"after this sells, next Bewitch affects an additional customer\").",
+      "CustomerState: new `bewitchedByIds` field tracking which player-side hirelings have Bewitched this customer. Drives the sale-to-Bewitched-customer bump and the UI sparkle badge.",
+      "ActionLogEntry union: new `bewitch` variant { casterId, customerIds, focusBurst, atSeconds }.",
+      "Wired the keyword-only cards automatically (Candied Witch, Masked Minstrel primary Bewitch, The Queen). The per-card REACTIVE clauses (Lady's Maid, Knight Errant, Champion Knight, Prince, Part-Time Potioneer, Squire, Masked Minstrel sell-reward) stay for Part-2 Phase 2.",
+      "UI: bewitched customer cards show a ✨ 'Bewitched' pill next to the potion icon; battle log prints bewitch entries.",
+      "8 new tests cover focus burst, no-double-bewitch, bewitchLevel bump + cap, level-2 targets two customers, no-op on empty queue, non-Bewitch hireling silent. 430 → 438 tests.",
+    ],
+  },
+  {
     version: "V0.2.7-alpha",
     date: "2026-04-20",
     title: "Phase 11 — Export to Excel (admin tool)",

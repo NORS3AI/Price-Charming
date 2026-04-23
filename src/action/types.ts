@@ -29,6 +29,14 @@ export interface HirelingActionState {
   permanentPotencyGainedThisRound: number;
   /** Units sold this round — depletes effective stock. */
   unitsSoldThisRound: number;
+  /**
+   * Bewitch level — how many customers this hireling's NEXT Bewitch
+   * cast will target. Starts at 1. Bumps to 2 (cap) after this hireling
+   * sells to a customer it previously Bewitched (per the keyword spec:
+   * "After this sells, its next Bewitch affects an additional
+   * customer. Up to 2 at a time.").
+   */
+  bewitchLevel: number;
 }
 
 /** Structured log entries emitted by the tick loop for tests and UI. */
@@ -88,6 +96,13 @@ export type ActionLogEntry =
       targetId: string;
       stockGained: number;
       potencyGained: number;
+      atSeconds: number;
+    }
+  | {
+      kind: "bewitch";
+      casterId: string;
+      customerIds: readonly string[];
+      focusBurst: number;
       atSeconds: number;
     }
   | {

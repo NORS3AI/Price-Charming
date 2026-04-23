@@ -10,7 +10,7 @@ import {
   resolveCustomer,
   tickPatience,
 } from "../customers/state";
-import { AXES, Customer, CustomerState } from "../customers/types";
+import { AXES, AXIS_THRESHOLD, Customer, CustomerState } from "../customers/types";
 import { RNG } from "../potions/rng";
 import { PotionTypeId } from "../potions/types";
 import { MIN_PRICE } from "../pricing/brackets";
@@ -112,6 +112,7 @@ function freshHirelingState(
     permanentStockGainedThisRound: 0,
     permanentPotencyGainedThisRound: 0,
     unitsSoldThisRound: 0,
+    bewitchLevel: 1,
   };
 }
 
@@ -557,6 +558,73 @@ function applyEndOfRoundAbility(
  * transformers; cards not in the registry don't contribute extra
  * effects beyond their keywords.
  */
+/**
+ * Focus-axis fill granted to the player side per customer targeted by
+ * a Bewitch cast. 40 is substantial (40% of the axis) but not an auto-
+ * win — another side can still contest quality/budget/type.
+ */
+export const BEWITCH_FOCUS_BURST = 40;
+
+/**
+ * Per-hireling Bewitch cap. The keyword spec ("max 2 at a time") means
+ * a single cast can target at most 2 customers, reached only after the
+ * hireling has already sold to a previously-Bewitched customer.
+ */
+export const MAX_BEWITCH_LEVEL = 2;
+
+/**
+ * Apply a Bewitch cast: pick up to `caster.bewitchLevel` unresolved
+ * customers that this caster hasn't already Bewitched, push their focus
+ * axis +BEWITCH_FOCUS_BURST toward the player, and tag them with this
+ * caster's id. Emits a "bewitch" log entry.
+ */
+function applyBewitch(
+  state: ActionState,
+  caster: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  const casterHs = state.hirelingStates.get(caster.id);
+  if (!casterHs) return state;
+  const level = Math.min(MAX_BEWITCH_LEVEL, casterHs.bewitchLevel ?? 1);
+  const targets: CustomerState[] = [];
+  for (const cs of state.customers) {
+    if (targets.length >= level) break;
+    if (cs.resolvedFor !== null) continue;
+    if (cs.bewitchedByIds.includes(caster.id)) continue;
+    targets.push(cs);
+  }
+  if (targets.length === 0) return state;
+
+  const targetIdSet = new Set(targets.map((cs) => cs.customer.id));
+  const customers = state.customers.map((cs) => {
+    if (!targetIdSet.has(cs.customer.id)) return cs;
+    const focus = cs.axes.focus;
+    const nextFocus = {
+      playerFill: Math.min(
+        AXIS_THRESHOLD,
+        focus.playerFill + BEWITCH_FOCUS_BURST
+      ),
+      opponentFill: focus.opponentFill,
+    };
+    return {
+      ...cs,
+      axes: { ...cs.axes, focus: nextFocus },
+      bewitchedByIds: [...cs.bewitchedByIds, caster.id],
+    };
+  });
+  const log: ActionLogEntry[] = [
+    ...state.log,
+    {
+      kind: "bewitch",
+      casterId: caster.id,
+      customerIds: targets.map((cs) => cs.customer.id),
+      focusBurst: BEWITCH_FOCUS_BURST,
+      atSeconds,
+    },
+  ];
+  return { ...state, customers, log };
+}
+
 function applyPostCastAbility(
   state: ActionState,
   caster: HirelingInstance,
@@ -841,6 +909,13 @@ function fireCast(
     log,
   };
   withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
+  // Bewitch keyword fires after every cast of a hireling that carries
+  // it — applies a focus burst to `bewitchLevel` unresolved customers
+  // and tags them so a later sale can trigger the +1 bewitchLevel
+  // follow-up.
+  if (hasKeyword(inst, "Bewitch")) {
+    withCasterState = applyBewitch(withCasterState, inst, atSeconds);
+  }
   // Reactive hook for OTHER active allies (e.g. Apprentice Baker: +1
   // temp stock whenever an ally uses Quickcraft).
   for (const ally of activeHirelings(withCasterState.board)) {
@@ -1235,6 +1310,18 @@ function executeSale(
       stockGained: knockoff,
       atSeconds: state.elapsedSeconds,
     });
+  }
+
+  // Bewitch follow-up: if THIS hireling previously Bewitched THIS
+  // customer and this is the sale, bump its bewitchLevel (capped at
+  // MAX_BEWITCH_LEVEL). Per keyword spec: "After this sells to a
+  // Bewitched customer, its next Bewitch affects an additional
+  // customer simultaneously. Up to 2 at a time."
+  if (
+    customerState.bewitchedByIds.includes(hireling.id) &&
+    nextHs.bewitchLevel < MAX_BEWITCH_LEVEL
+  ) {
+    nextHs = { ...nextHs, bewitchLevel: nextHs.bewitchLevel + 1 };
   }
 
   const hirelingStates = new Map(state.hirelingStates);
