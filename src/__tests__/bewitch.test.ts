@@ -186,4 +186,29 @@ describe("Bewitch primitive", () => {
     s = tick(s, 6, mulberry32(1));
     expect(s.log.some((e) => e.kind === "bewitch")).toBe(false);
   });
+
+  test("The Queen: Bewitch + per-cast rep grant both fire on the same cast", () => {
+    // Queen has the Bewitch keyword AND an applyPostCastAbility clause
+    // (+1 rep to every unresolved customer per cast). Both effects must
+    // fire in the same cast — independently wired, both observable.
+    let b = createBoard();
+    b = placeAt(b, 3, "The Queen", "love"); // 9s cast
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
+    s = addCustomer(
+      s,
+      makeCustomer({ patienceSeconds: 15, reputationStars: 2 })
+    );
+    s = tick(s, 10, mulberry32(1));
+    // Bewitch: customer tagged + focus burst.
+    expect(s.customers[0].bewitchedByIds).toContain("The Queen-3");
+    expect(s.customers[0].axes.focus.playerFill).toBeGreaterThanOrEqual(
+      BEWITCH_FOCUS_BURST
+    );
+    // Queen's post-cast rep bump: 2 → 3.
+    expect(s.customers[0].customer.reputationStars).toBe(3);
+    // Both a `bewitch` and no ability-buff entry specifically from Queen,
+    // since her +1 rep mutates customer state rather than emitting a
+    // buff log line. The bewitch log is enough to verify the keyword path.
+    expect(s.log.some((e) => e.kind === "bewitch" && e.casterId === "The Queen-3")).toBe(true);
+  });
 });
