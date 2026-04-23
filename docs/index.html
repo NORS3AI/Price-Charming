@@ -62,6 +62,32 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .diff-card.df-hard{border-color:#ba6a2a}.diff-card.df-hard:hover{border-color:#da8a4a;box-shadow:0 0 20px rgba(186,106,42,.4)}
 .diff-card.df-insane{border-color:#aa2a4a}.diff-card.df-insane:hover{border-color:#da3a5a;box-shadow:0 0 20px rgba(170,42,74,.4)}
 
+/* SHOW OFF SCREEN */
+#showoff-screen{align-items:center;padding:2rem 1rem;background:var(--deep);overflow-y:auto}
+.so-title{color:var(--gold);font-size:1.8rem;margin-bottom:.25rem;text-align:center;width:100%}
+.so-sub{color:var(--gold-dim);font-size:.85rem;margin-bottom:1.25rem;text-align:center}
+#so-grid{width:100%;max-width:900px;display:flex;flex-direction:column;gap:1.25rem}
+.so-group-head{color:var(--gold);font-size:1.05rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem;padding-bottom:.2rem;border-bottom:1px solid var(--gold-dim)}
+.so-group-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.6rem}
+.so-card{aspect-ratio:3/4;border-radius:6px;background:var(--parch);color:var(--deep);padding:.4rem;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;border:1px solid var(--gold-dim);transition:transform .1s}
+.so-card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
+.so-card .so-name{font-weight:bold;font-size:.78rem;line-height:1.15}
+.so-card .so-meta{font-size:.62rem;color:var(--purple);font-style:italic}
+.so-card .so-stats{text-align:center;font-size:.95rem;font-weight:bold;letter-spacing:.05em}
+.so-card .so-guild{font-size:.58rem;font-weight:bold;text-align:center;padding:.1rem 0;border-radius:0 0 5px 5px;letter-spacing:.04em;text-transform:uppercase;color:#fff;margin:0 -.4rem -.4rem -.4rem}
+.so-card-locked{background:rgba(255,255,255,.04);border:2px dashed rgba(212,168,67,.35);color:rgba(212,168,67,.35);cursor:default;display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:bold}
+.so-card-locked:hover{transform:none;box-shadow:none}
+#so-detail{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center}
+#so-detail-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.75)}
+#so-detail-panel{position:relative;background:var(--parch);color:var(--deep);max-width:420px;width:92%;max-height:85vh;overflow-y:auto;border:2px solid var(--gold);border-radius:10px;padding:1.25rem;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#so-detail-panel .so-dh{font-size:1.2rem;font-weight:bold;color:var(--deep);margin-bottom:.15rem}
+#so-detail-panel .so-dm{font-size:.75rem;color:var(--purple);font-style:italic;margin-bottom:.6rem}
+#so-detail-panel .so-dstats{font-size:1rem;margin:.25rem 0;padding:.35rem;background:rgba(0,0,0,.06);border-radius:4px;text-align:center}
+#so-detail-panel .so-dability{margin:.5rem 0;padding:.4rem;background:rgba(160,80,200,.15);border-left:3px solid var(--purple);border-radius:3px;font-size:.85rem}
+#so-detail-panel .so-dkw{margin:.3rem 0;font-size:.78rem}
+#so-detail-panel .so-dkw b{color:var(--purple)}
+#so-detail-panel .so-dclose{margin-top:.75rem;width:100%}
+
 /* LEADERBOARD SCREEN */
 #leader-screen{align-items:center;padding:2rem 1rem;background:var(--deep)}
 .lb-title{color:var(--gold);font-size:1.8rem;margin-bottom:1rem;text-align:center;width:100%}
@@ -321,6 +347,7 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <div class="ver" id="title-ver">V0.1.0-alpha</div>
   <div class="menu-btns">
     <button class="btn" onclick="showScreen('diff-screen')">Play</button>
+    <button class="btn btn-purple" onclick="pcOpenShowOff()">Show Off</button>
     <button class="btn btn-purple" onclick="showScreen('leader-screen')">Leaderboard</button>
     <button class="btn btn-purple" onclick="showScreen('sandbox-screen')">Sandbox</button>
     <button class="btn btn-ghost" onclick="showScreen('settings-screen')">Settings</button>
@@ -375,6 +402,20 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
   <div class="lb-title">Leaderboard</div>
   <table class="lb-table" id="lb-table"></table>
   <button class="btn btn-ghost btn-sm" onclick="showScreen('title-screen')">Back to Menu</button>
+</div>
+
+<!-- SHOW OFF (card collection) -->
+<div class="screen" id="showoff-screen">
+  <div class="so-title">Show Off</div>
+  <div class="so-sub" id="so-progress">Your collection</div>
+  <div id="so-grid"></div>
+  <button class="btn btn-ghost btn-sm" onclick="showScreen('title-screen')" style="margin-top:1rem">Back to Menu</button>
+</div>
+
+<!-- Card detail modal for Show Off -->
+<div id="so-detail" style="display:none">
+  <div id="so-detail-backdrop" onclick="pcCloseShowOffDetail()"></div>
+  <div id="so-detail-panel" role="dialog" aria-modal="true"></div>
 </div>
 
 <!-- SETTINGS -->
@@ -668,6 +709,47 @@ let pcStarPowerCharges = 0;        // Star Power: next N customer spawns get +1 
 let pcStarPowerCastThisShop = false; // Star Power can only be cast once per shop phase
 let pcFreeRefreshPending = false;  // Talent Scout: next refresh is free
 
+// --- Show Off: player card collection ------------------------------
+// Persists the set of card ids the player has ever had in their hand
+// or on their board, across games. Mark runs after every mutation.
+const PC_COLLECTION_KEY = "pc-collection-v1";
+let pcCollection = Object.create(null);
+try {
+  const raw = localStorage.getItem(PC_COLLECTION_KEY);
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") pcCollection = parsed;
+  }
+} catch (_) { /* storage disabled — use in-memory only */ }
+
+function pcSaveCollection(){
+  try { localStorage.setItem(PC_COLLECTION_KEY, JSON.stringify(pcCollection)); }
+  catch (_) { /* no-op */ }
+}
+
+function pcMarkCollected(cardId){
+  if (!cardId) return;
+  if (pcCollection[cardId]) return; // already marked — skip save
+  pcCollection[cardId] = true;
+  pcSaveCollection();
+}
+
+// Scan the current game state for any cards in the player's possession
+// (hand + board, active or bench) and stamp them into the collection.
+function pcScanCollection(){
+  if (!pcGame) return;
+  if (pcGame.hand && pcGame.hand.cards) {
+    for (const c of pcGame.hand.cards) {
+      if (c && c.card && c.card.id) pcMarkCollected(c.card.id);
+    }
+  }
+  if (pcGame.board && pcGame.board.slots) {
+    for (const inst of pcGame.board.slots) {
+      if (inst && inst.card && inst.card.id) pcMarkCollected(inst.card.id);
+    }
+  }
+}
+
 // Difficulty knobs — gold per round drives the opponent's board growth,
 // so their builds scale proportionally to the player's own pacing.
 const PC_DIFF = {
@@ -759,6 +841,7 @@ function pcStartGame(diff){
     shopSection.ondrop = pcDropOnShopArea;
   }
 
+  pcScanCollection();
   showScreen("game-screen");
   pcRender();
 }
@@ -1424,6 +1507,9 @@ function pcAfterChange(){
       pcFlash(`Third Time's the Charm! ${res.charmed.card.name} merged.`);
     }
   }
+  // Stamp anything new the player just acquired into the Show Off
+  // collection (persists across games via localStorage).
+  pcScanCollection();
   pcRender();
 }
 
@@ -2078,7 +2164,141 @@ const pcOriginalShowScreen = window.showScreen;
 window.showScreen = function(id){
   pcOriginalShowScreen(id);
   if (id === "leader-screen") pcRenderLeaderboard();
+  if (id === "showoff-screen") pcRenderShowOff();
 };
+
+// --- Show Off -------------------------------------------------------
+function pcOpenShowOff(){
+  showScreen("showoff-screen");
+}
+window.pcOpenShowOff = pcOpenShowOff;
+
+function pcShowOffCards(){
+  // Every collectible card. Dusty Broom is always given so it shouldn't
+  // show as "locked", but also shouldn't decorate the collection — skip
+  // it to keep the list focused on earned cards.
+  const all = [];
+  for (const h of (E.ALL_HIRELINGS || [])) {
+    if (h.id === "dusty-broom") continue;
+    all.push(h);
+  }
+  for (const s of (E.ALL_SPELLS || [])) all.push(s);
+  return all;
+}
+
+function pcRenderShowOff(){
+  const grid = document.getElementById("so-grid");
+  if (!grid) return;
+  const cards = pcShowOffCards();
+  const collected = cards.filter((c) => pcCollection[c.id]).length;
+  const total = cards.length;
+  const progress = document.getElementById("so-progress");
+  if (progress) {
+    progress.textContent = `${collected} / ${total} cards collected — tap a card to read the details.`;
+  }
+  // Group by guild / spell. Stable group order.
+  const groupOrder = ["Sugar Guild", "Thieves Guild", "Nobles Guild", "No Guild", "Spell"];
+  const groups = new Map(groupOrder.map((g) => [g, []]));
+  for (const card of cards) {
+    const key = card.kind === "spell" ? "Spell" : card.guild;
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(card);
+    else groups.set(key, [card]); // fallback for unexpected guild
+  }
+  grid.innerHTML = "";
+  for (const groupName of groupOrder) {
+    const bucket = groups.get(groupName) || [];
+    if (bucket.length === 0) continue;
+    const section = document.createElement("div");
+    section.className = "so-group";
+    const ownedInGroup = bucket.filter((c) => pcCollection[c.id]).length;
+    const head = document.createElement("div");
+    head.className = "so-group-head";
+    head.textContent = `${groupName} — ${ownedInGroup} / ${bucket.length}`;
+    section.appendChild(head);
+    const row = document.createElement("div");
+    row.className = "so-group-grid";
+    for (const card of bucket) {
+      row.appendChild(pcBuildShowOffCard(card));
+    }
+    section.appendChild(row);
+    grid.appendChild(section);
+  }
+}
+
+function pcBuildShowOffCard(card){
+  const owned = !!pcCollection[card.id];
+  const d = document.createElement("div");
+  if (!owned) {
+    d.className = "so-card so-card-locked";
+    d.textContent = "?";
+    d.title = "Not yet collected — buy or play this card to reveal it.";
+    return d;
+  }
+  d.className = "so-card";
+  if (card.kind === "spell") {
+    d.innerHTML = `
+      <div>
+        <div class="so-name">${card.name}</div>
+        <div class="so-meta">Spell · ${card.abilityText ? "" : ""}</div>
+      </div>
+      <div class="so-stats">✨</div>
+      <div class="so-guild pc-guild-none">Spell</div>
+    `;
+  } else {
+    const slot = card.potions && card.potions[0];
+    const stock = slot ? slot.stock : 0;
+    const potency = slot ? slot.potency : 0;
+    const guildCls = pcGuildClass(card.guild);
+    d.innerHTML = `
+      <div>
+        <div class="so-name">${card.name}${card.starRating ? " " + card.starRating : ""}</div>
+        <div class="so-meta">${card.wageTier} tier · ${pcFormatCastTime(card.castTime)}</div>
+      </div>
+      <div class="so-stats">${stock}/${potency}</div>
+      <div class="so-guild ${guildCls}">${card.guild}</div>
+    `;
+  }
+  d.onclick = () => pcOpenShowOffDetail(card);
+  return d;
+}
+
+function pcOpenShowOffDetail(card){
+  const panel = document.getElementById("so-detail-panel");
+  const root = document.getElementById("so-detail");
+  if (!panel || !root) return;
+  const keywordDefs = (card.keywords || [])
+    .map((k) => {
+      const def = E.getKeywordDefinition ? E.getKeywordDefinition(k.name) : null;
+      const label = k.count != null ? `${k.name} x${k.count}` : k.name;
+      const text = def && def.player ? def.player : "";
+      return `<div class="so-dkw"><b>${label}:</b> ${text}</div>`;
+    })
+    .join("");
+  let statsBlock = "";
+  if (card.kind === "hireling") {
+    const slots = card.potions || [];
+    const s0 = slots[0] ? `${slots[0].stock}/${slots[0].potency}` : "—";
+    const s1 = slots[1] ? ` · Potion 2: ${slots[1].stock}/${slots[1].potency}` : "";
+    statsBlock = `<div class="so-dstats">Potion 1: ${s0}${s1}</div>`;
+  }
+  panel.innerHTML = `
+    <div class="so-dh">${card.name}${card.starRating ? " " + card.starRating : ""}</div>
+    <div class="so-dm">${card.kind === "spell" ? "Spell" : `${card.guild} · ${card.wageTier} tier · ${pcFormatCastTime(card.castTime)}`}</div>
+    ${statsBlock}
+    ${card.abilityText ? `<div class="so-dability">${card.abilityText}</div>` : ""}
+    ${keywordDefs}
+    <button class="btn btn-sm so-dclose" onclick="pcCloseShowOffDetail()">Close</button>
+  `;
+  root.style.display = "flex";
+}
+window.pcOpenShowOffDetail = pcOpenShowOffDetail;
+
+function pcCloseShowOffDetail(){
+  const root = document.getElementById("so-detail");
+  if (root) root.style.display = "none";
+}
+window.pcCloseShowOffDetail = pcCloseShowOffDetail;
 
 function pcRenderLeaderboard(){
   const table = document.getElementById("lb-table");
