@@ -317,9 +317,9 @@ Hireling row columns: `Guild, Name, Wage Tier, Round Available, Pool Count, Poti
 
 Patch notes are tracked in `src/patch-notes.ts`. Versions follow `V0.0.X-alpha` format, incrementing to 100 before becoming `V0.1.0-alpha`.
 
-## 11-Phase Rollout Plan
+## 11-Phase Rollout Plan (complete)
 
-The full-game build is split into 11 bite-sized phases. Each phase is small enough to complete in a single session without timing out.
+The core game build was split into 11 bite-sized phases, all shipped:
 
 1. **Core Data & Keywords** — load card CSV, define all keywords.
 2. **Economy System** — gold, wages, payday escalation.
@@ -332,6 +332,24 @@ The full-game build is split into 11 bite-sized phases. Each phase is small enou
 9. **Charmed Hireling** — merge mechanic, charm cards.
 10. **Round Structure** — full 15-round game loop.
 11. **Export Button** — admin tool.
+
+## 13-Phase Rollout Plan — Part 2
+
+The second rollout fills in mechanics and hirelings that the core build stubbed or skipped. Same rule as Part 1: one phase per session, patch notes updated on completion.
+
+1. **Bewitch primitive** — focus-axis burst + per-customer focus lock (max 2 at once). Wire the simple cases: Candied Witch (Bewitch one customer), Queen's Bewitch clause, Masked Minstrel primary.
+2. **Bewitch-reactive hirelings** — on top of Phase 1. Wire Lady's Maid (random ally +1 pot), Knight Errant (+3 pot if 3+ stars), Champion Knight (Nobles +2 pot), Prince (+3 self / +1 Nobles), Part-Time Potioneer (+2 pot), Squire (copy Knight Errant), Masked Minstrel (+3 stock if bought).
+3. **Sabotage primitive** — opponent cast-time mutation (+Ns to an opponent hireling until round end). Wire direct cards: Sticky Fingers (lowest opp cast), Saboteur, Highwayman's Sabotage keyword.
+4. **Sabotage-reactive hirelings** — on top of Phase 3. Wire Snitch Witch (+1 stock per ally Sabotage), Royal Advisor (Sabotage Nobles → +2 all stats), Batter Boy (+3 temp stock per opp Sabotage on you), Frosted Lookout (copy highest-pot Sugar's ability), Prince of Thieves (curse opp +3s cast).
+5. **Dual-potion data model** — `HirelingInstance` gains `potionType2`, `permanentStockBonus2`, `permanentPotencyBonus2`. `HirelingActionState` gains per-slot stock/sold/temp. Sales pick the matching slot. UI shows two potion labels per card.
+6. **Buff-event bus** — engine-level "permanent buff occurred" stream. Wire the reactive chains: Candy Architect (+2 Quickcraft per Sugar pot-buff), Court Scribe (last buff +1), Grand Vizier (copy last buff to self), Court Jester (+1 temp on any ally buff).
+7. **Action-phase targeting UI** — let the player pick a target mid-battle (or at round-start). Wire Royal Tutor (pick one ally, next action +1 all stats), Kingmaker (Nobles pot doubled), Tower Escapee (random or picked active, −1s cast this round).
+8. **Cross-player opponent effects** — engine hooks for cards that read/mutate opponent state beyond passive axes. Wire Robbin Goblin (steal +1 stock from opp lowest pot), Miss Fortune Teller (shop-start, +1 stock per customer opp won), Puss in Boots (steal 1 star from each customer).
+9. **Ambiguous abilities (design calls needed)** — wire Spare Charming (haggle-fail detection), Sugar Rush Peddler (running cast-time reduction), Muffin Man (permanent keyword-count bump), Grand Thief (trigger Knockoff outside sale), Tasting Table (customer redirection). Each may require a quick design clarification.
+10. **Weather effects** — currently just a placeholder with duration decay. Design 3–5 weather events (e.g. Rain → +1 price for Luck, Heatwave → −1s cast for Sugar) and wire axis / cast-time / stock deltas.
+11. **Map system** — each map has a fixed 5-of-7 potion set instead of the current random selection. Map picker UI on game start.
+12. **Polish pass** — missing potion flavor text for Luck / Half-Curse / Flutterfix, audio cues for cast / sale / payday, cast-fire animation pulse, admin-only gate on the Export button.
+13. **Persistent leaderboard** — replace the session-only save with localStorage or a simple backend; pull-to-refresh on the leaderboard screen.
 
 When picking up a phase, keep the change surface scoped to that phase only and update patch notes on completion.
 
