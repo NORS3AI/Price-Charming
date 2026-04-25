@@ -25,9 +25,9 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 .screen.active{display:flex}
 
 /* TITLE */
-#title-screen{align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at center,var(--purple),var(--deep) 70%)}
+#title-screen{align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at center,var(--purple),var(--deep) 70%);padding-top:2.5rem}
 #title-screen h1{font-size:3.5rem;color:var(--gold);text-shadow:0 0 30px rgba(212,168,67,.4);letter-spacing:.08em;margin-bottom:.5rem}
-#title-logo{max-width:400px;width:80%;margin-bottom:1rem;border-radius:12px;animation:logoGlow 3s ease-in-out infinite;position:relative}
+#title-logo{max-width:400px;width:80%;margin-top:1rem;margin-bottom:1rem;border-radius:12px;animation:logoGlow 3s ease-in-out infinite;position:relative}
 @keyframes logoGlow{0%,100%{box-shadow:0 0 20px rgba(138,74,170,.5),0 0 40px rgba(138,74,170,.4),0 0 80px rgba(138,74,170,.25);filter:drop-shadow(0 0 15px rgba(138,74,170,.4))}50%{box-shadow:0 0 40px rgba(180,100,220,.8),0 0 80px rgba(180,100,220,.6),0 0 130px rgba(180,100,220,.4);filter:drop-shadow(0 0 30px rgba(180,100,220,.6))}}
 .sub{color:var(--parch-d);font-style:italic;font-size:1.1rem;margin-bottom:1.5rem}
 .ver{background:var(--gold-dim);color:var(--deep);padding:.25rem 1rem;border-radius:1rem;font-size:.8rem;font-weight:bold;margin-bottom:1.5rem;display:inline-block}
@@ -850,6 +850,16 @@ window.showScreen = showScreen;
 // (The old inline script is gone; these no-ops keep click handlers
 // from throwing if the user clicks a legacy button.)
 window.openSettingsFromShop = function(){ showScreen("settings-screen"); };
+// Settings → Back. Routes intelligently: if a game is in flight (any
+// non-terminal phase), return to it; otherwise the player came in from
+// the title menu, so back to the title.
+window.leaveSettings = function(){
+  if (typeof pcGame !== "undefined" && pcGame && pcGame.phase !== "game-over") {
+    showScreen("game-screen");
+  } else {
+    showScreen("title-screen");
+  }
+};
 window.closeReport = function(){ const o = $("report-overlay"); if (o) o.style.display = "none"; };
 window.cancelModal  = function(){ const o = $("modal-overlay");  if (o) o.style.display = "none"; };
 window.openReport   = function(){};

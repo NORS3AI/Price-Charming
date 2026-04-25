@@ -1,5 +1,14 @@
 [
   {
+    "version": "V0.3.3-alpha",
+    "date": "2026-04-21",
+    "title": "Title-screen breathing room + Settings Back fix",
+    "changes": [
+      "Title screen: added padding above the logo so it's no longer pinned to the top edge.",
+      "Settings → Back: was a no-op because `leaveSettings()` was referenced in the HTML but never defined. The function now routes intelligently — if a game is in flight, return to the game screen; otherwise back to the title menu."
+    ]
+  },
+  {
     "version": "V0.3.2-alpha",
     "date": "2026-04-21",
     "title": "Tutorial back + Sandbox retired",
