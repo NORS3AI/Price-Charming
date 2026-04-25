@@ -106,6 +106,15 @@ export type ActionLogEntry =
       atSeconds: number;
     }
   | {
+      kind: "sabotage";
+      casterId: string;
+      /** Instance id of the opponent hireling whose cast is slowed. */
+      targetInstanceId: string;
+      /** Seconds added to that opponent hireling's next cast timer. */
+      secondsAdded: number;
+      atSeconds: number;
+    }
+  | {
       kind: "weather-started";
       weatherId: string;
       atSeconds: number;

@@ -63,6 +63,7 @@ var PriceCharming = (() => {
     PRICE_BRACKETS: () => PRICE_BRACKETS,
     REPUTATION_MAX: () => REPUTATION_MAX,
     REPUTATION_MIN: () => REPUTATION_MIN,
+    SABOTAGE_DEFAULT_SECONDS: () => SABOTAGE_DEFAULT_SECONDS,
     SELL_VALUE: () => SELL_VALUE,
     SPRING_CLEANING_ID: () => SPRING_CLEANING_ID,
     SPRING_CLEANING_UPGRADED_ID: () => SPRING_CLEANING_UPGRADED_ID,
@@ -1961,6 +1962,64 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   }
   var BEWITCH_FOCUS_BURST = 40;
   var MAX_BEWITCH_LEVEL = 2;
+  var SABOTAGE_DEFAULT_SECONDS = 1;
+  function sabotageSecondsFor(inst) {
+    var _a;
+    const k = inst.card.keywords.find((x) => x.name === "Sabotage");
+    if (!k) return 0;
+    return (_a = k.count) != null ? _a : SABOTAGE_DEFAULT_SECONDS;
+  }
+  function pickSabotageTarget(state, caster, rng) {
+    if (!state.opponent) return null;
+    const candidates = activeHirelings(state.opponent.board);
+    if (candidates.length === 0) return null;
+    switch (caster.card.id) {
+      case "sticky-fingers": {
+        let best = null;
+        let bestSeconds = Infinity;
+        for (const h of candidates) {
+          const seconds = castTimeForTargeting(h);
+          if (seconds < bestSeconds) {
+            best = h;
+            bestSeconds = seconds;
+          }
+        }
+        return best;
+      }
+      default:
+        return candidates[Math.floor(rng() * candidates.length)];
+    }
+  }
+  function castTimeForTargeting(inst) {
+    const ct = inst.card.castTime;
+    switch (ct.kind) {
+      case "passive":
+        return Infinity;
+      case "seconds":
+        return ct.value;
+      case "decreasing":
+        return ct.start;
+      case "random":
+        return ct.max;
+    }
+  }
+  function applySabotage(state, caster, atSeconds, rng) {
+    const seconds = sabotageSecondsFor(caster);
+    if (seconds <= 0) return state;
+    const target = pickSabotageTarget(state, caster, rng);
+    if (!target) return state;
+    const log = [
+      ...state.log,
+      {
+        kind: "sabotage",
+        casterId: caster.id,
+        targetInstanceId: target.id,
+        secondsAdded: seconds,
+        atSeconds
+      }
+    ];
+    return { ...state, log };
+  }
   function pickBewitchTargets(state, caster, level) {
     const eligible = state.customers.filter(
       (cs) => cs.resolvedFor === null && !cs.bewitchedByIds.includes(caster.id)
@@ -2124,6 +2183,8 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         );
       case "the-duchess":
         return applyDuchessBuffs(state, caster, atSeconds);
+      case "sticky-fingers":
+        return addTemporaryStock(state, caster.id, 2);
       case "the-herald": {
         let working = state;
         for (const ally of activeHirelings(state.board)) {
@@ -2283,6 +2344,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
     if (hasKeyword(inst, "Bewitch")) {
       withCasterState = applyBewitch(withCasterState, inst, atSeconds, rng);
+    }
+    if (hasKeyword(inst, "Sabotage")) {
+      withCasterState = applySabotage(withCasterState, inst, atSeconds, rng);
     }
     for (const ally of activeHirelings(withCasterState.board)) {
       if (ally.id === inst.id) continue;

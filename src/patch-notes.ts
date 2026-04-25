@@ -13,6 +13,23 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.3.6-alpha",
+    date: "2026-04-21",
+    title: "Part-2 Phase 3 — Sabotage primitive",
+    changes: [
+      "Sabotage keyword now actually fires every cast: applySabotage picks one opponent active-slot hireling per the card's policy and emits a `sabotage` log entry with `targetInstanceId` + `secondsAdded`.",
+      "Per-card target picker (pickSabotageTarget) defaults to RANDOM among the opponent's active slots. Sticky Fingers overrides to pick the LOWEST base-cast-time opponent (Passive ignored, decreasing → start, random → max).",
+      "Sabotage count honored: bare Sabotage keyword adds SABOTAGE_DEFAULT_SECONDS = 1; The Saboteur's `Sabotage x2` adds 2.",
+      "Wired hirelings:",
+      "The Highwayman — Sabotage + Bewitch + Knockoff x3, all keyword-driven (Sabotage adds +1s to a random opponent on every 7s cast).",
+      "The Saboteur — Sabotage x2 + Knockoff x1 (random target, +2s). Per-card Thieves-ally cast-reduction reactive deferred to Phase 4.",
+      "Sticky Fingers — picks opponent's lowest-cast hireling (per-card override) and grants self +2 temporary stock per cast. Stacks with its Knockoff x2.",
+      "Engine doesn't simulate opponent casts (the snapshot is a passive ghost), so the slowdown is consumed by the UI's visual `pcOppAction`: pcBattleTick now scans new sabotage log entries since the last frame and extends the matching opponent hireling's `nextCastIn` by `secondsAdded`. Player sees the cast bar visibly slow.",
+      "Battle log surfaces sabotage entries as `sabotage: caster → target (+Ns cast)`.",
+      "7 new tests in sabotage.test.ts: keyword fires/no-fires, count override, lowest-cast targeting, random determinism across seeds, multi-cast scaling. 449 → 456 tests.",
+    ],
+  },
+  {
     version: "V0.3.5-alpha",
     date: "2026-04-21",
     title: "Shop scroll lock + target-spell click-through",

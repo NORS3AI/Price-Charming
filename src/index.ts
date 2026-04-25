@@ -254,6 +254,7 @@ export type {
 export {
   BEWITCH_FOCUS_BURST,
   MAX_BEWITCH_LEVEL,
+  SABOTAGE_DEFAULT_SECONDS,
   addCustomer,
   applyEndOfRoundHooks,
   finalizeRound,

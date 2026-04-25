@@ -574,6 +574,110 @@ export const BEWITCH_FOCUS_BURST = 40;
 export const MAX_BEWITCH_LEVEL = 2;
 
 /**
+ * Default seconds added to an opponent hireling's next cast on a
+ * keyword Sabotage cast. Cards can override via `Sabotage xN` (e.g.
+ * The Saboteur's Sabotage x2 → +2s).
+ */
+export const SABOTAGE_DEFAULT_SECONDS = 1;
+
+/**
+ * Resolve a numeric value from the Sabotage keyword's count. Default
+ * (count not specified) → SABOTAGE_DEFAULT_SECONDS.
+ */
+function sabotageSecondsFor(inst: HirelingInstance): number {
+  const k = inst.card.keywords.find((x) => x.name === "Sabotage");
+  if (!k) return 0;
+  return k.count ?? SABOTAGE_DEFAULT_SECONDS;
+}
+
+/**
+ * Pick which opponent hireling this caster should sabotage. Default =
+ * a random ACTIVE-slot opponent hireling. Some cards override via the
+ * card.id switch:
+ *
+ *   - sticky-fingers: "opponent's lowest cast time hireling" — picks
+ *     the active opponent with the smallest base seconds (Passive →
+ *     skipped; decreasing → start value; random → max).
+ *
+ * Returns null when the opponent board has no active hirelings.
+ */
+function pickSabotageTarget(
+  state: ActionState,
+  caster: HirelingInstance,
+  rng: RNG
+): HirelingInstance | null {
+  if (!state.opponent) return null;
+  const candidates = activeHirelings(state.opponent.board);
+  if (candidates.length === 0) return null;
+  switch (caster.card.id) {
+    case "sticky-fingers": {
+      let best: HirelingInstance | null = null;
+      let bestSeconds = Infinity;
+      for (const h of candidates) {
+        const seconds = castTimeForTargeting(h);
+        if (seconds < bestSeconds) {
+          best = h;
+          bestSeconds = seconds;
+        }
+      }
+      return best;
+    }
+    default:
+      return candidates[Math.floor(rng() * candidates.length)];
+  }
+}
+
+/**
+ * Convert a card's CastTime variant into a single seconds value used
+ * for target-picking decisions. Passive → Infinity (so it sorts last
+ * for "lowest cast time" pickers). Decreasing → its starting value.
+ * Random → its max (worst-case so we don't favor random-cast cards
+ * unfairly when picking "lowest").
+ */
+function castTimeForTargeting(inst: HirelingInstance): number {
+  const ct = inst.card.castTime;
+  switch (ct.kind) {
+    case "passive": return Infinity;
+    case "seconds": return ct.value;
+    case "decreasing": return ct.start;
+    case "random": return ct.max;
+  }
+}
+
+/**
+ * Apply a Sabotage cast: pick an opponent hireling per card policy and
+ * emit a `sabotage` log entry recording the +N seconds. The engine
+ * itself doesn't simulate opponent casts (the opponent is a passive
+ * snapshot whose contributions come from `computePassiveContribution`),
+ * so the slowdown is consumed by the UI's visual `pcOppAction` to
+ * extend the opponent's on-screen cast bar. Phase-4 reactives (Snitch
+ * Witch, The Saboteur's per-success Thieves buff) listen for these
+ * log entries.
+ */
+function applySabotage(
+  state: ActionState,
+  caster: HirelingInstance,
+  atSeconds: number,
+  rng: RNG
+): ActionState {
+  const seconds = sabotageSecondsFor(caster);
+  if (seconds <= 0) return state;
+  const target = pickSabotageTarget(state, caster, rng);
+  if (!target) return state;
+  const log: ActionLogEntry[] = [
+    ...state.log,
+    {
+      kind: "sabotage",
+      casterId: caster.id,
+      targetInstanceId: target.id,
+      secondsAdded: seconds,
+      atSeconds,
+    },
+  ];
+  return { ...state, log };
+}
+
+/**
  * Per-card Bewitch target picker. Default = first N unresolved
  * customers this caster hasn't already tagged. Some cards override:
  *
@@ -807,6 +911,13 @@ function applyPostCastAbility(
       //  permanent potency." Self-buff clause requires a Nobles ally on
       //  both sides.
       return applyDuchessBuffs(state, caster, atSeconds);
+    case "sticky-fingers":
+      // "Knockoff x2. Sabotage opponent's lowest cast time hireling.
+      //  Gain +2 temporary stock." The Sabotage portion is handled by
+      //  the Sabotage keyword via applySabotage (target picker keys
+      //  off card.id "sticky-fingers" to pick lowest-cast opponent).
+      //  This case wires only the +2 temp stock on the caster.
+      return addTemporaryStock(state, caster.id, 2);
     case "the-herald": {
       // "All Nobles Guild allies gain +1 temporary stock." (Per cast.)
       let working = state;
@@ -1045,6 +1156,14 @@ function fireCast(
   // follow-up.
   if (hasKeyword(inst, "Bewitch")) {
     withCasterState = applyBewitch(withCasterState, inst, atSeconds, rng);
+  }
+  // Sabotage keyword fires after every cast — picks an opponent
+  // hireling (random by default; per-card policy via
+  // pickSabotageTarget) and emits a `sabotage` log entry adding +N
+  // seconds to that hireling's next cast. Phase-4 reactives (Snitch
+  // Witch, The Saboteur's Thieves buff) listen for these.
+  if (hasKeyword(inst, "Sabotage")) {
+    withCasterState = applySabotage(withCasterState, inst, atSeconds, rng);
   }
   // Reactive hook for OTHER active allies (e.g. Apprentice Baker: +1
   // temp stock whenever an ally uses Quickcraft).

@@ -744,7 +744,7 @@ body.pc-dragging .pc-board{outline:2px dashed var(--gold);outline-offset:4px;bor
 <div class="tooltip" id="tooltip"></div>
 <div class="modal-overlay" id="report-overlay" onclick="closeReport()"><div class="modal-box" onclick="event.stopPropagation()"><h2>Last Round Report</h2><div id="report-content"></div><div style="margin-top:1rem"><button class="btn btn-sm" onclick="closeReport()">Close</button></div></div></div>
 <div class="modal-overlay" id="modal-overlay" onclick="cancelModal()"><div class="modal-box" onclick="event.stopPropagation()"><h2 id="modal-title"></h2><p id="modal-desc"></p><div id="modal-choices"></div><button class="btn btn-sm btn-danger" onclick="cancelModal()">Cancel</button></div></div>
-<script src="engine.js?v=f168d9a816"></script>
+<script src="engine.js?v=647963509b"></script>
 <script>
 "use strict";
 // ==============================================================
@@ -768,6 +768,7 @@ let pcDrag = null;                 // { source: "board"|"hand"|"shop", index: nu
 let pcStarPowerCharges = 0;        // Star Power: next N customer spawns get +1 rep
 let pcStarPowerCastThisShop = false; // Star Power can only be cast once per shop phase
 let pcFreeRefreshPending = false;  // Talent Scout: next refresh is free
+let pcLastSabotageIdx = 0;         // index of last sabotage log entry processed by the visual opponent state
 
 // --- Show Off: player card collection ------------------------------
 // Persists the set of card ids the player has ever had in their hand
@@ -922,6 +923,32 @@ function pcStartGame(diff){
   pcScanCollection();
   showScreen("game-screen");
   pcRender();
+}
+
+// Walk the player's action log for any new `sabotage` entries since
+// the last visual tick and extend the matching opponent hireling's
+// nextCastIn by `secondsAdded`. The engine emits these but doesn't
+// simulate opponent casts, so the visual pcOppAction is the only
+// place a sabotage actually shows up.
+function pcApplyPendingSabotages(oppState){
+  if (!oppState || !pcGame || !pcGame.action) return oppState;
+  const log = pcGame.action.log || [];
+  if (pcLastSabotageIdx >= log.length) return oppState;
+  let states = oppState.hirelingStates;
+  let dirty = false;
+  for (let i = pcLastSabotageIdx; i < log.length; i++) {
+    const e = log[i];
+    if (!e || e.kind !== "sabotage") continue;
+    const hs = states.get(e.targetInstanceId);
+    if (!hs || hs.nextCastIn === null) continue; // passive / stopped — no-op
+    if (!dirty) { states = new Map(states); dirty = true; }
+    states.set(e.targetInstanceId, {
+      ...hs,
+      nextCastIn: hs.nextCastIn + e.secondsAdded,
+    });
+  }
+  pcLastSabotageIdx = log.length;
+  return dirty ? { ...oppState, hirelingStates: states } : oppState;
 }
 
 // -- opponent AI -----------------------------------------------------
@@ -1509,6 +1536,7 @@ function pcRenderLog(){
       case "quickcraft": return `${t} quickcraft on ${e.instanceId} +${e.stockAdded}`;
       case "knockoff": return `${t} knockoff ${e.instanceId} +${e.stockGained}`;
       case "bewitch": return `${t} bewitch: ${e.casterId} → ${e.customerIds.join(", ")} (+${e.focusBurst} focus)`;
+      case "sabotage": return `${t} sabotage: ${e.casterId} → ${e.targetInstanceId} (+${e.secondsAdded}s cast)`;
       case "ability-buff": {
         const bits = [];
         if (e.stockGained) bits.push(`+${e.stockGained} stock`);
@@ -2034,6 +2062,7 @@ function pcStartBattle(){
       pcGame.opponent.activePotionTypes,
       pcOppRng
     );
+    pcLastSabotageIdx = 0; // reset sabotage cursor for the new round
   } else {
     pcOppAction = null;
     pcOppRng = null;
@@ -2075,6 +2104,11 @@ function pcBattleTick(){
   if (pcOppAction && pcOppRng) {
     try { pcOppAction = E.tick(pcOppAction, 0.1, pcOppRng); }
     catch (_) { /* non-fatal — just skip this frame's opponent tick */ }
+    // Consume new sabotage log entries from the player tick. The
+    // engine emits a `sabotage` entry per cast of a Sabotage hireling
+    // but doesn't simulate opponent casts — extend the visual
+    // pcOppAction timer here so the cast bar visibly slows.
+    pcOppAction = pcApplyPendingSabotages(pcOppAction);
   }
 
   pcRender();
