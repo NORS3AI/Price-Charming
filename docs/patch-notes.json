@@ -1,5 +1,14 @@
 [
   {
+    "version": "V0.3.5-alpha",
+    "date": "2026-04-21",
+    "title": "Shop scroll lock + target-spell click-through",
+    "changes": [
+      "Shop phase: scrolling down to view spells / hand / payday no longer snaps back to the top on every UI update. `pcRender` now caches `window.scrollY` before each rebuild and restores it after the sub-renders finish, so price-tweaks and other in-place mutations don't clamp scroll to 0.",
+      "Target spells (Bottomless Bottle, Potion Polish, Lucky Charm): the dim overlay was `z-index: 200` covering the whole screen, which silently swallowed every click on a hireling — the spell appeared frozen because the click was hitting the overlay's `onclick=pcCancelTarget`. Overlay is now `pointer-events: none` (still dims the screen) with `pointer-events: auto` on the message box (so Cancel works), and targetable slot cards get `z-index: 201` so they sit above the dim AND receive the click. Cancel-by-clicking-outside-the-box is replaced by the explicit Cancel button — both intents covered."
+    ]
+  },
+  {
     "version": "V0.3.4-alpha",
     "date": "2026-04-21",
     "title": "Part-2 Phase 2 — Bewitch-reactive hirelings",

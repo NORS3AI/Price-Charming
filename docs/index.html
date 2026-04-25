@@ -702,10 +702,10 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 #pc-round-end{padding:1rem;background:rgba(0,0,0,.3);border:1px solid var(--gold);border-radius:8px;text-align:center}
 #pc-round-end h2{color:var(--gold);margin-bottom:.75rem}
 #pc-round-end-body{margin-bottom:1rem;color:var(--parch)}
-#pc-target-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center}
-#pc-target-box{background:var(--deep);padding:1.5rem 2rem;border:2px solid var(--gold);border-radius:10px;color:var(--parch);max-width:26rem;text-align:center}
+#pc-target-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding-top:4rem;pointer-events:none}
+#pc-target-box{background:var(--deep);padding:1rem 1.5rem;border:2px solid var(--gold);border-radius:10px;color:var(--parch);max-width:26rem;text-align:center;pointer-events:auto}
 #pc-target-msg{margin-bottom:.75rem;font-size:1rem}
-.pc-slot.pc-targetable{outline:3px solid gold;cursor:pointer}
+.pc-slot.pc-targetable{outline:3px solid gold;cursor:pointer;position:relative;z-index:201;background:var(--parch)}
 .pc-slot{position:relative}
 .pc-slot-tooltip{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:.35rem;z-index:120;width:15rem;background:var(--deep);color:var(--parch);border:1px solid var(--gold);border-radius:6px;padding:.5rem .6rem;box-shadow:0 6px 18px rgba(0,0,0,.5);text-align:left;pointer-events:none;font-size:.72rem;line-height:1.3}
 .pc-slot:hover .pc-slot-tooltip{display:block}
@@ -1523,6 +1523,13 @@ function pcRenderLog(){
 
 function pcRender(){
   if (!pcGame) return;
+  // Preserve scroll across the rebuild. Every sub-render zeroes its
+  // container's innerHTML which briefly collapses page height and lets
+  // the browser clamp scroll back to 0. Cache scrollY first, restore
+  // after the DOM settles. Without this, scrolling down to view the
+  // hand/spells in the shop "snapped back" on every price tweak.
+  const prevScrollY = window.scrollY || window.pageYOffset || 0;
+
   $("pc-round").textContent = pcGame.round;
   $("pc-gold").textContent = pcGame.gold;
   $("pc-rep").textContent = pcGame.reputation;
@@ -1555,6 +1562,8 @@ function pcRender(){
     pcRenderCustomers();
     pcRenderLog();
   }
+
+  if (prevScrollY > 0) window.scrollTo(0, prevScrollY);
 }
 
 // --- shop actions ---------------------------------------------------
