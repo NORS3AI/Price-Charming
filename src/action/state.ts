@@ -574,26 +574,56 @@ export const BEWITCH_FOCUS_BURST = 40;
 export const MAX_BEWITCH_LEVEL = 2;
 
 /**
- * Apply a Bewitch cast: pick up to `caster.bewitchLevel` unresolved
- * customers that this caster hasn't already Bewitched, push their focus
- * axis +BEWITCH_FOCUS_BURST toward the player, and tag them with this
- * caster's id. Emits a "bewitch" log entry.
+ * Per-card Bewitch target picker. Default = first N unresolved
+ * customers this caster hasn't already tagged. Some cards override:
+ *
+ *   - champion-knight / the-prince: "Bewitch the highest reputation
+ *     customer only." → pick the unresolved customer with the highest
+ *     reputationStars (ties broken by first-seen order).
+ */
+function pickBewitchTargets(
+  state: ActionState,
+  caster: HirelingInstance,
+  level: number
+): CustomerState[] {
+  const eligible = state.customers.filter(
+    (cs) => cs.resolvedFor === null && !cs.bewitchedByIds.includes(caster.id)
+  );
+  switch (caster.card.id) {
+    case "the-champion-knight":
+    case "the-prince": {
+      // Highest-rep customer only; per-card text says "only", so cap at 1.
+      let best: CustomerState | null = null;
+      for (const cs of eligible) {
+        if (!best || cs.customer.reputationStars > best.customer.reputationStars) {
+          best = cs;
+        }
+      }
+      return best ? [best] : [];
+    }
+    default:
+      return eligible.slice(0, level);
+  }
+}
+
+/**
+ * Apply a Bewitch cast: pick targets via the per-card picker, push
+ * their focus axis +BEWITCH_FOCUS_BURST toward the player, and tag
+ * them with this caster's id. Emits a "bewitch" log entry. Then fires
+ * the per-card on-own-Bewitch-success hook for cards whose ability
+ * triggers when the Bewitch lands (Lady's Maid, Knight Errant,
+ * Part-Time Potioneer, Squire).
  */
 function applyBewitch(
   state: ActionState,
   caster: HirelingInstance,
-  atSeconds: number
+  atSeconds: number,
+  rng: RNG
 ): ActionState {
   const casterHs = state.hirelingStates.get(caster.id);
   if (!casterHs) return state;
   const level = Math.min(MAX_BEWITCH_LEVEL, casterHs.bewitchLevel ?? 1);
-  const targets: CustomerState[] = [];
-  for (const cs of state.customers) {
-    if (targets.length >= level) break;
-    if (cs.resolvedFor !== null) continue;
-    if (cs.bewitchedByIds.includes(caster.id)) continue;
-    targets.push(cs);
-  }
+  const targets = pickBewitchTargets(state, caster, level);
   if (targets.length === 0) return state;
 
   const targetIdSet = new Set(targets.map((cs) => cs.customer.id));
@@ -623,7 +653,106 @@ function applyBewitch(
       atSeconds,
     },
   ];
-  return { ...state, customers, log };
+  let working: ActionState = { ...state, customers, log };
+  // Per-card on-own-Bewitch-success reactive hook.
+  working = applyOnOwnBewitchSuccess(working, caster, targets, atSeconds, rng);
+  return working;
+}
+
+/**
+ * Per-card hook fired after this hireling's own Bewitch successfully
+ * tags ≥1 customer. Can read the targeted customer(s) for conditional
+ * effects (e.g. Knight Errant's "if 3+ stars").
+ *
+ *   - lady-s-maid:           random ally +1 permanent potency.
+ *   - knight-errant:         self +3 permanent potency if any tagged
+ *                            customer has >= 3 reputation stars.
+ *   - part-time-potioneer:   self +2 permanent potency.
+ *   - the-squire:            if a Knight Errant is on an active slot
+ *                            (spec: "adjacent" — relaxed to "anywhere
+ *                            on the active row" for now), copy the
+ *                            Knight Errant action: +3 self pot if a
+ *                            tagged customer has 3+ stars.
+ */
+function applyOnOwnBewitchSuccess(
+  state: ActionState,
+  caster: HirelingInstance,
+  targets: readonly CustomerState[],
+  atSeconds: number,
+  rng: RNG
+): ActionState {
+  switch (caster.card.id) {
+    case "ladys-maid": {
+      const allies = activeHirelings(state.board).filter(
+        (h) => h.id !== caster.id && h.card.id !== "dusty-broom"
+      );
+      if (allies.length === 0) return state;
+      const ally = allies[Math.floor(rng() * allies.length)];
+      return buffHireling(state, caster.id, ally.id, 0, 1, atSeconds);
+    }
+    case "knight-errant": {
+      const high = targets.find((cs) => cs.customer.reputationStars >= 3);
+      if (!high) return state;
+      return buffHireling(state, caster.id, caster.id, 0, 3, atSeconds);
+    }
+    case "part-time-potioneer":
+      return buffHireling(state, caster.id, caster.id, 0, 2, atSeconds);
+    case "the-squire": {
+      const knightOnBoard = activeHirelings(state.board).some(
+        (h) => h.card.id === "knight-errant"
+      );
+      if (!knightOnBoard) return state;
+      const high = targets.find((cs) => cs.customer.reputationStars >= 3);
+      if (!high) return state;
+      return buffHireling(state, caster.id, caster.id, 0, 3, atSeconds);
+    }
+    default:
+      return state;
+  }
+}
+
+/**
+ * Per-bewitcher hook fired inside executeSale once a Bewitched
+ * customer's sale commits. Runs ONCE per bewitcher in the customer's
+ * `bewitchedByIds` list. The seller may or may not be the bewitcher.
+ *
+ *   - champion-knight: all Nobles Guild allies +2 permanent potency.
+ *   - the-prince:      self +3 permanent potency, all Nobles allies
+ *                      +1 permanent potency.
+ *   - masked-minstrel: gain +3 permanent stock INSTEAD of gold (gold
+ *                      from this sale is reversed).
+ */
+function applyOnBewitchedCustomerSale(
+  state: ActionState,
+  bewitcher: HirelingInstance,
+  seller: HirelingInstance,
+  goldFromThisSale: number,
+  atSeconds: number
+): ActionState {
+  switch (bewitcher.card.id) {
+    case "the-champion-knight":
+      return buffActiveAllies(state, bewitcher, 0, 2, atSeconds, (h) =>
+        h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
+      );
+    case "the-prince": {
+      let working = buffHireling(state, bewitcher.id, bewitcher.id, 0, 3, atSeconds);
+      working = buffActiveAllies(working, bewitcher, 0, 1, atSeconds, (h) =>
+        h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
+      );
+      return working;
+    }
+    case "masked-minstrel": {
+      // "gain +3 permanent stock instead of gold" — only fires when
+      // Masked Minstrel itself is the seller (otherwise the customer
+      // bewitched by the minstrel might be sold to by some OTHER
+      // hireling; the spec ties the swap to the minstrel's own sale).
+      if (seller.id !== bewitcher.id) return state;
+      const reversed: ActionState = { ...state, gold: state.gold - goldFromThisSale };
+      return buffHireling(reversed, bewitcher.id, bewitcher.id, 3, 0, atSeconds);
+    }
+    default:
+      return state;
+  }
 }
 
 function applyPostCastAbility(
@@ -915,7 +1044,7 @@ function fireCast(
   // and tags them so a later sale can trigger the +1 bewitchLevel
   // follow-up.
   if (hasKeyword(inst, "Bewitch")) {
-    withCasterState = applyBewitch(withCasterState, inst, atSeconds);
+    withCasterState = applyBewitch(withCasterState, inst, atSeconds, rng);
   }
   // Reactive hook for OTHER active allies (e.g. Apprentice Baker: +1
   // temp stock whenever an ally uses Quickcraft).
@@ -1365,6 +1494,24 @@ function executeSale(
   for (const ally of activeHirelings(state.board)) {
     if (ally.id === hireling.id) continue;
     working = applyOnAllySaleAbility(working, ally, hireling, state.elapsedSeconds);
+  }
+
+  // Bewitched-customer-buy reactive: for each hireling that previously
+  // Bewitched this customer, fire its on-buy effect (Champion Knight
+  // / Prince / Masked Minstrel). Looks up the bewitcher in the active
+  // hirelings list — bewitchers that have left the board (sold off
+  // mid-round, but the board is locked, so this never happens) are
+  // simply skipped.
+  for (const bewitcherId of customerState.bewitchedByIds) {
+    const bewitcher = activeHirelings(state.board).find((h) => h.id === bewitcherId);
+    if (!bewitcher) continue;
+    working = applyOnBewitchedCustomerSale(
+      working,
+      bewitcher,
+      hireling,
+      goldEarned,
+      state.elapsedSeconds
+    );
   }
 
   return working;

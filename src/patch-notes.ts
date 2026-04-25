@@ -13,6 +13,24 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.3.4-alpha",
+    date: "2026-04-21",
+    title: "Part-2 Phase 2 — Bewitch-reactive hirelings",
+    changes: [
+      "Two new event hooks built on top of Phase 1's Bewitch primitive: applyOnOwnBewitchSuccess fires when a hireling's Bewitch tags ≥1 customer; applyOnBewitchedCustomerSale fires inside executeSale once for each bewitcher of the buying customer.",
+      "Per-card target picker pickBewitchTargets lets specific cards override the default \"first N unresolved\" logic. Champion Knight and The Prince now correctly target only the HIGHEST-reputation unresolved customer.",
+      "Wired hirelings:",
+      "Lady's Maid — random ally +1 permanent potency on Bewitch success (RNG threaded through fireCast).",
+      "Knight Errant — self +3 permanent potency only when the Bewitched customer has >= 3 reputation stars.",
+      "Part-Time Potioneer — self +2 permanent potency on Bewitch success.",
+      "The Squire — copies Knight Errant's reactive: if a Knight Errant is on an active slot AND a tagged customer has 3+ stars, Squire gains +3 permanent potency. (Cast-time copy deferred — would need an effectiveCastTime override.)",
+      "Champion Knight — targets only the highest-rep customer; on that customer's purchase, all Nobles Guild allies gain +2 permanent potency.",
+      "The Prince — targets only the highest-rep customer; on purchase, self +3 permanent potency, all Nobles Guild allies +1 permanent potency.",
+      "Masked Minstrel — when its Bewitched customer buys (and Masked Minstrel is the seller), reverses the gold from that sale and grants +3 permanent stock instead. Stacks with Knockoff x2.",
+      "8 new tests cover each card. 441 → 449 tests.",
+    ],
+  },
+  {
     version: "V0.3.3-alpha",
     date: "2026-04-21",
     title: "Title-screen breathing room + Settings Back fix",

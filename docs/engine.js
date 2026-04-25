@@ -1961,18 +1961,31 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   }
   var BEWITCH_FOCUS_BURST = 40;
   var MAX_BEWITCH_LEVEL = 2;
-  function applyBewitch(state, caster, atSeconds) {
+  function pickBewitchTargets(state, caster, level) {
+    const eligible = state.customers.filter(
+      (cs) => cs.resolvedFor === null && !cs.bewitchedByIds.includes(caster.id)
+    );
+    switch (caster.card.id) {
+      case "the-champion-knight":
+      case "the-prince": {
+        let best = null;
+        for (const cs of eligible) {
+          if (!best || cs.customer.reputationStars > best.customer.reputationStars) {
+            best = cs;
+          }
+        }
+        return best ? [best] : [];
+      }
+      default:
+        return eligible.slice(0, level);
+    }
+  }
+  function applyBewitch(state, caster, atSeconds, rng) {
     var _a;
     const casterHs = state.hirelingStates.get(caster.id);
     if (!casterHs) return state;
     const level = Math.min(MAX_BEWITCH_LEVEL, (_a = casterHs.bewitchLevel) != null ? _a : 1);
-    const targets = [];
-    for (const cs of state.customers) {
-      if (targets.length >= level) break;
-      if (cs.resolvedFor !== null) continue;
-      if (cs.bewitchedByIds.includes(caster.id)) continue;
-      targets.push(cs);
-    }
+    const targets = pickBewitchTargets(state, caster, level);
     if (targets.length === 0) return state;
     const targetIdSet = new Set(targets.map((cs) => cs.customer.id));
     const customers = state.customers.map((cs) => {
@@ -2001,7 +2014,71 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         atSeconds
       }
     ];
-    return { ...state, customers, log };
+    let working = { ...state, customers, log };
+    working = applyOnOwnBewitchSuccess(working, caster, targets, atSeconds, rng);
+    return working;
+  }
+  function applyOnOwnBewitchSuccess(state, caster, targets, atSeconds, rng) {
+    switch (caster.card.id) {
+      case "ladys-maid": {
+        const allies = activeHirelings(state.board).filter(
+          (h) => h.id !== caster.id && h.card.id !== "dusty-broom"
+        );
+        if (allies.length === 0) return state;
+        const ally = allies[Math.floor(rng() * allies.length)];
+        return buffHireling(state, caster.id, ally.id, 0, 1, atSeconds);
+      }
+      case "knight-errant": {
+        const high = targets.find((cs) => cs.customer.reputationStars >= 3);
+        if (!high) return state;
+        return buffHireling(state, caster.id, caster.id, 0, 3, atSeconds);
+      }
+      case "part-time-potioneer":
+        return buffHireling(state, caster.id, caster.id, 0, 2, atSeconds);
+      case "the-squire": {
+        const knightOnBoard = activeHirelings(state.board).some(
+          (h) => h.card.id === "knight-errant"
+        );
+        if (!knightOnBoard) return state;
+        const high = targets.find((cs) => cs.customer.reputationStars >= 3);
+        if (!high) return state;
+        return buffHireling(state, caster.id, caster.id, 0, 3, atSeconds);
+      }
+      default:
+        return state;
+    }
+  }
+  function applyOnBewitchedCustomerSale(state, bewitcher, seller, goldFromThisSale, atSeconds) {
+    switch (bewitcher.card.id) {
+      case "the-champion-knight":
+        return buffActiveAllies(
+          state,
+          bewitcher,
+          0,
+          2,
+          atSeconds,
+          (h) => h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
+        );
+      case "the-prince": {
+        let working = buffHireling(state, bewitcher.id, bewitcher.id, 0, 3, atSeconds);
+        working = buffActiveAllies(
+          working,
+          bewitcher,
+          0,
+          1,
+          atSeconds,
+          (h) => h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
+        );
+        return working;
+      }
+      case "masked-minstrel": {
+        if (seller.id !== bewitcher.id) return state;
+        const reversed = { ...state, gold: state.gold - goldFromThisSale };
+        return buffHireling(reversed, bewitcher.id, bewitcher.id, 3, 0, atSeconds);
+      }
+      default:
+        return state;
+    }
   }
   function applyPostCastAbility(state, caster, atSeconds) {
     switch (caster.card.id) {
@@ -2205,7 +2282,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     };
     withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
     if (hasKeyword(inst, "Bewitch")) {
-      withCasterState = applyBewitch(withCasterState, inst, atSeconds);
+      withCasterState = applyBewitch(withCasterState, inst, atSeconds, rng);
     }
     for (const ally of activeHirelings(withCasterState.board)) {
       if (ally.id === inst.id) continue;
@@ -2493,6 +2570,17 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     for (const ally of activeHirelings(state.board)) {
       if (ally.id === hireling.id) continue;
       working = applyOnAllySaleAbility(working, ally, hireling, state.elapsedSeconds);
+    }
+    for (const bewitcherId of customerState.bewitchedByIds) {
+      const bewitcher = activeHirelings(state.board).find((h) => h.id === bewitcherId);
+      if (!bewitcher) continue;
+      working = applyOnBewitchedCustomerSale(
+        working,
+        bewitcher,
+        hireling,
+        goldEarned,
+        state.elapsedSeconds
+      );
     }
     return working;
   }
