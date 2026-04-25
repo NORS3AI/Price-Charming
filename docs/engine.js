@@ -1990,6 +1990,22 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return candidates[Math.floor(rng() * candidates.length)];
     }
   }
+  function pickHighestPotencyOpponent(state) {
+    var _a, _b;
+    if (!state.opponent) return null;
+    const candidates = activeHirelings(state.opponent.board);
+    if (candidates.length === 0) return null;
+    let best = null;
+    let bestPot = -Infinity;
+    for (const h of candidates) {
+      const pot = ((_b = (_a = h.card.potions[0]) == null ? void 0 : _a.potency) != null ? _b : 0) + h.permanentPotencyBonus;
+      if (pot > bestPot) {
+        best = h;
+        bestPot = pot;
+      }
+    }
+    return best;
+  }
   function castTimeForTargeting(inst) {
     const ct = inst.card.castTime;
     switch (ct.kind) {
@@ -2008,17 +2024,59 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     if (seconds <= 0) return state;
     const target = pickSabotageTarget(state, caster, rng);
     if (!target) return state;
-    const log = [
-      ...state.log,
-      {
-        kind: "sabotage",
-        casterId: caster.id,
-        targetInstanceId: target.id,
-        secondsAdded: seconds,
-        atSeconds
+    let working = {
+      ...state,
+      log: [
+        ...state.log,
+        {
+          kind: "sabotage",
+          casterId: caster.id,
+          targetInstanceId: target.id,
+          secondsAdded: seconds,
+          atSeconds
+        }
+      ]
+    };
+    for (const ally of activeHirelings(working.board)) {
+      if (ally.id === caster.id) continue;
+      working = applyOnAllySabotageAbility(working, ally, caster, atSeconds);
+    }
+    working = applyOnOwnSabotageSuccess(working, caster, atSeconds);
+    return working;
+  }
+  function applyOnAllySabotageAbility(state, reactor, saboteur, atSeconds) {
+    switch (reactor.card.id) {
+      case "snitch-witch": {
+        const alreadyTriggered = state.log.some(
+          (e) => e.kind === "ability-buff" && e.casterId === reactor.id && e.targetId === reactor.id && e.stockGained === 1 && e.potencyGained === 0
+        );
+        if (alreadyTriggered) return state;
+        return buffHireling(state, reactor.id, reactor.id, 1, 0, atSeconds);
       }
-    ];
-    return { ...state, log };
+      default:
+        return state;
+    }
+  }
+  function applyOnOwnSabotageSuccess(state, caster, atSeconds) {
+    switch (caster.card.id) {
+      case "the-saboteur": {
+        const states = new Map(state.hirelingStates);
+        let dirty = false;
+        for (const ally of activeHirelings(state.board)) {
+          if (ally.card.guild !== "Thieves Guild") continue;
+          const hs = state.hirelingStates.get(ally.id);
+          if (!hs || hs.nextCastIn === null) continue;
+          states.set(ally.id, {
+            ...hs,
+            nextCastIn: Math.max(0.1, hs.nextCastIn - 0.5)
+          });
+          dirty = true;
+        }
+        return dirty ? { ...state, hirelingStates: states } : state;
+      }
+      default:
+        return state;
+    }
   }
   function pickBewitchTargets(state, caster, level) {
     const eligible = state.customers.filter(
@@ -2139,7 +2197,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return state;
     }
   }
-  function applyPostCastAbility(state, caster, atSeconds) {
+  function applyPostCastAbility(state, caster, atSeconds, rng) {
     switch (caster.card.id) {
       case "sugar-sprinkler":
         return buffActiveAdjacent(state, caster, 0, 1, atSeconds);
@@ -2185,6 +2243,30 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return applyDuchessBuffs(state, caster, atSeconds);
       case "sticky-fingers":
         return addTemporaryStock(state, caster.id, 2);
+      case "royal-advisor": {
+        const nobleAllies = activeHirelings(state.board).filter(
+          (h) => h.id !== caster.id && h.card.guild === "Nobles Guild"
+        );
+        if (nobleAllies.length === 0) return state;
+        const target = nobleAllies[Math.floor(rng() * nobleAllies.length)];
+        return buffHireling(state, caster.id, target.id, 2, 2, atSeconds);
+      }
+      case "prince-of-thieves": {
+        let working = { ...state, reputation: state.reputation - 2 };
+        const target = pickHighestPotencyOpponent(working);
+        if (!target) return working;
+        const log = [
+          ...working.log,
+          {
+            kind: "sabotage",
+            casterId: caster.id,
+            targetInstanceId: target.id,
+            secondsAdded: 3,
+            atSeconds
+          }
+        ];
+        return { ...working, log };
+      }
       case "the-herald": {
         let working = state;
         for (const ally of activeHirelings(state.board)) {
@@ -2341,7 +2423,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       hirelingStates,
       log
     };
-    withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
+    withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds, rng);
     if (hasKeyword(inst, "Bewitch")) {
       withCasterState = applyBewitch(withCasterState, inst, atSeconds, rng);
     }

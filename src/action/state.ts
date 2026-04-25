@@ -628,6 +628,31 @@ function pickSabotageTarget(
 }
 
 /**
+ * Find the opponent's highest-potency active-slot hireling. Used by
+ * Prince of Thieves's per-cast curse and any future "highest-pot"
+ * targeting picker. Compares on the card's printed slot-0 potency
+ * (no live-buff lookup since we don't simulate opponent buffs).
+ * Returns null when the opponent has no active hirelings.
+ */
+function pickHighestPotencyOpponent(
+  state: ActionState
+): HirelingInstance | null {
+  if (!state.opponent) return null;
+  const candidates = activeHirelings(state.opponent.board);
+  if (candidates.length === 0) return null;
+  let best: HirelingInstance | null = null;
+  let bestPot = -Infinity;
+  for (const h of candidates) {
+    const pot = (h.card.potions[0]?.potency ?? 0) + h.permanentPotencyBonus;
+    if (pot > bestPot) {
+      best = h;
+      bestPot = pot;
+    }
+  }
+  return best;
+}
+
+/**
  * Convert a card's CastTime variant into a single seconds value used
  * for target-picking decisions. Passive → Infinity (so it sorts last
  * for "lowest cast time" pickers). Decreasing → its starting value.
@@ -664,17 +689,103 @@ function applySabotage(
   if (seconds <= 0) return state;
   const target = pickSabotageTarget(state, caster, rng);
   if (!target) return state;
-  const log: ActionLogEntry[] = [
-    ...state.log,
-    {
-      kind: "sabotage",
-      casterId: caster.id,
-      targetInstanceId: target.id,
-      secondsAdded: seconds,
-      atSeconds,
-    },
-  ];
-  return { ...state, log };
+  let working: ActionState = {
+    ...state,
+    log: [
+      ...state.log,
+      {
+        kind: "sabotage",
+        casterId: caster.id,
+        targetInstanceId: target.id,
+        secondsAdded: seconds,
+        atSeconds,
+      },
+    ],
+  };
+  // Reactive hook: every other active ally fires their on-ally-sabotage
+  // ability (Snitch Witch +1 perm stock once per round).
+  for (const ally of activeHirelings(working.board)) {
+    if (ally.id === caster.id) continue;
+    working = applyOnAllySabotageAbility(working, ally, caster, atSeconds);
+  }
+  // The caster's own on-Sabotage-success hook runs last (e.g. The
+  // Saboteur trims 0.5s off every Thieves ally's nextCastIn).
+  working = applyOnOwnSabotageSuccess(working, caster, atSeconds);
+  return working;
+}
+
+/**
+ * Per-card reactive hook fired for every OTHER active ally each time
+ * any hireling fires Sabotage. Lets cards listen for "ally used
+ * Sabotage" events.
+ *
+ *   - snitch-witch: "Once per round, when an ally uses Sabotage,
+ *                    gain +1 permanent stock." Tracks the once-per-
+ *                    round constraint by counting prior ability-buff
+ *                    log entries from this Snitch Witch this round.
+ */
+function applyOnAllySabotageAbility(
+  state: ActionState,
+  reactor: HirelingInstance,
+  saboteur: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  switch (reactor.card.id) {
+    case "snitch-witch": {
+      const alreadyTriggered = state.log.some(
+        (e) =>
+          e.kind === "ability-buff" &&
+          e.casterId === reactor.id &&
+          e.targetId === reactor.id &&
+          e.stockGained === 1 &&
+          e.potencyGained === 0
+      );
+      if (alreadyTriggered) return state;
+      return buffHireling(state, reactor.id, reactor.id, 1, 0, atSeconds);
+    }
+    default:
+      return state;
+  }
+}
+
+/**
+ * Per-card hook fired after the caster's OWN Sabotage successfully
+ * lands. Used by self-reinforcing cards that listen for their own
+ * Sabotage events.
+ *
+ *   - the-saboteur: "Each time this Sabotages successfully this
+ *                    round, all Thieves allies gain +0.5s cast time
+ *                    reduction until end of round." Implemented as
+ *                    an immediate -0.5s nudge to every Thieves ally's
+ *                    nextCastIn (clamped at 0.1s minimum). Long-term
+ *                    reduction across multiple casts isn't tracked —
+ *                    each ally's NEXT cast accelerates per Saboteur
+ *                    cast that lands.
+ */
+function applyOnOwnSabotageSuccess(
+  state: ActionState,
+  caster: HirelingInstance,
+  atSeconds: number
+): ActionState {
+  switch (caster.card.id) {
+    case "the-saboteur": {
+      const states = new Map(state.hirelingStates);
+      let dirty = false;
+      for (const ally of activeHirelings(state.board)) {
+        if (ally.card.guild !== "Thieves Guild") continue;
+        const hs = state.hirelingStates.get(ally.id);
+        if (!hs || hs.nextCastIn === null) continue;
+        states.set(ally.id, {
+          ...hs,
+          nextCastIn: Math.max(0.1, hs.nextCastIn - 0.5),
+        });
+        dirty = true;
+      }
+      return dirty ? { ...state, hirelingStates: states } : state;
+    }
+    default:
+      return state;
+  }
 }
 
 /**
@@ -862,7 +973,8 @@ function applyOnBewitchedCustomerSale(
 function applyPostCastAbility(
   state: ActionState,
   caster: HirelingInstance,
-  atSeconds: number
+  atSeconds: number,
+  rng: RNG
 ): ActionState {
   switch (caster.card.id) {
     case "sugar-sprinkler":
@@ -918,6 +1030,45 @@ function applyPostCastAbility(
       //  off card.id "sticky-fingers" to pick lowest-cast opponent).
       //  This case wires only the +2 temp stock on the caster.
       return addTemporaryStock(state, caster.id, 2);
+    case "royal-advisor": {
+      // "Sabotage an ally. If it is a Nobles Guild ally, that ally's
+      //  next action gains +2 to all stat effects permanently."
+      //  Royal Advisor's keyword Sabotage already fires (random
+      //  opponent target). This case adds the per-card buff: pick a
+      //  Nobles Guild ally on the active row at random and grant +2
+      //  permanent stock + +2 permanent potency. ("Next action gains
+      //  +2 to all stat effects permanently" relaxed to +2/+2
+      //  permanent, since per-cast next-action gating would need a
+      //  whole new track.)
+      const nobleAllies = activeHirelings(state.board).filter(
+        (h) => h.id !== caster.id && h.card.guild === "Nobles Guild"
+      );
+      if (nobleAllies.length === 0) return state;
+      const target = nobleAllies[Math.floor(rng() * nobleAllies.length)];
+      return buffHireling(state, caster.id, target.id, 2, 2, atSeconds);
+    }
+    case "prince-of-thieves": {
+      // "Knockoff x4. Spend -2 Reputation. Curse opponent's highest
+      //  potency hireling — it adds 3 seconds to their current cast."
+      //  Implemented as a per-card sabotage (no Sabotage keyword on
+      //  the card): emit a sabotage log entry against the opponent's
+      //  highest-potency active hireling, with secondsAdded = 3, plus
+      //  the −2 reputation cost.
+      let working: ActionState = { ...state, reputation: state.reputation - 2 };
+      const target = pickHighestPotencyOpponent(working);
+      if (!target) return working;
+      const log: ActionLogEntry[] = [
+        ...working.log,
+        {
+          kind: "sabotage",
+          casterId: caster.id,
+          targetInstanceId: target.id,
+          secondsAdded: 3,
+          atSeconds,
+        },
+      ];
+      return { ...working, log };
+    }
     case "the-herald": {
       // "All Nobles Guild allies gain +1 temporary stock." (Per cast.)
       let working = state;
@@ -1149,7 +1300,7 @@ function fireCast(
     hirelingStates,
     log,
   };
-  withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds);
+  withCasterState = applyPostCastAbility(withCasterState, inst, atSeconds, rng);
   // Bewitch keyword fires after every cast of a hireling that carries
   // it — applies a focus burst to `bewitchLevel` unresolved customers
   // and tags them so a later sale can trigger the +1 bewitchLevel

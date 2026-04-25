@@ -149,3 +149,117 @@ describe("Sabotage primitive", () => {
     expect(count).toBe(2);
   });
 });
+
+describe("Sabotage-reactive hirelings (Phase 4)", () => {
+  test("Snitch Witch: +1 permanent stock once per round when an ally Sabotages", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Snitch Witch", "love");      // 5s cast
+    b = placeAt(b, 3, "The Highwayman", "love");    // 7s cast — fires Sabotage
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
+    s = setOpponent(s, buildOpponent([3, "Doughboy", "love"]));
+    // Tick 16s — Highwayman casts at 7s and 14s, so 2 sabotages fire.
+    s = tick(s, 16, mulberry32(1));
+    const sw = s.hirelingStates.get("Snitch Witch-2")!;
+    // Once-per-round → +1 stock total even after 2 ally sabotages.
+    expect(sw.permanentStockGainedThisRound).toBe(1);
+  });
+
+  test("Snitch Witch: own Sabotage doesn't trigger the reactive (only allies count)", () => {
+    // Snitch Witch doesn't have Sabotage anyway, but verify the
+    // reactive guard: applyOnAllySabotageAbility skips when the
+    // saboteur is the reactor itself.
+    let b = createBoard();
+    b = placeAt(b, 3, "Snitch Witch", "love");
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
+    s = setOpponent(s, buildOpponent([3, "Doughboy", "love"]));
+    s = tick(s, 6, mulberry32(1));
+    const sw = s.hirelingStates.get("Snitch Witch-3")!;
+    expect(sw.permanentStockGainedThisRound).toBe(0);
+  });
+
+  test("The Saboteur: each Sabotage success trims 0.5s from every Thieves ally's nextCastIn", () => {
+    let b = createBoard();
+    b = placeAt(b, 2, "Robbin Goblin", "love");  // Thieves, 4s cast
+    b = placeAt(b, 3, "The Saboteur", "love");    // 6s cast, Sabotage x2
+    b = placeAt(b, 5, "Doughboy", "love");        // Sugar — should NOT be reduced
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
+    s = setOpponent(s, buildOpponent([3, "Pantry Stocker", "love"]));
+    // Tick to t=6 so Saboteur's 6s cast just fired. After his cast,
+    // Thieves allies' nextCastIn dropped by 0.5s.
+    s = tick(s, 6, mulberry32(1));
+    const rg = s.hirelingStates.get("Robbin Goblin-2")!;
+    const dough = s.hirelingStates.get("Doughboy-5")!;
+    // Robbin Goblin: 4s cast cycle. After firing once at t=4, his next
+    // cast was scheduled to fire at t=8 (timer 4s). At t=6 (after 2s
+    // tick consumed since his last cast), his timer is 4 - 2 = 2s.
+    // Then the Saboteur sabotage at t=6 nudges his timer down to 1.5s.
+    expect(rg.nextCastIn).toBeCloseTo(1.5, 1);
+    // Doughboy is Sugar (Quickcraft x2), not Thieves — untouched by
+    // the Saboteur's Thieves-ally trim. His 5s cast at t=5 already
+    // fired, so at t=6 his next cast scheduled in 4s (5-1).
+    expect(dough.nextCastIn).toBeCloseTo(4, 1);
+  });
+
+  test("Royal Advisor: per-cast picks a Nobles ally and grants +2 perm stock + +2 perm potency", () => {
+    let b = createBoard();
+    b = placeAt(b, 1, "The Page", "love");        // Nobles ally (only one)
+    b = placeAt(b, 3, "Royal Advisor", "love");    // 1-8s random cast
+    b = placeAt(b, 5, "Doughboy", "love");         // Sugar — should NOT be buffed
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(7));
+    s = setOpponent(s, buildOpponent([3, "Pantry Stocker", "love"]));
+    s = tick(s, 9, mulberry32(7)); // long enough to guarantee a cast
+    const page = s.hirelingStates.get("The Page-1")!;
+    const dough = s.hirelingStates.get("Doughboy-5")!;
+    // Page is the only Noble; she's picked. Sugar Doughboy untouched.
+    expect(page.permanentStockGainedThisRound).toBeGreaterThanOrEqual(2);
+    expect(page.permanentPotencyGainedThisRound).toBeGreaterThanOrEqual(2);
+    expect(dough.permanentStockGainedThisRound).toBe(0);
+    expect(dough.permanentPotencyGainedThisRound).toBe(0);
+  });
+
+  test("Royal Advisor: no buff fires when there are no Nobles allies", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Royal Advisor", "love"); // alone — no other Nobles
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(7));
+    s = setOpponent(s, buildOpponent([3, "Pantry Stocker", "love"]));
+    s = tick(s, 9, mulberry32(7));
+    // Nothing gets a Royal Advisor buff log entry.
+    const buffLog = s.log.find(
+      (e) => e.kind === "ability-buff" && e.casterId === "Royal Advisor-3"
+    );
+    expect(buffLog).toBeUndefined();
+  });
+
+  test("Prince of Thieves: -2 reputation + sabotage opponent's highest-potency hireling (+3s)", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Prince of Thieves", "love"); // 8s cast
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1), 0, 0);
+    // Opponent: low-pot Doughboy (4) and high-pot Lord Chamberlain (6).
+    s = setOpponent(
+      s,
+      buildOpponent(
+        [2, "Doughboy", "love"],          // potency 4
+        [3, "Lord Chamberlain", "love"]    // potency 6 — should be the target
+      )
+    );
+    s = tick(s, 9, mulberry32(1));
+    const sab = s.log.find(
+      (e): e is Extract<ActionLogEntry, { kind: "sabotage" }> =>
+        e.kind === "sabotage" && e.casterId === "Prince of Thieves-3"
+    );
+    expect(sab).toBeDefined();
+    expect(sab!.targetInstanceId).toBe("Lord Chamberlain-3");
+    expect(sab!.secondsAdded).toBe(3);
+    expect(s.reputation).toBe(-2);
+  });
+
+  test("Prince of Thieves: -2 rep still deducts even when the opponent has no targets", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Prince of Thieves", "love");
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1), 0, 0);
+    // No opponent set — sabotage is a no-op but rep cost still applies.
+    s = tick(s, 9, mulberry32(1));
+    expect(s.reputation).toBe(-2);
+    expect(s.log.some((e) => e.kind === "sabotage")).toBe(false);
+  });
+});

@@ -1,5 +1,22 @@
 [
   {
+    "version": "V0.3.7-alpha",
+    "date": "2026-04-21",
+    "title": "Part-2 Phase 4 — Sabotage-reactive hirelings",
+    "changes": [
+      "Two new event hooks built on top of Phase 3's Sabotage primitive: applyOnAllySabotageAbility fires for every other active ally each time any hireling Sabotages; applyOnOwnSabotageSuccess fires for the caster after their own Sabotage lands.",
+      "applyPostCastAbility signature gained an `rng` parameter so per-card abilities can pick random targets (Royal Advisor's noble pick).",
+      "New helper pickHighestPotencyOpponent for Prince of Thieves's curse-target.",
+      "Wired hirelings:",
+      "Snitch Witch — once-per-round +1 permanent stock when ANY ally fires Sabotage. Once-per-round constraint enforced via log inspection (no need for an extra HirelingActionState field).",
+      "The Saboteur — each successful own Sabotage trims 0.5s off every Thieves ally's `nextCastIn` (clamped at 0.1s). Stacks per cast since nextCastIn is recomputed after each fire.",
+      "Royal Advisor — per-cast (in addition to the keyword Sabotage that already targets a random opponent), picks a Nobles Guild ally on the active row at random and grants +2 permanent stock + +2 permanent potency. Spec's \"next action gains +2 to all stat effects permanently\" relaxed to \"+2/+2 permanent\" since per-cast next-action gating would require its own track.",
+      "Prince of Thieves — per-cast: −2 reputation, then emits a sabotage log entry against the opponent's highest-potency active-slot hireling with secondsAdded=3. Rep cost applies even when no opponent target exists.",
+      "Skipped (deferred to Phase 8 — cross-player effects): Batter Boy and Frosted Lookout both react to opponents USING Sabotage, but the engine doesn't simulate opponent casts. They stay inert until the cross-player phase wires opponent-side cast events.",
+      "7 new tests in sabotage.test.ts. 456 → 463 tests."
+    ]
+  },
+  {
     "version": "V0.3.6-alpha",
     "date": "2026-04-21",
     "title": "Part-2 Phase 3 — Sabotage primitive",
