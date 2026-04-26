@@ -1,5 +1,21 @@
 [
   {
+    "version": "V0.3.8-alpha",
+    "date": "2026-04-21",
+    "title": "Part-2 Phase 5 — Dual-potion data model",
+    "changes": [
+      "Engine: HirelingInstance gains potionType2 / permanentStockBonus2 / permanentPotencyBonus2 so cards with two CSV potion slots (Pickpocket Pixie, Jumping Jack, Lady's Maid, Almost-A-Knight, etc.) actually carry two potions.",
+      "HirelingActionState gains parallel slot-1 trackers: temporaryStock2 / permanentStockGainedThisRound2 / permanentPotencyGainedThisRound2 / unitsSoldThisRound2.",
+      "assignPotionsToPool now picks a SECOND, distinct active type for slot 1 whenever the card has 2 potion slots.",
+      "pickSalesHireling refactored into pickSalesHirelingWithSlot — returns {hireling, slot}. Sales hit whichever slot matches the customer's desired type and has effective stock; Knockoff bumps the SLOT that just sold (not always slot 0).",
+      "combinedStockForType / combinedPotencyForType now sum BOTH slot contributions across the board, so the pricing panel correctly reflects two-potion hirelings.",
+      "computePassiveContribution / overBudgetPressure now match either slot's potionType against the customer's desired type, and use the matching slot's stock/potency for axis fills.",
+      "promotePermanentBuffs at end-of-round promotes BOTH slots' gained stock/potency.",
+      "3 new tests in dual-potion.test.ts: dual-slot sales (love → slot 0, luck → slot 1), pricing aggregation across two pixies with overlapping slot-0 and distinct slot-1 types, and synthetic permanentStockBonus2 / permanentPotencyBonus2 carryover into the panel. 463 → 466 tests.",
+      "Deferred to a later polish pass: per-slot UI rendering on the slot card (tooltip already shows both slots), per-slot routing of ability-buffs (currently buffs go to slot 0 by convention), and per-slot Quickcraft routing (no current Quickcraft card has 2 potions)."
+    ]
+  },
+  {
     "version": "V0.3.7-alpha",
     "date": "2026-04-21",
     "title": "Part-2 Phase 4 — Sabotage-reactive hirelings",

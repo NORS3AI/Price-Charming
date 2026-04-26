@@ -13,14 +13,28 @@ export interface HirelingInstance {
   card: HirelingCard;
   wageTracker: WageTracker;
   /**
-   * Which active potion type this copy sells. `null` for instances not
-   * yet assigned (e.g. fresh from the factory before potion reshuffle).
+   * Which active potion type this copy's PRIMARY (slot-0) potion sells.
+   * `null` for instances not yet assigned (e.g. fresh from the factory
+   * before potion reshuffle).
    */
   potionType: PotionTypeId | null;
+  /**
+   * Secondary potion type (slot 1). Only set when the underlying card
+   * has TWO potion slots in cards.csv (e.g. Pickpocket Pixie). Each
+   * slot has its own stock and potency from `card.potions[0]` /
+   * `card.potions[1]`. Customers wanting THIS type buy from slot 1
+   * with its own stat bonuses; pricing tiers see contributions from
+   * BOTH slots.
+   */
+  potionType2: PotionTypeId | null;
   /** Stock bonus that persists across rounds (Knockoff, Charmed merge, …). */
   permanentStockBonus: number;
   /** Potency bonus that persists across rounds (Lucky Charm, Charmed merge, …). */
   permanentPotencyBonus: number;
+  /** Slot-1 permanent stock bonus, parallel to permanentStockBonus. */
+  permanentStockBonus2: number;
+  /** Slot-1 permanent potency bonus, parallel to permanentPotencyBonus. */
+  permanentPotencyBonus2: number;
   /** True for Charmed hirelings produced by a 3-copy merge. */
   charmed: boolean;
   /**

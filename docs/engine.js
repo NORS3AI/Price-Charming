@@ -762,16 +762,19 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   // src/board/hand.ts
   var MAX_HAND_SIZE = 8;
   function createHirelingInstance(card, id, potionType = null, options = {}) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g;
     return {
       id,
       card,
       wageTracker: createWageTracker(card.wageTier),
       potionType,
-      permanentStockBonus: (_a = options.permanentStockBonus) != null ? _a : 0,
-      permanentPotencyBonus: (_b = options.permanentPotencyBonus) != null ? _b : 0,
-      charmed: (_c = options.charmed) != null ? _c : false,
-      acquiredAtRound: (_d = options.acquiredAtRound) != null ? _d : 0
+      potionType2: (_a = options.potionType2) != null ? _a : null,
+      permanentStockBonus: (_b = options.permanentStockBonus) != null ? _b : 0,
+      permanentPotencyBonus: (_c = options.permanentPotencyBonus) != null ? _c : 0,
+      permanentStockBonus2: (_d = options.permanentStockBonus2) != null ? _d : 0,
+      permanentPotencyBonus2: (_e = options.permanentPotencyBonus2) != null ? _e : 0,
+      charmed: (_f = options.charmed) != null ? _f : false,
+      acquiredAtRound: (_g = options.acquiredAtRound) != null ? _g : 0
     };
   }
   function createSpellInstance(card, id) {
@@ -1128,9 +1131,16 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     if (activeTypes.length === 0) {
       throw new Error("assignPotionsToPool requires at least one active type.");
     }
-    const instances = pool.instances.map(
-      (inst) => inst.card.kind === "hireling" ? { ...inst, potionType: pick(activeTypes, rng) } : inst
-    );
+    const instances = pool.instances.map((inst) => {
+      if (inst.card.kind !== "hireling") return inst;
+      const slot1 = pick(activeTypes, rng);
+      let slot2 = null;
+      if (inst.card.potions.length >= 2 && activeTypes.length >= 2) {
+        const remaining = activeTypes.filter((t) => t !== slot1);
+        slot2 = pick(remaining, rng);
+      }
+      return { ...inst, potionType: slot1, potionType2: slot2 };
+    });
     return { instances };
   }
   function assignHirelingPotion(instance, activeTypes, rng) {
@@ -1358,18 +1368,28 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   function combinedPotencyForType(hirelings, type) {
     let total = 0;
     for (const h of hirelings) {
-      if (h.potionType !== type) continue;
-      const [slot] = h.card.potions;
-      if (slot) total += slot.potency + h.permanentPotencyBonus;
+      if (h.potionType === type) {
+        const slot0 = h.card.potions[0];
+        if (slot0) total += slot0.potency + h.permanentPotencyBonus;
+      }
+      if (h.potionType2 === type) {
+        const slot1 = h.card.potions[1];
+        if (slot1) total += slot1.potency + h.permanentPotencyBonus2;
+      }
     }
     return total;
   }
   function combinedStockForType(hirelings, type) {
     let total = 0;
     for (const h of hirelings) {
-      if (h.potionType !== type) continue;
-      const [slot] = h.card.potions;
-      if (slot) total += slot.stock + h.permanentStockBonus;
+      if (h.potionType === type) {
+        const slot0 = h.card.potions[0];
+        if (slot0) total += slot0.stock + h.permanentStockBonus;
+      }
+      if (h.potionType2 === type) {
+        const slot1 = h.card.potions[1];
+        if (slot1) total += slot1.stock + h.permanentStockBonus2;
+      }
     }
     return total;
   }
@@ -1633,10 +1653,19 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     typeMatchPerSecond: 4
   });
   function computePassiveContribution(hireling, panelPrice, customer) {
-    var _a, _b, _c, _d;
-    const baseStock = (_b = (_a = hireling.card.potions[0]) == null ? void 0 : _a.stock) != null ? _b : 0;
-    const potency = (_d = (_c = hireling.card.potions[0]) == null ? void 0 : _c.potency) != null ? _d : 0;
-    const typeMatches = hireling.potionType === customer.desiredType;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    let baseStock = 0;
+    let potency = 0;
+    let typeMatches = false;
+    if (hireling.potionType === customer.desiredType) {
+      baseStock = ((_b = (_a = hireling.card.potions[0]) == null ? void 0 : _a.stock) != null ? _b : 0) + hireling.permanentStockBonus;
+      potency = ((_d = (_c = hireling.card.potions[0]) == null ? void 0 : _c.potency) != null ? _d : 0) + hireling.permanentPotencyBonus;
+      typeMatches = true;
+    } else if (hireling.potionType2 === customer.desiredType) {
+      baseStock = ((_f = (_e = hireling.card.potions[1]) == null ? void 0 : _e.stock) != null ? _f : 0) + hireling.permanentStockBonus2;
+      potency = ((_h = (_g = hireling.card.potions[1]) == null ? void 0 : _g.potency) != null ? _h : 0) + hireling.permanentPotencyBonus2;
+      typeMatches = true;
+    }
     return {
       focus: typeMatches ? baseStock * PASSIVE_RATES.focusPerStock : 0,
       type: typeMatches ? PASSIVE_RATES.typeMatchPerSecond : 0,
@@ -1645,7 +1674,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     };
   }
   function overBudgetPressure(hireling, panelPrice, customer) {
-    const typeMatches = hireling.potionType === customer.desiredType;
+    const typeMatches = hireling.potionType === customer.desiredType || hireling.potionType2 === customer.desiredType;
     if (!typeMatches) return 0;
     return panelPrice > customer.budget ? PASSIVE_RATES.budgetOverPerSecond : 0;
   }
@@ -1717,17 +1746,27 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       permanentStockGainedThisRound: 0,
       permanentPotencyGainedThisRound: 0,
       unitsSoldThisRound: 0,
+      temporaryStock2: 0,
+      permanentStockGainedThisRound2: 0,
+      permanentPotencyGainedThisRound2: 0,
+      unitsSoldThisRound2: 0,
       bewitchLevel: 1
     };
   }
-  function effectiveStock(inst, hs) {
+  function effectiveStock(inst, hs, slot = 0) {
     var _a, _b;
-    const base = (_b = (_a = inst.card.potions[0]) == null ? void 0 : _a.stock) != null ? _b : 0;
+    const base = (_b = (_a = inst.card.potions[slot]) == null ? void 0 : _a.stock) != null ? _b : 0;
+    if (slot === 1) {
+      return base + inst.permanentStockBonus2 + hs.permanentStockGainedThisRound2 + hs.temporaryStock2 - hs.unitsSoldThisRound2;
+    }
     return base + inst.permanentStockBonus + hs.permanentStockGainedThisRound + hs.temporaryStock - hs.unitsSoldThisRound;
   }
-  function effectivePotency(inst, hs) {
+  function effectivePotency(inst, hs, slot = 0) {
     var _a, _b;
-    const base = (_b = (_a = inst.card.potions[0]) == null ? void 0 : _a.potency) != null ? _b : 0;
+    const base = (_b = (_a = inst.card.potions[slot]) == null ? void 0 : _a.potency) != null ? _b : 0;
+    if (slot === 1) {
+      return base + inst.permanentPotencyBonus2 + hs.permanentPotencyGainedThisRound2;
+    }
     return base + inst.permanentPotencyBonus + hs.permanentPotencyGainedThisRound;
   }
   function hasKeyword(inst, name) {
@@ -2634,33 +2673,43 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return { ...working, customers: customersAfter };
   }
-  function pickSalesHireling(state, desiredType) {
+  function pickSalesHirelingWithSlot(state, desiredType) {
     let best = null;
     let bestPotency = -1;
     for (const h of activeHirelings(state.board)) {
-      if (h.potionType !== desiredType) continue;
       const hs = state.hirelingStates.get(h.id);
       if (!hs) continue;
-      if (effectiveStock(h, hs) <= 0) continue;
-      const pot = effectivePotency(h, hs);
-      if (pot > bestPotency) {
-        best = h;
-        bestPotency = pot;
+      for (const slot of [0, 1]) {
+        const matches = slot === 0 ? h.potionType === desiredType : h.potionType2 === desiredType;
+        if (!matches) continue;
+        if (effectiveStock(h, hs, slot) <= 0) continue;
+        const pot = effectivePotency(h, hs, slot);
+        if (pot > bestPotency) {
+          best = { hireling: h, slot };
+          bestPotency = pot;
+        }
       }
     }
     return best;
   }
+  function pickSalesHireling(state, desiredType) {
+    var _a, _b;
+    return (_b = (_a = pickSalesHirelingWithSlot(state, desiredType)) == null ? void 0 : _a.hireling) != null ? _b : null;
+  }
   function executeSale(state, customerState, priceByType, rng) {
     var _a, _b;
-    const hireling = pickSalesHireling(state, customerState.customer.desiredType);
-    if (!hireling) return state;
+    const picked = pickSalesHirelingWithSlot(state, customerState.customer.desiredType);
+    if (!picked) return state;
+    const hireling = picked.hireling;
+    const slot = picked.slot;
     const hs = state.hirelingStates.get(hireling.id);
-    const available = effectiveStock(hireling, hs);
+    const available = effectiveStock(hireling, hs, slot);
     const desired = (_a = customerState.customer.desiredUnits) != null ? _a : 1;
     const rolled = rollUnitsPerInteraction(available, rng);
     const units = Math.min(available, Math.max(desired, rolled));
     if (units <= 0) return state;
-    const basePrice = (_b = priceByType.get(hireling.potionType)) != null ? _b : MIN_PRICE;
+    const slotPotionType = slot === 0 ? hireling.potionType : hireling.potionType2;
+    const basePrice = (_b = priceByType.get(slotPotionType)) != null ? _b : MIN_PRICE;
     const haggled = hasKeyword(hireling, "Haggle");
     const pricePerUnit = applyHaggle(basePrice, hireling);
     const goldEarned = units * pricePerUnit;
@@ -2683,16 +2732,10 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         atSeconds: state.elapsedSeconds
       }
     ];
-    let nextHs = {
-      ...hs,
-      unitsSoldThisRound: hs.unitsSoldThisRound + units
-    };
+    let nextHs = slot === 0 ? { ...hs, unitsSoldThisRound: hs.unitsSoldThisRound + units } : { ...hs, unitsSoldThisRound2: hs.unitsSoldThisRound2 + units };
     const knockoff = knockoffCount(hireling);
-    if (knockoff > 0 && effectivePotency(hireling, hs) < 10) {
-      nextHs = {
-        ...nextHs,
-        permanentStockGainedThisRound: nextHs.permanentStockGainedThisRound + knockoff
-      };
+    if (knockoff > 0 && effectivePotency(hireling, hs, slot) < 10) {
+      nextHs = slot === 0 ? { ...nextHs, permanentStockGainedThisRound: nextHs.permanentStockGainedThisRound + knockoff } : { ...nextHs, permanentStockGainedThisRound2: nextHs.permanentStockGainedThisRound2 + knockoff };
       log.push({
         kind: "knockoff",
         instanceId: hireling.id,
@@ -3162,15 +3205,21 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     for (const h of activeHirelings(state.board)) {
       const hs = state.action.hirelingStates.get(h.id);
       if (!hs) continue;
-      if (hs.permanentStockGainedThisRound === 0 && hs.permanentPotencyGainedThisRound === 0) {
+      const slotGain = hs.permanentStockGainedThisRound;
+      const potGain = hs.permanentPotencyGainedThisRound;
+      const slot2Gain = hs.permanentStockGainedThisRound2;
+      const pot2Gain = hs.permanentPotencyGainedThisRound2;
+      if (slotGain === 0 && potGain === 0 && slot2Gain === 0 && pot2Gain === 0) {
         continue;
       }
       const slot = state.board.slots.findIndex((s) => (s == null ? void 0 : s.id) === h.id);
       if (slot === -1) continue;
       const promoted = {
         ...h,
-        permanentStockBonus: h.permanentStockBonus + hs.permanentStockGainedThisRound,
-        permanentPotencyBonus: h.permanentPotencyBonus + hs.permanentPotencyGainedThisRound
+        permanentStockBonus: h.permanentStockBonus + slotGain,
+        permanentPotencyBonus: h.permanentPotencyBonus + potGain,
+        permanentStockBonus2: h.permanentStockBonus2 + slot2Gain,
+        permanentPotencyBonus2: h.permanentPotencyBonus2 + pot2Gain
       };
       slots[slot] = promoted;
     }

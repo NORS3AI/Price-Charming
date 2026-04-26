@@ -113,16 +113,33 @@ function freshHirelingState(
     permanentStockGainedThisRound: 0,
     permanentPotencyGainedThisRound: 0,
     unitsSoldThisRound: 0,
+    temporaryStock2: 0,
+    permanentStockGainedThisRound2: 0,
+    permanentPotencyGainedThisRound2: 0,
+    unitsSoldThisRound2: 0,
     bewitchLevel: 1,
   };
 }
 
-/** Base stock + cross-round permanent bonus + this round's gains - sold + temp. */
+/**
+ * Base stock + cross-round permanent bonus + this round's gains - sold
+ * + temp, for the given slot index (0 = primary, 1 = secondary).
+ */
 function effectiveStock(
   inst: HirelingInstance,
-  hs: HirelingActionState
+  hs: HirelingActionState,
+  slot: 0 | 1 = 0
 ): number {
-  const base = inst.card.potions[0]?.stock ?? 0;
+  const base = inst.card.potions[slot]?.stock ?? 0;
+  if (slot === 1) {
+    return (
+      base +
+      inst.permanentStockBonus2 +
+      hs.permanentStockGainedThisRound2 +
+      hs.temporaryStock2 -
+      hs.unitsSoldThisRound2
+    );
+  }
   return (
     base +
     inst.permanentStockBonus +
@@ -132,12 +149,20 @@ function effectiveStock(
   );
 }
 
-/** Base potency + cross-round permanent bonus + this round's gains. */
+/** Base potency + cross-round permanent bonus + this round's gains, per slot. */
 function effectivePotency(
   inst: HirelingInstance,
-  hs: HirelingActionState
+  hs: HirelingActionState,
+  slot: 0 | 1 = 0
 ): number {
-  const base = inst.card.potions[0]?.potency ?? 0;
+  const base = inst.card.potions[slot]?.potency ?? 0;
+  if (slot === 1) {
+    return (
+      base +
+      inst.permanentPotencyBonus2 +
+      hs.permanentPotencyGainedThisRound2
+    );
+  }
   return (
     base + inst.permanentPotencyBonus + hs.permanentPotencyGainedThisRound
   );
@@ -1630,29 +1655,48 @@ function advanceCustomers(
 }
 
 /**
- * Pick the hireling that rings up this customer: among active hirelings
- * matching the customer's desired potion type and carrying at least one
- * unit of effective stock, choose the highest effective potency. Ties
- * broken by active-slot order. Returns null when nobody can sell.
+ * Pick the hireling + slot that rings up this customer: among active
+ * hirelings whose primary OR secondary potion matches the customer's
+ * desired type AND carries at least one unit of effective stock,
+ * choose the highest effective potency. Ties broken by active-slot
+ * order. Returns null when nobody can sell.
+ *
+ * The returned tuple includes the matched slot index so executeSale
+ * knows which slot's tracker to debit (units sold, Knockoff bonus).
+ */
+function pickSalesHirelingWithSlot(
+  state: ActionState,
+  desiredType: string
+): { hireling: HirelingInstance; slot: 0 | 1 } | null {
+  let best: { hireling: HirelingInstance; slot: 0 | 1 } | null = null;
+  let bestPotency = -1;
+  for (const h of activeHirelings(state.board)) {
+    const hs = state.hirelingStates.get(h.id);
+    if (!hs) continue;
+    for (const slot of [0, 1] as const) {
+      const matches = slot === 0 ? h.potionType === desiredType : h.potionType2 === desiredType;
+      if (!matches) continue;
+      if (effectiveStock(h, hs, slot) <= 0) continue;
+      const pot = effectivePotency(h, hs, slot);
+      if (pot > bestPotency) {
+        best = { hireling: h, slot };
+        bestPotency = pot;
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Backwards-compatible variant — returns just the hireling, dropping
+ * the slot. Used by the demote-bogus-player-win check that doesn't
+ * care which slot would have served.
  */
 function pickSalesHireling(
   state: ActionState,
   desiredType: string
 ): HirelingInstance | null {
-  let best: HirelingInstance | null = null;
-  let bestPotency = -1;
-  for (const h of activeHirelings(state.board)) {
-    if (h.potionType !== desiredType) continue;
-    const hs = state.hirelingStates.get(h.id);
-    if (!hs) continue;
-    if (effectiveStock(h, hs) <= 0) continue;
-    const pot = effectivePotency(h, hs);
-    if (pot > bestPotency) {
-      best = h;
-      bestPotency = pot;
-    }
-  }
-  return best;
+  return pickSalesHirelingWithSlot(state, desiredType)?.hireling ?? null;
 }
 
 /**
@@ -1667,11 +1711,13 @@ function executeSale(
   priceByType: Map<string, number>,
   rng: RNG
 ): ActionState {
-  const hireling = pickSalesHireling(state, customerState.customer.desiredType);
-  if (!hireling) return state; // Nothing to sell — resolve stands, no gold/rep.
+  const picked = pickSalesHirelingWithSlot(state, customerState.customer.desiredType);
+  if (!picked) return state; // Nothing to sell — resolve stands, no gold/rep.
+  const hireling = picked.hireling;
+  const slot = picked.slot;
 
   const hs = state.hirelingStates.get(hireling.id)!;
-  const available = effectiveStock(hireling, hs);
+  const available = effectiveStock(hireling, hs, slot);
   const desired = customerState.customer.desiredUnits ?? 1;
   const rolled = rollUnitsPerInteraction(available, rng);
   // Customer buys at least their desiredUnits (if stock allows), and up
@@ -1680,7 +1726,11 @@ function executeSale(
   const units = Math.min(available, Math.max(desired, rolled));
   if (units <= 0) return state;
 
-  const basePrice = priceByType.get(hireling.potionType!) ?? MIN_PRICE;
+  // Pick the price for the SLOT'S potion type (slot 0 = potionType,
+  // slot 1 = potionType2). Both are players-set, but each slot can be
+  // a different active type.
+  const slotPotionType = slot === 0 ? hireling.potionType : hireling.potionType2;
+  const basePrice = priceByType.get(slotPotionType!) ?? MIN_PRICE;
   const haggled = hasKeyword(hireling, "Haggle");
   const pricePerUnit = applyHaggle(basePrice, hireling);
   const goldEarned = units * pricePerUnit;
@@ -1709,20 +1759,18 @@ function executeSale(
     },
   ];
 
-  // Update hireling action state: consume stock.
-  let nextHs: HirelingActionState = {
-    ...hs,
-    unitsSoldThisRound: hs.unitsSoldThisRound + units,
-  };
+  // Update hireling action state: consume stock from the matched slot.
+  let nextHs: HirelingActionState = slot === 0
+    ? { ...hs, unitsSoldThisRound: hs.unitsSoldThisRound + units }
+    : { ...hs, unitsSoldThisRound2: hs.unitsSoldThisRound2 + units };
 
-  // Knockoff: after sell, if current potency < 10, gain +N permanent stock.
+  // Knockoff: after sell, if current potency < 10, gain +N permanent
+  // stock on the SLOT that just sold.
   const knockoff = knockoffCount(hireling);
-  if (knockoff > 0 && effectivePotency(hireling, hs) < 10) {
-    nextHs = {
-      ...nextHs,
-      permanentStockGainedThisRound:
-        nextHs.permanentStockGainedThisRound + knockoff,
-    };
+  if (knockoff > 0 && effectivePotency(hireling, hs, slot) < 10) {
+    nextHs = slot === 0
+      ? { ...nextHs, permanentStockGainedThisRound: nextHs.permanentStockGainedThisRound + knockoff }
+      : { ...nextHs, permanentStockGainedThisRound2: nextHs.permanentStockGainedThisRound2 + knockoff };
     log.push({
       kind: "knockoff",
       instanceId: hireling.id,

@@ -53,9 +53,21 @@ export function computePassiveContribution(
   panelPrice: number,
   customer: Customer
 ): PassiveContribution {
-  const baseStock = hireling.card.potions[0]?.stock ?? 0;
-  const potency = hireling.card.potions[0]?.potency ?? 0;
-  const typeMatches = hireling.potionType === customer.desiredType;
+  // Pick whichever slot's potion type matches the customer (slot 0
+  // primary, slot 1 secondary for two-potion hirelings). When the
+  // customer wants neither, all contributions are 0.
+  let baseStock = 0;
+  let potency = 0;
+  let typeMatches = false;
+  if (hireling.potionType === customer.desiredType) {
+    baseStock = (hireling.card.potions[0]?.stock ?? 0) + hireling.permanentStockBonus;
+    potency = (hireling.card.potions[0]?.potency ?? 0) + hireling.permanentPotencyBonus;
+    typeMatches = true;
+  } else if (hireling.potionType2 === customer.desiredType) {
+    baseStock = (hireling.card.potions[1]?.stock ?? 0) + hireling.permanentStockBonus2;
+    potency = (hireling.card.potions[1]?.potency ?? 0) + hireling.permanentPotencyBonus2;
+    typeMatches = true;
+  }
 
   return {
     focus: typeMatches ? baseStock * PASSIVE_RATES.focusPerStock : 0,
@@ -82,7 +94,9 @@ export function overBudgetPressure(
   panelPrice: number,
   customer: Customer
 ): number {
-  const typeMatches = hireling.potionType === customer.desiredType;
+  const typeMatches =
+    hireling.potionType === customer.desiredType ||
+    hireling.potionType2 === customer.desiredType;
   if (!typeMatches) return 0;
   return panelPrice > customer.budget ? PASSIVE_RATES.budgetOverPerSecond : 0;
 }

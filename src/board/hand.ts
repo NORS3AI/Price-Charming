@@ -17,8 +17,11 @@ export function createHirelingInstance(
   id: string,
   potionType: PotionTypeId | null = null,
   options: {
+    potionType2?: PotionTypeId | null;
     permanentStockBonus?: number;
     permanentPotencyBonus?: number;
+    permanentStockBonus2?: number;
+    permanentPotencyBonus2?: number;
     charmed?: boolean;
     acquiredAtRound?: number;
   } = {}
@@ -28,8 +31,11 @@ export function createHirelingInstance(
     card,
     wageTracker: createWageTracker(card.wageTier),
     potionType,
+    potionType2: options.potionType2 ?? null,
     permanentStockBonus: options.permanentStockBonus ?? 0,
     permanentPotencyBonus: options.permanentPotencyBonus ?? 0,
+    permanentStockBonus2: options.permanentStockBonus2 ?? 0,
+    permanentPotencyBonus2: options.permanentPotencyBonus2 ?? 0,
     charmed: options.charmed ?? false,
     acquiredAtRound: options.acquiredAtRound ?? 0,
   };

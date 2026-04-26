@@ -19,11 +19,19 @@ export function assignPotionsToPool(
   if (activeTypes.length === 0) {
     throw new Error("assignPotionsToPool requires at least one active type.");
   }
-  const instances: PoolInstance[] = pool.instances.map((inst) =>
-    inst.card.kind === "hireling"
-      ? { ...inst, potionType: pick(activeTypes, rng) }
-      : inst
-  );
+  const instances: PoolInstance[] = pool.instances.map((inst) => {
+    if (inst.card.kind !== "hireling") return inst;
+    const slot1 = pick(activeTypes, rng);
+    // Cards with two potion slots get a second type. Pick distinct
+    // types when possible (≥2 active types are always present in
+    // current builds — ACTIVE_POTION_COUNT=5).
+    let slot2: PotionTypeId | null = null;
+    if (inst.card.potions.length >= 2 && activeTypes.length >= 2) {
+      const remaining = activeTypes.filter((t) => t !== slot1);
+      slot2 = pick(remaining, rng);
+    }
+    return { ...inst, potionType: slot1, potionType2: slot2 };
+  });
   return { instances };
 }
 

@@ -23,9 +23,16 @@ export function combinedPotencyForType(
 ): number {
   let total = 0;
   for (const h of hirelings) {
-    if (h.potionType !== type) continue;
-    const [slot] = h.card.potions;
-    if (slot) total += slot.potency + h.permanentPotencyBonus;
+    // Slot 0 contributes when its assigned type matches.
+    if (h.potionType === type) {
+      const slot0 = h.card.potions[0];
+      if (slot0) total += slot0.potency + h.permanentPotencyBonus;
+    }
+    // Slot 1 contributes when its assigned type matches.
+    if (h.potionType2 === type) {
+      const slot1 = h.card.potions[1];
+      if (slot1) total += slot1.potency + h.permanentPotencyBonus2;
+    }
   }
   return total;
 }
@@ -44,9 +51,14 @@ export function combinedStockForType(
 ): number {
   let total = 0;
   for (const h of hirelings) {
-    if (h.potionType !== type) continue;
-    const [slot] = h.card.potions;
-    if (slot) total += slot.stock + h.permanentStockBonus;
+    if (h.potionType === type) {
+      const slot0 = h.card.potions[0];
+      if (slot0) total += slot0.stock + h.permanentStockBonus;
+    }
+    if (h.potionType2 === type) {
+      const slot1 = h.card.potions[1];
+      if (slot1) total += slot1.stock + h.permanentStockBonus2;
+    }
   }
   return total;
 }

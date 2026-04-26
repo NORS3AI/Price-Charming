@@ -29,6 +29,14 @@ export interface HirelingActionState {
   permanentPotencyGainedThisRound: number;
   /** Units sold this round — depletes effective stock. */
   unitsSoldThisRound: number;
+  /** Slot-1 parallel: temp stock for the secondary potion (Quickcraft-style). */
+  temporaryStock2: number;
+  /** Slot-1 parallel: permanent stock gained this round on the secondary potion. */
+  permanentStockGainedThisRound2: number;
+  /** Slot-1 parallel: permanent potency gained this round on the secondary potion. */
+  permanentPotencyGainedThisRound2: number;
+  /** Slot-1 parallel: units sold this round from the secondary potion. */
+  unitsSoldThisRound2: number;
   /**
    * Bewitch level — how many customers this hireling's NEXT Bewitch
    * cast will target. Starts at 1. Bumps to 2 (cap) after this hireling

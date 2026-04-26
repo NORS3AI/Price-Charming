@@ -83,20 +83,21 @@ function promotePermanentBuffs(state: GameState): Board {
   for (const h of activeHirelings(state.board)) {
     const hs = state.action.hirelingStates.get(h.id);
     if (!hs) continue;
-    if (
-      hs.permanentStockGainedThisRound === 0 &&
-      hs.permanentPotencyGainedThisRound === 0
-    ) {
+    const slotGain = hs.permanentStockGainedThisRound;
+    const potGain = hs.permanentPotencyGainedThisRound;
+    const slot2Gain = hs.permanentStockGainedThisRound2;
+    const pot2Gain = hs.permanentPotencyGainedThisRound2;
+    if (slotGain === 0 && potGain === 0 && slot2Gain === 0 && pot2Gain === 0) {
       continue;
     }
     const slot = state.board.slots.findIndex((s) => s?.id === h.id);
     if (slot === -1) continue;
     const promoted: HirelingInstance = {
       ...h,
-      permanentStockBonus:
-        h.permanentStockBonus + hs.permanentStockGainedThisRound,
-      permanentPotencyBonus:
-        h.permanentPotencyBonus + hs.permanentPotencyGainedThisRound,
+      permanentStockBonus: h.permanentStockBonus + slotGain,
+      permanentPotencyBonus: h.permanentPotencyBonus + potGain,
+      permanentStockBonus2: h.permanentStockBonus2 + slot2Gain,
+      permanentPotencyBonus2: h.permanentPotencyBonus2 + pot2Gain,
     };
     slots[slot] = promoted;
   }
