@@ -117,6 +117,7 @@ function freshHirelingState(
     permanentStockGainedThisRound2: 0,
     permanentPotencyGainedThisRound2: 0,
     unitsSoldThisRound2: 0,
+    potencyGainsDoubled: false,
     bewitchLevel: 1,
   };
 }
@@ -209,7 +210,7 @@ export function initializeActionState(
   // Run per-card round-start abilities (e.g. Goblin King + Robbin
   // Goblin mutual buff) once per round.
   for (const inst of activeHirelings(board)) {
-    state = applyRoundStartAbility(state, inst, 0);
+    state = applyRoundStartAbility(state, inst, 0, rng);
   }
   return state;
 }
@@ -323,12 +324,17 @@ function buffHireling(
   // Chamberlain's Nobles filter, Grumblegut Dragon's eat, etc.).
   const target = findInstance(state.board, targetId);
   if (target?.card.id === "dusty-broom") return state;
+  // Kingmaker: a chosen Nobles ally has potencyGainsDoubled=true for
+  // the round. Any positive potency buff lands at 2× — stock isn't
+  // doubled per the card text ("Potency gains").
+  const effectivePotencyGain =
+    hs.potencyGainsDoubled && potencyGained > 0 ? potencyGained * 2 : potencyGained;
   const next: HirelingActionState = {
     ...hs,
     permanentStockGainedThisRound:
       hs.permanentStockGainedThisRound + stockGained,
     permanentPotencyGainedThisRound:
-      hs.permanentPotencyGainedThisRound + potencyGained,
+      hs.permanentPotencyGainedThisRound + effectivePotencyGain,
   };
   const states = new Map(state.hirelingStates);
   states.set(targetId, next);
@@ -608,7 +614,8 @@ function applyOnNoPlayerSaleAbility(
 function applyRoundStartAbility(
   state: ActionState,
   inst: HirelingInstance,
-  atSeconds: number
+  atSeconds: number,
+  rng: RNG
 ): ActionState {
   switch (inst.card.id) {
     case "goblin-king": {
@@ -619,6 +626,58 @@ function applyRoundStartAbility(
       let working = buffHireling(state, inst.id, inst.id, 3, 1, atSeconds);
       working = buffHireling(working, inst.id, robbin.id, 3, 1, atSeconds);
       return working;
+    }
+    case "the-royal-tutor": {
+      // "Choose one ally. That ally's next action gains +1 to all stat
+      //  effects permanently. Cannot buff another Royal Tutor." MVP
+      //  picks a random eligible ally (not self, not another Royal
+      //  Tutor, not Dusty Broom) and applies +1/+1 permanent.
+      const candidates = activeHirelings(state.board).filter(
+        (h) =>
+          h.id !== inst.id &&
+          h.card.id !== "the-royal-tutor" &&
+          h.card.id !== "dusty-broom"
+      );
+      if (candidates.length === 0) return state;
+      const target = candidates[Math.floor(rng() * candidates.length)];
+      return buffHireling(state, inst.id, target.id, 1, 1, atSeconds);
+    }
+    case "the-kingmaker": {
+      // "Choose one Nobles Guild ally. Potency gains through actions
+      //  are doubled for that ally. (Temporary effect.)" MVP picks a
+      //  random Nobles ally (not self) and sets potencyGainsDoubled
+      //  = true on its action state for the round.
+      const candidates = activeHirelings(state.board).filter(
+        (h) =>
+          h.id !== inst.id &&
+          h.card.kind === "hireling" &&
+          h.card.guild === "Nobles Guild"
+      );
+      if (candidates.length === 0) return state;
+      const target = candidates[Math.floor(rng() * candidates.length)];
+      const targetHs = state.hirelingStates.get(target.id);
+      if (!targetHs) return state;
+      const states = new Map(state.hirelingStates);
+      states.set(target.id, { ...targetHs, potencyGainsDoubled: true });
+      return { ...state, hirelingStates: states };
+    }
+    case "tower-escapee": {
+      // "Reduce the cast time of a random active hireling by 1s for
+      //  this round only." MVP nudges a random non-self ally's
+      //  nextCastIn down by 1s (clamped at 0.1s) at round start.
+      const candidates = activeHirelings(state.board).filter(
+        (h) => h.id !== inst.id
+      );
+      if (candidates.length === 0) return state;
+      const target = candidates[Math.floor(rng() * candidates.length)];
+      const targetHs = state.hirelingStates.get(target.id);
+      if (!targetHs || targetHs.nextCastIn === null) return state;
+      const states = new Map(state.hirelingStates);
+      states.set(target.id, {
+        ...targetHs,
+        nextCastIn: Math.max(0.1, targetHs.nextCastIn - 1),
+      });
+      return { ...state, hirelingStates: states };
     }
     default:
       return state;

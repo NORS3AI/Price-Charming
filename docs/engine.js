@@ -1750,6 +1750,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       permanentStockGainedThisRound2: 0,
       permanentPotencyGainedThisRound2: 0,
       unitsSoldThisRound2: 0,
+      potencyGainsDoubled: false,
       bewitchLevel: 1
     };
   }
@@ -1795,7 +1796,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       log: []
     };
     for (const inst of activeHirelings(board)) {
-      state = applyRoundStartAbility(state, inst, 0);
+      state = applyRoundStartAbility(state, inst, 0, rng);
     }
     return state;
   }
@@ -1852,10 +1853,11 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     if (!hs) return state;
     const target = findInstance(state.board, targetId);
     if ((target == null ? void 0 : target.card.id) === "dusty-broom") return state;
+    const effectivePotencyGain = hs.potencyGainsDoubled && potencyGained > 0 ? potencyGained * 2 : potencyGained;
     const next = {
       ...hs,
       permanentStockGainedThisRound: hs.permanentStockGainedThisRound + stockGained,
-      permanentPotencyGainedThisRound: hs.permanentPotencyGainedThisRound + potencyGained
+      permanentPotencyGainedThisRound: hs.permanentPotencyGainedThisRound + effectivePotencyGain
     };
     const states = new Map(state.hirelingStates);
     states.set(targetId, next);
@@ -1999,7 +2001,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return state;
     }
   }
-  function applyRoundStartAbility(state, inst, atSeconds) {
+  function applyRoundStartAbility(state, inst, atSeconds, rng) {
     switch (inst.card.id) {
       case "goblin-king": {
         const robbin = activeHirelings(state.board).find(
@@ -2009,6 +2011,41 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         let working = buffHireling(state, inst.id, inst.id, 3, 1, atSeconds);
         working = buffHireling(working, inst.id, robbin.id, 3, 1, atSeconds);
         return working;
+      }
+      case "the-royal-tutor": {
+        const candidates = activeHirelings(state.board).filter(
+          (h) => h.id !== inst.id && h.card.id !== "the-royal-tutor" && h.card.id !== "dusty-broom"
+        );
+        if (candidates.length === 0) return state;
+        const target = candidates[Math.floor(rng() * candidates.length)];
+        return buffHireling(state, inst.id, target.id, 1, 1, atSeconds);
+      }
+      case "the-kingmaker": {
+        const candidates = activeHirelings(state.board).filter(
+          (h) => h.id !== inst.id && h.card.kind === "hireling" && h.card.guild === "Nobles Guild"
+        );
+        if (candidates.length === 0) return state;
+        const target = candidates[Math.floor(rng() * candidates.length)];
+        const targetHs = state.hirelingStates.get(target.id);
+        if (!targetHs) return state;
+        const states = new Map(state.hirelingStates);
+        states.set(target.id, { ...targetHs, potencyGainsDoubled: true });
+        return { ...state, hirelingStates: states };
+      }
+      case "tower-escapee": {
+        const candidates = activeHirelings(state.board).filter(
+          (h) => h.id !== inst.id
+        );
+        if (candidates.length === 0) return state;
+        const target = candidates[Math.floor(rng() * candidates.length)];
+        const targetHs = state.hirelingStates.get(target.id);
+        if (!targetHs || targetHs.nextCastIn === null) return state;
+        const states = new Map(state.hirelingStates);
+        states.set(target.id, {
+          ...targetHs,
+          nextCastIn: Math.max(0.1, targetHs.nextCastIn - 1)
+        });
+        return { ...state, hirelingStates: states };
       }
       default:
         return state;

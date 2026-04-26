@@ -38,6 +38,12 @@ export interface HirelingActionState {
   /** Slot-1 parallel: units sold this round from the secondary potion. */
   unitsSoldThisRound2: number;
   /**
+   * When true, buffHireling doubles any positive `potencyGained` it
+   * applies to this hireling. Set by The Kingmaker on a chosen Nobles
+   * ally at round start. Round-only (resets via freshHirelingState).
+   */
+  potencyGainsDoubled: boolean;
+  /**
    * Bewitch level — how many customers this hireling's NEXT Bewitch
    * cast will target. Starts at 1. Bumps to 2 (cap) after this hireling
    * sells to a customer it previously Bewitched (per the keyword spec:

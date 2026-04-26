@@ -13,6 +13,21 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.4.0-alpha",
+    date: "2026-04-21",
+    title: "Part-2 Phase 7 — Round-start targeting",
+    changes: [
+      "MVP: random targeting at round start instead of a mid-battle UI picker. Spec called for a player picker; implementing the engine path first lets these cards function while the UI layer is deferred to a polish pass.",
+      "HirelingActionState: new `potencyGainsDoubled: boolean` (round-only). buffHireling doubles any positive `potencyGained` it applies to a hireling carrying this flag.",
+      "applyRoundStartAbility now takes RNG and wires three more hirelings:",
+      "The Royal Tutor — at round start, picks a random ally that is NOT another Royal Tutor and NOT Dusty Broom; grants +1 permanent stock + +1 permanent potency.",
+      "The Kingmaker — picks a random Nobles Guild ally and flips potencyGainsDoubled=true for the round. Every subsequent permanent-potency buff to that ally lands at 2×.",
+      "Tower Escapee — picks a random non-self ally and trims 1s off their nextCastIn (clamped at 0.1s). One-shot at round start.",
+      "5 new tests in round-start-targeting.test.ts: Royal Tutor's non-Tutor / non-Broom filter, no-eligible-ally no-op, Kingmaker's potency doubling on a Sprinkler buff, Tower Escapee's 1s nudge and clamp. 470 → 475 tests.",
+      "Mid-battle player picker UI deferred — round-start random targeting handles the engine semantics; UI layer can be retrofitted later without breaking existing wiring.",
+    ],
+  },
+  {
     version: "V0.3.9-alpha",
     date: "2026-04-21",
     title: "Part-2 Phase 6 — Buff-event bus",
