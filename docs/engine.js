@@ -71,6 +71,8 @@ var PriceCharming = (() => {
     STARTING_GOLD: () => STARTING_GOLD,
     TIP_JAR_GOLD: () => TIP_JAR_GOLD,
     WAGE_SCHEDULE: () => WAGE_SCHEDULE,
+    WEATHER_CATALOG: () => WEATHER_CATALOG,
+    WEATHER_DEFAULT_SECONDS: () => WEATHER_DEFAULT_SECONDS,
     activeHirelings: () => activeHirelings,
     addActionCustomer: () => addActionCustomer,
     addCustomer: () => addCustomer,
@@ -210,6 +212,7 @@ var PriceCharming = (() => {
     setWeather: () => setWeather,
     settleRound: () => settleRound,
     shuffle: () => shuffle,
+    spawnWeather: () => spawnWeather,
     startShopPhase: () => startShopPhase,
     survivePayday: () => survivePayday,
     takeFromOffering: () => takeFromOffering,
@@ -1683,6 +1686,39 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   }
 
   // src/action/weather.ts
+  var WEATHER_CATALOG = Object.freeze([
+    {
+      id: "rain",
+      name: "Rain",
+      effect: { focusBoostPerSecond: { side: "player", potionType: "luck", amount: 1 } }
+    },
+    {
+      id: "heatwave",
+      name: "Heatwave",
+      effect: { castSpeedupForGuild: { guild: "Sugar Guild", seconds: 1 } }
+    },
+    {
+      id: "market-rush",
+      name: "Market Rush",
+      effect: { goldPerSale: 1 }
+    },
+    {
+      id: "moonlit",
+      name: "Moonlit Market",
+      effect: { qualityMultiplier: 1.5 }
+    },
+    {
+      id: "frog-fog",
+      name: "Frog Fog",
+      effect: { playerPassiveMultiplier: 1.25 }
+    }
+  ]);
+  var WEATHER_DEFAULT_SECONDS = 25;
+  function spawnWeather(id, durationSeconds = WEATHER_DEFAULT_SECONDS) {
+    const entry = WEATHER_CATALOG.find((w) => w.id === id);
+    if (!entry) return null;
+    return { ...entry, remainingSeconds: durationSeconds };
+  }
   function tickWeather(weather, deltaSeconds) {
     if (!weather) return null;
     if (weather.remainingSeconds === null) return weather;
@@ -1723,17 +1759,26 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       }
     }
   }
-  function effectiveCastTime(inst, board) {
+  function effectiveCastTime(inst, board, weather) {
     const base = inst.card.castTime;
+    let speedup = 0;
+    const w = weather == null ? void 0 : weather.effect.castSpeedupForGuild;
+    if (w && inst.card.guild === w.guild) {
+      speedup += w.seconds;
+    }
     switch (inst.card.id) {
       case "rush-order-cook": {
         if (base.kind !== "seconds") return base;
         const sugarAllies = activeHirelings(board).filter(
           (h) => h.id !== inst.id && h.card.kind === "hireling" && h.card.guild === "Sugar Guild"
         ).length;
-        return { kind: "seconds", value: Math.max(1, base.value - sugarAllies) };
+        const adjusted = Math.max(1, base.value - sugarAllies - speedup);
+        return { kind: "seconds", value: adjusted };
       }
       default:
+        if (base.kind === "seconds" && speedup > 0) {
+          return { kind: "seconds", value: Math.max(1, base.value - speedup) };
+        }
         return base;
     }
   }
@@ -1817,8 +1862,26 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     return { ...state, opponent: snapshot };
   }
   function setWeather(state, weather) {
+    let states = state.hirelingStates;
+    const speedup = weather.effect.castSpeedupForGuild;
+    if (speedup) {
+      const nextStates = new Map(state.hirelingStates);
+      let dirty = false;
+      for (const inst of activeHirelings(state.board)) {
+        if (inst.card.guild !== speedup.guild) continue;
+        const hs = nextStates.get(inst.id);
+        if (!hs || hs.nextCastIn === null) continue;
+        nextStates.set(inst.id, {
+          ...hs,
+          nextCastIn: Math.max(0.1, hs.nextCastIn - speedup.seconds)
+        });
+        dirty = true;
+      }
+      if (dirty) states = nextStates;
+    }
     return {
       ...state,
+      hirelingStates: states,
       weather,
       log: [
         ...state.log,
@@ -2662,7 +2725,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       });
     }
     const nextDelay = nextCastDelay(
-      effectiveCastTime(inst, state.board),
+      effectiveCastTime(inst, state.board, state.weather),
       castNumber,
       rng
     );
@@ -2810,7 +2873,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     return working;
   }
   function advanceCustomers(state, deltaSeconds, rng) {
-    var _a, _b;
+    var _a, _b, _c, _d, _e;
     if (state.customers.length === 0) return state;
     const panel = buildPricingPanel(
       state.activePotionTypes,
@@ -2836,18 +2899,29 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       }
       let next = cs;
       const activeDt = Math.min(deltaSeconds, next.patienceRemaining);
+      const w = (_a = state.weather) == null ? void 0 : _a.effect;
+      const playerPassiveMul = (_b = w == null ? void 0 : w.playerPassiveMultiplier) != null ? _b : 1;
+      const qualityMul = (_c = w == null ? void 0 : w.qualityMultiplier) != null ? _c : 1;
       for (const h of hirelings) {
-        const price = (_a = h.potionType && priceByType.get(h.potionType)) != null ? _a : MIN_PRICE;
+        const price = (_d = h.potionType && priceByType.get(h.potionType)) != null ? _d : MIN_PRICE;
         const contrib = computePassiveContribution(h, price, next.customer);
         for (const axis of AXES) {
-          const amount = contrib[axis] * activeDt;
+          let amount = contrib[axis] * activeDt * playerPassiveMul;
+          if (axis === "quality") amount *= qualityMul;
           if (amount > 0) {
             next = applyContribution(next, axis, "player", amount);
           }
         }
       }
+      if (w == null ? void 0 : w.focusBoostPerSecond) {
+        const fb = w.focusBoostPerSecond;
+        const matches = !fb.potionType || fb.potionType === next.customer.desiredType;
+        if (matches) {
+          next = applyContribution(next, "focus", fb.side, fb.amount * activeDt);
+        }
+      }
       for (const h of oppHirelings) {
-        const price = (_b = h.potionType && oppPriceByType.get(h.potionType)) != null ? _b : MIN_PRICE;
+        const price = (_e = h.potionType && oppPriceByType.get(h.potionType)) != null ? _e : MIN_PRICE;
         const contrib = computePassiveContribution(h, price, next.customer);
         for (const axis of AXES) {
           const amount = contrib[axis] * activeDt;
@@ -2938,7 +3012,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     return (_b = (_a = pickSalesHirelingWithSlot(state, desiredType)) == null ? void 0 : _a.hireling) != null ? _b : null;
   }
   function executeSale(state, customerState, priceByType, rng) {
-    var _a, _b;
+    var _a, _b, _c, _d;
     const picked = pickSalesHirelingWithSlot(state, customerState.customer.desiredType);
     if (!picked) return state;
     const hireling = picked.hireling;
@@ -2989,10 +3063,11 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     const hirelingStates = new Map(state.hirelingStates);
     hirelingStates.set(hireling.id, nextHs);
+    const goldBonus = (_d = (_c = state.weather) == null ? void 0 : _c.effect.goldPerSale) != null ? _d : 0;
     let working = {
       ...state,
       hirelingStates,
-      gold: state.gold + goldEarned,
+      gold: state.gold + goldEarned + goldBonus,
       reputation: state.reputation + reputationDelta,
       log
     };

@@ -61,3 +61,63 @@ describe("weather in ActionState", () => {
     ).toBeDefined();
   });
 });
+
+describe("Weather effects (Phase 10)", () => {
+  const { spawnWeather, WEATHER_CATALOG } = require("../action/weather");
+  const { ALL_HIRELINGS } = require("../cards/hirelings");
+  const { placeHireling } = require("../board/board");
+  const { createHirelingInstance } = require("../board/hand");
+  const { setPrice } = require("../pricing/panel");
+  const { addCustomer } = require("../action/state");
+
+  test("WEATHER_CATALOG defines five concrete events", () => {
+    const ids = WEATHER_CATALOG.map((w: Weather) => w.id);
+    expect(ids).toEqual(
+      expect.arrayContaining(["rain", "heatwave", "market-rush", "moonlit", "frog-fog"])
+    );
+  });
+
+  test("spawnWeather instantiates a catalog entry with default duration", () => {
+    const w = spawnWeather("rain");
+    expect(w).not.toBeNull();
+    expect(w!.id).toBe("rain");
+    expect(w!.remainingSeconds).toBe(25);
+  });
+
+  test("Heatwave shaves 1s off Sugar Guild cast times", () => {
+    const dough = ALL_HIRELINGS.find((h: any) => h.name === "Doughboy")!;
+    let b = createBoard();
+    b = placeHireling(b, 3, createHirelingInstance(dough, "d", "love"));
+    let s = initializeActionState(
+      b,
+      defaultPriceMap(["love" as const]),
+      ["love" as const],
+      mulberry32(1)
+    );
+    s = setWeather(s, spawnWeather("heatwave")!);
+    // Doughboy is 5s cast → reduced to 4s. With weather, after one
+    // full 5-second tick, the next cast already fired (at t=4) and
+    // rescheduled. Quickcraft x2 fired so temporaryStock = 2.
+    s = tick(s, 4.5, mulberry32(1));
+    const hs = s.hirelingStates.get("d")!;
+    expect(hs.castsSoFar).toBeGreaterThanOrEqual(1);
+  });
+
+  test("Market Rush adds +1 gold per sale", () => {
+    const jj = ALL_HIRELINGS.find((h: any) => h.name === "Jumping Jack")!;
+    let b = createBoard();
+    b = placeHireling(b, 3, createHirelingInstance(jj, "jj", "love"));
+    let prices = defaultPriceMap(["love" as const]);
+    prices = setPrice(prices, "love", 1, 1);
+    let s = initializeActionState(b, prices, ["love" as const], mulberry32(1), 0, 0);
+    s = setWeather(s, spawnWeather("market-rush")!);
+    s = addCustomer(s, {
+      id: "c", desiredType: "love", budget: 5, qualityThreshold: 1,
+      reputationStars: 2, patienceSeconds: 4,
+      axisPriority: ["focus", "type", "budget", "quality"],
+    });
+    s = tick(s, 4, mulberry32(1));
+    // Sale fires: 1 unit × 1g = 1g + 1g (Market Rush bonus) = 2g.
+    expect(s.gold).toBeGreaterThanOrEqual(2);
+  });
+});

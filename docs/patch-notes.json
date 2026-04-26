@@ -1,5 +1,23 @@
 [
   {
+    "version": "V0.4.3-alpha",
+    "date": "2026-04-21",
+    "title": "Part-2 Phase 10 — Weather effects",
+    "changes": [
+      "Five concrete weather events now have real gameplay effect instead of just decaying duration:",
+      "Rain — +1 focus/s on Luck-potion customers (player side).",
+      "Heatwave — Sugar Guild casts 1s faster (clamped at 1s minimum). Applies retroactively to in-flight nextCastIn so the speedup hits the FIRST upcoming cast.",
+      "Market Rush — every sale grants +1 bonus gold on top of the price.",
+      "Moonlit Market — quality axis fills 50% faster.",
+      "Frog Fog — player passive contributions multiplied by 1.25 across all four axes.",
+      "WeatherEffect type is now structured (focusBoostPerSecond, qualityMultiplier, castSpeedupForGuild, goldPerSale, playerPassiveMultiplier) instead of an opaque payload.",
+      "WEATHER_CATALOG holds the five entries; spawnWeather(id) instantiates one with WEATHER_DEFAULT_SECONDS=25.",
+      "tick now consumes weather effects when computing per-second axis fills, cast scheduling, and sale gold.",
+      "4 new tests in weather.test.ts covering the catalog, spawn, Heatwave-shortened first cast, and Market Rush gold bonus. 484 → 488 tests.",
+      "Engine now exposes spawnWeather and WEATHER_CATALOG via src/index.ts so the UI can roll a random weather event per round in a future polish pass. The current build still requires explicit setWeather; auto-spawn is deferred."
+    ]
+  },
+  {
     "version": "V0.4.2-alpha",
     "date": "2026-04-21",
     "title": "Part-2 Phase 9 — Ambiguous abilities",

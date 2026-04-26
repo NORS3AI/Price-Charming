@@ -81,8 +81,14 @@ export function nextCastDelay(
  * stable across a round — callers may cache it, but we recompute each
  * time for simplicity.
  */
-function effectiveCastTime(inst: HirelingInstance, board: Board): CastTime {
+function effectiveCastTime(inst: HirelingInstance, board: Board, weather?: Weather | null): CastTime {
   const base = inst.card.castTime;
+  let speedup = 0;
+  // Heatwave-style weather: shave seconds off cast time for a guild.
+  const w = weather?.effect.castSpeedupForGuild;
+  if (w && inst.card.guild === w.guild) {
+    speedup += w.seconds;
+  }
   switch (inst.card.id) {
     case "rush-order-cook": {
       if (base.kind !== "seconds") return base;
@@ -92,9 +98,13 @@ function effectiveCastTime(inst: HirelingInstance, board: Board): CastTime {
           h.card.kind === "hireling" &&
           h.card.guild === "Sugar Guild"
       ).length;
-      return { kind: "seconds", value: Math.max(1, base.value - sugarAllies) };
+      const adjusted = Math.max(1, base.value - sugarAllies - speedup);
+      return { kind: "seconds", value: adjusted };
     }
     default:
+      if (base.kind === "seconds" && speedup > 0) {
+        return { kind: "seconds", value: Math.max(1, base.value - speedup) };
+      }
       return base;
   }
 }
@@ -258,8 +268,30 @@ export function setOpponent(
  * currently-active weather.
  */
 export function setWeather(state: ActionState, weather: Weather): ActionState {
+  // Apply castSpeedupForGuild RETROACTIVELY to in-flight nextCastIn so
+  // weather kicks in on the FIRST upcoming cast rather than waiting
+  // for a reschedule. Without this, freshHirelingState's pre-weather
+  // first-cast delay would dominate until the second cast.
+  let states = state.hirelingStates;
+  const speedup = weather.effect.castSpeedupForGuild;
+  if (speedup) {
+    const nextStates = new Map(state.hirelingStates);
+    let dirty = false;
+    for (const inst of activeHirelings(state.board)) {
+      if (inst.card.guild !== speedup.guild) continue;
+      const hs = nextStates.get(inst.id);
+      if (!hs || hs.nextCastIn === null) continue;
+      nextStates.set(inst.id, {
+        ...hs,
+        nextCastIn: Math.max(0.1, hs.nextCastIn - speedup.seconds),
+      });
+      dirty = true;
+    }
+    if (dirty) states = nextStates;
+  }
   return {
     ...state,
+    hirelingStates: states,
     weather,
     log: [
       ...state.log,
@@ -1667,7 +1699,7 @@ function fireCast(
   // effective cast time so cards like Rush Order Cook honor their
   // per-ally reductions.
   const nextDelay = nextCastDelay(
-    effectiveCastTime(inst, state.board),
+    effectiveCastTime(inst, state.board, state.weather),
     castNumber,
     rng
   );
@@ -1941,15 +1973,28 @@ function advanceCustomers(
     // don't over-apply during the slice of the tick after their patience
     // would have expired.
     const activeDt = Math.min(deltaSeconds, next.patienceRemaining);
+    // Weather modifiers applied to player passive contributions.
+    const w = state.weather?.effect;
+    const playerPassiveMul = w?.playerPassiveMultiplier ?? 1;
+    const qualityMul = w?.qualityMultiplier ?? 1;
     for (const h of hirelings) {
       const price =
         (h.potionType && priceByType.get(h.potionType)) ?? MIN_PRICE;
       const contrib = computePassiveContribution(h, price, next.customer);
       for (const axis of AXES) {
-        const amount = contrib[axis] * activeDt;
+        let amount = contrib[axis] * activeDt * playerPassiveMul;
+        if (axis === "quality") amount *= qualityMul;
         if (amount > 0) {
           next = applyContribution(next, axis, "player", amount);
         }
+      }
+    }
+    // Weather: rain-style focus boost on the customer's matching type.
+    if (w?.focusBoostPerSecond) {
+      const fb = w.focusBoostPerSecond;
+      const matches = !fb.potionType || fb.potionType === next.customer.desiredType;
+      if (matches) {
+        next = applyContribution(next, "focus", fb.side, fb.amount * activeDt);
       }
     }
     // Opponent-side passive contributions (ghost snapshot).
@@ -2192,10 +2237,12 @@ function executeSale(
   const hirelingStates = new Map(state.hirelingStates);
   hirelingStates.set(hireling.id, nextHs);
 
+  // Market-Rush weather: every sale grants +N bonus gold.
+  const goldBonus = state.weather?.effect.goldPerSale ?? 0;
   let working: ActionState = {
     ...state,
     hirelingStates,
-    gold: state.gold + goldEarned,
+    gold: state.gold + goldEarned + goldBonus,
     reputation: state.reputation + reputationDelta,
     log,
   };

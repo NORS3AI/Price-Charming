@@ -266,7 +266,12 @@ export {
   tick,
 } from "./action/state";
 export type { Weather, WeatherEffect } from "./action/weather";
-export { tickWeather } from "./action/weather";
+export {
+  WEATHER_CATALOG,
+  WEATHER_DEFAULT_SECONDS,
+  spawnWeather,
+  tickWeather,
+} from "./action/weather";
 
 // Opponent system (Phase 8)
 export type { OpponentSnapshot } from "./opponent/snapshot";
