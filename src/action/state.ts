@@ -207,12 +207,37 @@ export function initializeActionState(
     opponent: null,
     log: [],
   };
-  // Run per-card round-start abilities (e.g. Goblin King + Robbin
-  // Goblin mutual buff) once per round.
+  // Per-card round-start abilities that don't need an opponent (Goblin
+  // King mutual buff, Royal Tutor, Kingmaker, Tower Escapee). Cards
+  // that READ the opponent (Batter Boy, Frosted Lookout) need
+  // `runRoundStartHooks` re-run after setOpponent — see endShopPhase.
   for (const inst of activeHirelings(board)) {
     state = applyRoundStartAbility(state, inst, 0, rng);
   }
   return state;
+}
+
+/** Card ids whose round-start hook needs to read state.opponent. */
+const OPPONENT_DEPENDENT_ROUND_START = new Set<string>([
+  "batter-boy",
+  "frosted-lookout",
+]);
+
+/**
+ * Run the OPPONENT-DEPENDENT round-start hooks. Called by endShopPhase
+ * AFTER setOpponent so Batter Boy / Frosted Lookout can read the
+ * snapshot. Idempotent for all other cards (filtered out by id).
+ */
+export function runOpponentDependentRoundStartHooks(
+  state: ActionState,
+  rng: RNG
+): ActionState {
+  let working = state;
+  for (const inst of activeHirelings(working.board)) {
+    if (!OPPONENT_DEPENDENT_ROUND_START.has(inst.card.id)) continue;
+    working = applyRoundStartAbility(working, inst, 0, rng);
+  }
+  return working;
 }
 
 /**
@@ -678,6 +703,48 @@ function applyRoundStartAbility(
         nextCastIn: Math.max(0.1, targetHs.nextCastIn - 1),
       });
       return { ...state, hirelingStates: states };
+    }
+    case "batter-boy": {
+      // "Each time an opponent sabotages you this round, gain +3
+      //  temporary stock." Engine doesn't simulate opponent casts, so
+      //  MVP: count the opponent's active Sabotage hirelings ONCE at
+      //  round start and grant Batter Boy +3 temp stock per opponent
+      //  saboteur (one-shot, approximating "each time over the round").
+      if (!state.opponent) return state;
+      const oppSaboteurs = activeHirelings(state.opponent.board).filter((h) =>
+        h.card.keywords.some((k) => k.name === "Sabotage")
+      ).length;
+      if (oppSaboteurs === 0) return state;
+      return addTemporaryStock(state, inst.id, 3 * oppSaboteurs);
+    }
+    case "frosted-lookout": {
+      // "When an opponent uses Sabotage, immediately trigger your
+      //  highest potency Sugar Guild ally's ability." MVP: at round
+      //  start, if the opponent has ANY Sabotage hireling on an active
+      //  slot, fire the player's highest-pot Sugar ally's
+      //  applyPostCastAbility once. Approximates the "each time"
+      //  reactive without simulating opponent casts.
+      if (!state.opponent) return state;
+      const oppHasSaboteur = activeHirelings(state.opponent.board).some((h) =>
+        h.card.keywords.some((k) => k.name === "Sabotage")
+      );
+      if (!oppHasSaboteur) return state;
+      const sugarAllies = activeHirelings(state.board).filter(
+        (h) =>
+          h.id !== inst.id &&
+          h.card.kind === "hireling" &&
+          h.card.guild === "Sugar Guild"
+      );
+      if (sugarAllies.length === 0) return state;
+      let best = sugarAllies[0];
+      let bestPot = -Infinity;
+      for (const h of sugarAllies) {
+        const hs = state.hirelingStates.get(h.id);
+        if (!hs) continue;
+        const pot = effectivePotency(h, hs, 0);
+        if (pot > bestPot) { best = h; bestPot = pot; }
+      }
+      return applyPostCastAbility(state, best, atSeconds, rng);
     }
     default:
       return state;
@@ -1239,6 +1306,44 @@ function applyPostCastAbility(
       const last = findLastAbilityBuff(state.log);
       if (!last) return state;
       return buffHireling(state, caster.id, caster.id, last.stockGained, last.potencyGained, atSeconds, true);
+    }
+    case "robbin-goblin": {
+      // "Knockoff x1. If potency is below 5, steal +1 permanent stock
+      //  from opponent's lowest potency hireling." We don't mutate
+      //  opponent state (snapshot), so the steal manifests as a self
+      //  +1 permanent stock when conditions are met:
+      //    - Robbin's effective potency on slot 0 < 5.
+      //    - Opponent has at least one active hireling.
+      const hs = state.hirelingStates.get(caster.id);
+      if (!hs) return state;
+      if (effectivePotency(caster, hs, 0) >= 5) return state;
+      if (!state.opponent) return state;
+      if (activeHirelings(state.opponent.board).length === 0) return state;
+      return buffHireling(state, caster.id, caster.id, 1, 0, atSeconds, true);
+    }
+    case "puss-in-boots": {
+      // "Knockoff x5. Haggle. Steal 1 Reputation star from each
+      //  customer (they must have more than 1 reputation star). Gain
+      //  +1 permanent stock per star stolen." Per cast, modify every
+      //  unresolved customer with reputationStars > 1 (drop by 1) and
+      //  grant Puss +1 perm stock per star stolen.
+      let stolen = 0;
+      const customers = state.customers.map((cs) => {
+        if (cs.resolvedFor !== null) return cs;
+        if (cs.customer.reputationStars <= 1) return cs;
+        stolen++;
+        return {
+          ...cs,
+          customer: {
+            ...cs.customer,
+            reputationStars: cs.customer.reputationStars - 1,
+          },
+        };
+      });
+      if (stolen === 0) return state;
+      let working: ActionState = { ...state, customers };
+      working = buffHireling(working, caster.id, caster.id, stolen, 0, atSeconds, true);
+      return working;
     }
     case "royal-advisor": {
       // "Sabotage an ally. If it is a Nobles Guild ally, that ally's

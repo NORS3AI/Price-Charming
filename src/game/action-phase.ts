@@ -5,6 +5,7 @@ import {
   applyEndOfRoundHooks,
   finalizeRound,
   initializeActionState,
+  runOpponentDependentRoundStartHooks,
   setOpponent,
   tick,
 } from "../action/state";
@@ -39,7 +40,13 @@ export function endShopPhase(state: GameState, rng: RNG): GameState {
     state.gold,
     state.reputation
   );
-  if (state.opponent) action = setOpponent(action, state.opponent);
+  if (state.opponent) {
+    action = setOpponent(action, state.opponent);
+    // Run opponent-dependent round-start hooks (Batter Boy, Frosted
+    // Lookout) now that state.opponent is attached. Non-opponent
+    // hooks already fired during initializeActionState.
+    action = runOpponentDependentRoundStartHooks(action, rng);
+  }
   return { ...state, phase: "action", action };
 }
 

@@ -1800,6 +1800,18 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     }
     return state;
   }
+  var OPPONENT_DEPENDENT_ROUND_START = /* @__PURE__ */ new Set([
+    "batter-boy",
+    "frosted-lookout"
+  ]);
+  function runOpponentDependentRoundStartHooks(state, rng) {
+    let working = state;
+    for (const inst of activeHirelings(working.board)) {
+      if (!OPPONENT_DEPENDENT_ROUND_START.has(inst.card.id)) continue;
+      working = applyRoundStartAbility(working, inst, 0, rng);
+    }
+    return working;
+  }
   function setOpponent(state, snapshot) {
     return { ...state, opponent: snapshot };
   }
@@ -2046,6 +2058,37 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           nextCastIn: Math.max(0.1, targetHs.nextCastIn - 1)
         });
         return { ...state, hirelingStates: states };
+      }
+      case "batter-boy": {
+        if (!state.opponent) return state;
+        const oppSaboteurs = activeHirelings(state.opponent.board).filter(
+          (h) => h.card.keywords.some((k) => k.name === "Sabotage")
+        ).length;
+        if (oppSaboteurs === 0) return state;
+        return addTemporaryStock(state, inst.id, 3 * oppSaboteurs);
+      }
+      case "frosted-lookout": {
+        if (!state.opponent) return state;
+        const oppHasSaboteur = activeHirelings(state.opponent.board).some(
+          (h) => h.card.keywords.some((k) => k.name === "Sabotage")
+        );
+        if (!oppHasSaboteur) return state;
+        const sugarAllies = activeHirelings(state.board).filter(
+          (h) => h.id !== inst.id && h.card.kind === "hireling" && h.card.guild === "Sugar Guild"
+        );
+        if (sugarAllies.length === 0) return state;
+        let best = sugarAllies[0];
+        let bestPot = -Infinity;
+        for (const h of sugarAllies) {
+          const hs = state.hirelingStates.get(h.id);
+          if (!hs) continue;
+          const pot = effectivePotency(h, hs, 0);
+          if (pot > bestPot) {
+            best = h;
+            bestPot = pot;
+          }
+        }
+        return applyPostCastAbility(state, best, atSeconds, rng);
       }
       default:
         return state;
@@ -2380,6 +2423,33 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         const last = findLastAbilityBuff(state.log);
         if (!last) return state;
         return buffHireling(state, caster.id, caster.id, last.stockGained, last.potencyGained, atSeconds, true);
+      }
+      case "robbin-goblin": {
+        const hs = state.hirelingStates.get(caster.id);
+        if (!hs) return state;
+        if (effectivePotency(caster, hs, 0) >= 5) return state;
+        if (!state.opponent) return state;
+        if (activeHirelings(state.opponent.board).length === 0) return state;
+        return buffHireling(state, caster.id, caster.id, 1, 0, atSeconds, true);
+      }
+      case "puss-in-boots": {
+        let stolen = 0;
+        const customers = state.customers.map((cs) => {
+          if (cs.resolvedFor !== null) return cs;
+          if (cs.customer.reputationStars <= 1) return cs;
+          stolen++;
+          return {
+            ...cs,
+            customer: {
+              ...cs.customer,
+              reputationStars: cs.customer.reputationStars - 1
+            }
+          };
+        });
+        if (stolen === 0) return state;
+        let working = { ...state, customers };
+        working = buffHireling(working, caster.id, caster.id, stolen, 0, atSeconds, true);
+        return working;
       }
       case "royal-advisor": {
         const nobleAllies = activeHirelings(state.board).filter(
@@ -3278,7 +3348,10 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       state.gold,
       state.reputation
     );
-    if (state.opponent) action = setOpponent(action, state.opponent);
+    if (state.opponent) {
+      action = setOpponent(action, state.opponent);
+      action = runOpponentDependentRoundStartHooks(action, rng);
+    }
     return { ...state, phase: "action", action };
   }
   function addActionCustomer(state, customer) {

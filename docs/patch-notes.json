@@ -1,5 +1,20 @@
 [
   {
+    "version": "V0.4.1-alpha",
+    "date": "2026-04-21",
+    "title": "Part-2 Phase 8 — Cross-player opponent effects",
+    "changes": [
+      "Round-start hooks split: opponent-dependent cards (Batter Boy, Frosted Lookout) now run after setOpponent in endShopPhase via runOpponentDependentRoundStartHooks. Non-opp cards still fire from initializeActionState as before.",
+      "Wired hirelings:",
+      "Robbin Goblin — per-cast: when own potency < 5 AND the opponent has any active hireling, +1 permanent stock to self. (\"Steal\" from opponent's lowest-pot hireling rendered as own gain since opponent state is a snapshot.)",
+      "Puss in Boots — per-cast: every unresolved customer with reputationStars > 1 loses 1 star, Puss gains +1 permanent stock per star stolen. Stacks with Knockoff x5 and Haggle.",
+      "Batter Boy — at round start (after opp wired): +3 temporary stock per opponent Sabotage hireling on an active slot. One-shot approximation of \"each time opp sabotages\" since opponent casts aren't simulated.",
+      "Frosted Lookout — at round start (after opp wired): if the opponent has any Sabotage hireling, fires the player's highest-potency Sugar Guild ally's applyPostCastAbility once.",
+      "Deferred: Miss Fortune Teller (\"start of shop round, +1 stock per customer the opp won\") needs a cross-round opponent customer-tally tracker on GameState. Not yet wired — the round-recap path captures customer counts but doesn't persist a between-rounds tally accessible to round-start hooks.",
+      "5 new tests in cross-player.test.ts. 475 → 480 tests."
+    ]
+  },
+  {
     "version": "V0.4.0-alpha",
     "date": "2026-04-21",
     "title": "Part-2 Phase 7 — Round-start targeting",
