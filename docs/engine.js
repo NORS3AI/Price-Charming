@@ -1751,6 +1751,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       permanentPotencyGainedThisRound2: 0,
       unitsSoldThisRound2: 0,
       potencyGainsDoubled: false,
+      bonusQuickcraftPerCast: 0,
       bewitchLevel: 1
     };
   }
@@ -2009,6 +2010,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         if (otherThieves < 2) return state;
         return { ...state, gold: state.gold + 1 };
       }
+      case "spare-charming": {
+        return buffHireling(state, reactor.id, reactor.id, 0, 3, atSeconds, true);
+      }
       default:
         return state;
     }
@@ -2058,6 +2062,22 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           nextCastIn: Math.max(0.1, targetHs.nextCastIn - 1)
         });
         return { ...state, hirelingStates: states };
+      }
+      case "the-muffin-man": {
+        const states = new Map(state.hirelingStates);
+        let dirty = false;
+        for (const ally of activeHirelings(state.board)) {
+          if (ally.id === inst.id) continue;
+          if (quickcraftCount(ally) <= 0) continue;
+          const allyHs = states.get(ally.id);
+          if (!allyHs) continue;
+          states.set(ally.id, {
+            ...allyHs,
+            bonusQuickcraftPerCast: allyHs.bonusQuickcraftPerCast + 2
+          });
+          dirty = true;
+        }
+        return dirty ? { ...state, hirelingStates: states } : state;
       }
       case "batter-boy": {
         if (!state.opponent) return state;
@@ -2451,6 +2471,41 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         working = buffHireling(working, caster.id, caster.id, stolen, 0, atSeconds, true);
         return working;
       }
+      // The Muffin Man's "+2 Quickcraft permanent" applies at round
+      // start so it benefits every cast of every Quickcraft ally that
+      // round (otherwise per-Muffin-Man-cast bumps fire after most
+      // allies have already cast in tick-iteration order). Wired in
+      // applyRoundStartAbility instead of here.
+      case "the-grand-thief": {
+        const knockoffThieves = activeHirelings(state.board).filter(
+          (h) => h.card.guild === "Thieves Guild" && knockoffCount(h) > 0
+        );
+        let working = state;
+        const otherCount = knockoffThieves.filter((h) => h.id !== caster.id).length;
+        if (otherCount > 0) {
+          working = addTemporaryStock(working, caster.id, otherCount * 2);
+        }
+        for (const ally of knockoffThieves) {
+          const allyHs = working.hirelingStates.get(ally.id);
+          if (!allyHs) continue;
+          if (effectivePotency(ally, allyHs, 0) >= 10) continue;
+          working = buffHireling(working, caster.id, ally.id, 1, 0, atSeconds, true);
+        }
+        return working;
+      }
+      case "sugar-rush-peddler": {
+        const sales = state.log.filter((e) => e.kind === "sale").length;
+        if (sales === 0) return state;
+        const reduction = sales * 0.5;
+        const hs = state.hirelingStates.get(caster.id);
+        if (!hs || hs.nextCastIn === null) return state;
+        const states = new Map(state.hirelingStates);
+        states.set(caster.id, {
+          ...hs,
+          nextCastIn: Math.max(0.1, hs.nextCastIn - reduction)
+        });
+        return { ...state, hirelingStates: states };
+      }
       case "royal-advisor": {
         const nobleAllies = activeHirelings(state.board).filter(
           (h) => h.id !== caster.id && h.card.guild === "Nobles Guild"
@@ -2596,12 +2651,13 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
     let temporaryStock = prev.temporaryStock;
     const qc = quickcraftCount(inst);
     if (qc > 0) {
-      temporaryStock += qc;
+      const totalAdded = qc + (prev.bonusQuickcraftPerCast || 0);
+      temporaryStock += totalAdded;
       log.push({
         kind: "quickcraft",
         instanceId,
         atSeconds,
-        stockAdded: qc,
+        stockAdded: totalAdded,
         temporaryStockAfter: temporaryStock
       });
     }
@@ -2816,6 +2872,22 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           const seller = pickSalesHireling(working, next.customer.desiredType);
           if (!seller) {
             next = { ...next, resolvedFor: "no-sale" };
+          }
+        }
+        if (next.resolvedFor === "no-sale") {
+          const tasting = activeHirelings(working.board).find((h) => h.card.id === "tasting-table");
+          if (tasting) {
+            const tastingHs = working.hirelingStates.get(tasting.id);
+            const matches = tasting.potionType === next.customer.desiredType || tasting.potionType2 === next.customer.desiredType;
+            const slot = tasting.potionType === next.customer.desiredType ? 0 : 1;
+            if (matches && tastingHs && effectiveStock(tasting, tastingHs, slot) > 0) {
+              next = { ...next, resolvedFor: "player" };
+              for (const ally of activeHirelings(working.board)) {
+                if (ally.id === tasting.id) continue;
+                if (ally.card.guild !== "Sugar Guild") continue;
+                working = addTemporaryStock(working, ally.id, 1);
+              }
+            }
           }
         }
         working = {

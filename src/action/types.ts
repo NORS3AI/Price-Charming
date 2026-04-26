@@ -44,6 +44,13 @@ export interface HirelingActionState {
    */
   potencyGainsDoubled: boolean;
   /**
+   * Extra Quickcraft stock granted by The Muffin Man's per-cast
+   * "Allies with Quickcraft gain +2 Quickcraft (permanent)." Bumped
+   * by +2 each time Muffin Man casts. Round-only — gains revert at
+   * round end since slot bonuses promote separately.
+   */
+  bonusQuickcraftPerCast: number;
+  /**
    * Bewitch level — how many customers this hireling's NEXT Bewitch
    * cast will target. Starts at 1. Bumps to 2 (cap) after this hireling
    * sells to a customer it previously Bewitched (per the keyword spec:

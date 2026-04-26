@@ -13,6 +13,21 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.4.2-alpha",
+    date: "2026-04-21",
+    title: "Part-2 Phase 9 — Ambiguous abilities",
+    changes: [
+      "HirelingActionState: new bonusQuickcraftPerCast (round-only, default 0). The Quickcraft fire path now adds it to the keyword count when generating temp stock.",
+      "Wired hirelings:",
+      "The Muffin Man — at ROUND START (not per cast — applies to every cast of every Quickcraft ally that round), every active Quickcraft ally gets bonusQuickcraftPerCast += 2. Doughboy adjacent to Muffin Man casts +4 temp stock instead of +2.",
+      "The Grand Thief — per cast: +2 temp stock for each OTHER Thieves ally with Knockoff; then for each Thieves ally with Knockoff (incl. self), if potency < 10 grant +1 perm stock (mimics Knockoff outside a sale).",
+      "Spare Charming — listens for no-player-sale resolutions (via the existing applyOnNoPlayerSaleAbility hook). MVP: every no-sale grants Spare Charming +3 perm pot. (Spec says \"Haggled sale fails\"; we don't track haggle-attempt-failures distinctly so all no-sales count.)",
+      "Sugar Rush Peddler — per cast: nudges own nextCastIn down by 0.5s × (sales fired so far this round). One-shot reduction at cast time rather than a sticky cross-cast accumulator.",
+      "Tasting Table — when a customer would resolve as no-sale AND a Tasting Table is on an active slot AND her potion type matches AND she has stock, the resolution is upgraded to player-sale; +1 temp stock to every Sugar Guild ally except herself. Narrow window because pickSalesHireling already finds her in the normal player-win path; the redirect only fires when no other matching seller exists.",
+      "4 new tests in ambiguous-abilities.test.ts. 480 → 484 tests.",
+    ],
+  },
+  {
     version: "V0.4.1-alpha",
     date: "2026-04-21",
     title: "Part-2 Phase 8 — Cross-player opponent effects",

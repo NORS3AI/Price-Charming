@@ -118,6 +118,7 @@ function freshHirelingState(
     permanentPotencyGainedThisRound2: 0,
     unitsSoldThisRound2: 0,
     potencyGainsDoubled: false,
+    bonusQuickcraftPerCast: 0,
     bewitchLevel: 1,
   };
 }
@@ -622,6 +623,13 @@ function applyOnNoPlayerSaleAbility(
       if (otherThieves < 2) return state;
       return { ...state, gold: state.gold + 1 };
     }
+    case "spare-charming": {
+      // "If Haggled sale fails, gain +3 permanent potency." MVP:
+      // every no-player-sale resolution counts as a "haggled sale
+      // failed" since Spare Charming carries Haggle and would have
+      // been the haggle source. +3 permanent potency.
+      return buffHireling(state, reactor.id, reactor.id, 0, 3, atSeconds, true);
+    }
     default:
       return state;
   }
@@ -703,6 +711,25 @@ function applyRoundStartAbility(
         nextCastIn: Math.max(0.1, targetHs.nextCastIn - 1),
       });
       return { ...state, hirelingStates: states };
+    }
+    case "the-muffin-man": {
+      // "Allies with Quickcraft gain +2 Quickcraft (permanent)." At
+      //  round start, every active ally with the Quickcraft keyword
+      //  gets bonusQuickcraftPerCast += 2 for the entire round.
+      const states = new Map(state.hirelingStates);
+      let dirty = false;
+      for (const ally of activeHirelings(state.board)) {
+        if (ally.id === inst.id) continue;
+        if (quickcraftCount(ally) <= 0) continue;
+        const allyHs = states.get(ally.id);
+        if (!allyHs) continue;
+        states.set(ally.id, {
+          ...allyHs,
+          bonusQuickcraftPerCast: allyHs.bonusQuickcraftPerCast + 2,
+        });
+        dirty = true;
+      }
+      return dirty ? { ...state, hirelingStates: states } : state;
     }
     case "batter-boy": {
       // "Each time an opponent sabotages you this round, gain +3
@@ -1345,6 +1372,56 @@ function applyPostCastAbility(
       working = buffHireling(working, caster.id, caster.id, stolen, 0, atSeconds, true);
       return working;
     }
+    // The Muffin Man's "+2 Quickcraft permanent" applies at round
+    // start so it benefits every cast of every Quickcraft ally that
+    // round (otherwise per-Muffin-Man-cast bumps fire after most
+    // allies have already cast in tick-iteration order). Wired in
+    // applyRoundStartAbility instead of here.
+    case "the-grand-thief": {
+      // "Knockoff x5. For each Thieves ally with Knockoff, gain +2
+      //  temporary stock. All Thieves allies trigger Knockoff x1
+      //  immediately." Two clauses:
+      //    1. count Thieves allies (excl. self) with Knockoff → grant
+      //       Grand Thief +2 temp stock per.
+      //    2. for each Thieves ally with Knockoff (incl. self?), if
+      //       potency < 10, grant +1 perm stock (mimics Knockoff).
+      const knockoffThieves = activeHirelings(state.board).filter(
+        (h) => h.card.guild === "Thieves Guild" && knockoffCount(h) > 0
+      );
+      let working = state;
+      const otherCount = knockoffThieves.filter((h) => h.id !== caster.id).length;
+      if (otherCount > 0) {
+        working = addTemporaryStock(working, caster.id, otherCount * 2);
+      }
+      for (const ally of knockoffThieves) {
+        const allyHs = working.hirelingStates.get(ally.id);
+        if (!allyHs) continue;
+        if (effectivePotency(ally, allyHs, 0) >= 10) continue;
+        working = buffHireling(working, caster.id, ally.id, 1, 0, atSeconds, true);
+      }
+      return working;
+    }
+    case "sugar-rush-peddler": {
+      // "Quickcraft x4. Each sale this round reduces cast time by 0.5s
+      //  until end of round." Per-cast: nudge own nextCastIn by -0.5s
+      //  per sale fired so far this round (one-shot reduction at
+      //  cast time, not a sticky reduction across all future casts).
+      //  Spec literally says "until end of round" but tracking a
+      //  per-card cast-time-delta accumulator across reschedules is
+      //  out of scope; this captures the flavor without the
+      //  bookkeeping.
+      const sales = state.log.filter((e) => e.kind === "sale").length;
+      if (sales === 0) return state;
+      const reduction = sales * 0.5;
+      const hs = state.hirelingStates.get(caster.id);
+      if (!hs || hs.nextCastIn === null) return state;
+      const states = new Map(state.hirelingStates);
+      states.set(caster.id, {
+        ...hs,
+        nextCastIn: Math.max(0.1, hs.nextCastIn - reduction),
+      });
+      return { ...state, hirelingStates: states };
+    }
     case "royal-advisor": {
       // "Sabotage an ally. If it is a Nobles Guild ally, that ally's
       //  next action gains +2 to all stat effects permanently."
@@ -1567,16 +1644,21 @@ function fireCast(
     },
   ];
 
-  // Quickcraft: add temp stock post-cast.
+  // Quickcraft: add temp stock post-cast. The Muffin Man's per-cast
+  // ability grants +2 to each Quickcraft ally's `bonusQuickcraftPerCast`
+  // for the round; that bonus is added to whatever the keyword's count
+  // is so Muffin Man effectively bumps allied Quickcraft by 2 per
+  // Muffin Man cast.
   let temporaryStock = prev.temporaryStock;
   const qc = quickcraftCount(inst);
   if (qc > 0) {
-    temporaryStock += qc;
+    const totalAdded = qc + (prev.bonusQuickcraftPerCast || 0);
+    temporaryStock += totalAdded;
     log.push({
       kind: "quickcraft",
       instanceId,
       atSeconds,
-      stockAdded: qc,
+      stockAdded: totalAdded,
       temporaryStockAfter: temporaryStock,
     });
   }
@@ -1914,6 +1996,32 @@ function advanceCustomers(
         const seller = pickSalesHireling(working, next.customer.desiredType);
         if (!seller) {
           next = { ...next, resolvedFor: "no-sale" };
+        }
+      }
+      // Tasting Table redirect: when a customer resolves as no-sale,
+      // check if a Tasting Table is on an active slot and CAN fulfill
+      // (matching type + stock). If so, promote no-sale → player and
+      // fire +1 temp stock to all Sugar Guild allies.
+      if (next.resolvedFor === "no-sale") {
+        const tasting = activeHirelings(working.board).find((h) => h.card.id === "tasting-table");
+        if (tasting) {
+          const tastingHs = working.hirelingStates.get(tasting.id);
+          // Tasting Table only redirects if her own slot type matches.
+          const matches =
+            tasting.potionType === next.customer.desiredType ||
+            tasting.potionType2 === next.customer.desiredType;
+          const slot: 0 | 1 = tasting.potionType === next.customer.desiredType ? 0 : 1;
+          if (matches && tastingHs && effectiveStock(tasting, tastingHs, slot) > 0) {
+            next = { ...next, resolvedFor: "player" };
+            // Apply Tasting Table's bonus: +1 temp stock to every
+            // Sugar Guild ally on an active slot (excluding self by
+            // convention — self gets the sale instead).
+            for (const ally of activeHirelings(working.board)) {
+              if (ally.id === tasting.id) continue;
+              if (ally.card.guild !== "Sugar Guild") continue;
+              working = addTemporaryStock(working, ally.id, 1);
+            }
+          }
         }
       }
       working = {
