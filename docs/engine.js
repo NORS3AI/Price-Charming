@@ -1839,7 +1839,14 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
   function findInstance(board, instanceId) {
     return activeHirelings(board).find((h) => h.id === instanceId);
   }
-  function buffHireling(state, casterId, targetId, stockGained, potencyGained, atSeconds) {
+  function findLastAbilityBuff(log) {
+    for (let i = log.length - 1; i >= 0; i--) {
+      const e = log[i];
+      if (e.kind === "ability-buff") return e;
+    }
+    return null;
+  }
+  function buffHireling(state, casterId, targetId, stockGained, potencyGained, atSeconds, reentrant = false) {
     if (stockGained === 0 && potencyGained === 0) return state;
     const hs = state.hirelingStates.get(targetId);
     if (!hs) return state;
@@ -1863,7 +1870,49 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         atSeconds
       }
     ];
-    return { ...state, hirelingStates: states, log };
+    let working = { ...state, hirelingStates: states, log };
+    if (!reentrant && target) {
+      for (const ally of activeHirelings(working.board)) {
+        if (ally.id === targetId) continue;
+        working = applyOnPermanentBuffEvent(
+          working,
+          ally,
+          { casterId, targetId, stockGained, potencyGained, atSeconds },
+          atSeconds
+        );
+      }
+    }
+    return working;
+  }
+  function applyOnPermanentBuffEvent(state, reactor, event, atSeconds) {
+    switch (reactor.card.id) {
+      case "court-jester": {
+        let working = state;
+        if (event.stockGained > 0) {
+          working = addTemporaryStock(working, reactor.id, 1);
+        }
+        if (event.potencyGained > 0) {
+          const hs = working.hirelingStates.get(reactor.id);
+          if (hs) {
+            const states = new Map(working.hirelingStates);
+            states.set(reactor.id, {
+              ...hs,
+              permanentPotencyGainedThisRound: hs.permanentPotencyGainedThisRound + 1
+            });
+            working = { ...working, hirelingStates: states };
+          }
+        }
+        return working;
+      }
+      case "the-candy-architect": {
+        if (event.potencyGained <= 0) return state;
+        const target = findInstance(state.board, event.targetId);
+        if (!target || target.card.kind !== "hireling" || target.card.guild !== "Sugar Guild") return state;
+        return buffHireling(state, reactor.id, reactor.id, 2, 0, atSeconds, true);
+      }
+      default:
+        return state;
+    }
   }
   function applyPostSaleAbility(state, hireling, haggled, atSeconds) {
     switch (hireling.card.id) {
@@ -2282,6 +2331,19 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return applyDuchessBuffs(state, caster, atSeconds);
       case "sticky-fingers":
         return addTemporaryStock(state, caster.id, 2);
+      case "the-court-scribe": {
+        const last = findLastAbilityBuff(state.log);
+        if (!last) return state;
+        const stockBoost = last.stockGained > 0 ? 1 : 0;
+        const potencyBoost = last.potencyGained > 0 ? 1 : 0;
+        if (stockBoost === 0 && potencyBoost === 0) return state;
+        return buffHireling(state, caster.id, last.targetId, stockBoost, potencyBoost, atSeconds, true);
+      }
+      case "the-grand-vizier": {
+        const last = findLastAbilityBuff(state.log);
+        if (!last) return state;
+        return buffHireling(state, caster.id, caster.id, last.stockGained, last.potencyGained, atSeconds, true);
+      }
       case "royal-advisor": {
         const nobleAllies = activeHirelings(state.board).filter(
           (h) => h.id !== caster.id && h.card.guild === "Nobles Guild"

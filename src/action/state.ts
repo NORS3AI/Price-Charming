@@ -289,13 +289,30 @@ function findInstance(
  * buff carries into the HirelingInstance's permanent bonuses when
  * endRound runs promotePermanentBuffs.
  */
+/**
+ * Walk the log backwards for the most recent ability-buff entry.
+ * Used by Court Scribe and Grand Vizier to find "the last permanent
+ * buff any ally gained this round." Returns null when the log has
+ * no ability-buff entries yet.
+ */
+function findLastAbilityBuff(
+  log: readonly ActionLogEntry[]
+): Extract<ActionLogEntry, { kind: "ability-buff" }> | null {
+  for (let i = log.length - 1; i >= 0; i--) {
+    const e = log[i];
+    if (e.kind === "ability-buff") return e;
+  }
+  return null;
+}
+
 function buffHireling(
   state: ActionState,
   casterId: string,
   targetId: string,
   stockGained: number,
   potencyGained: number,
-  atSeconds: number
+  atSeconds: number,
+  reentrant = false
 ): ActionState {
   if (stockGained === 0 && potencyGained === 0) return state;
   const hs = state.hirelingStates.get(targetId);
@@ -326,7 +343,97 @@ function buffHireling(
       atSeconds,
     },
   ];
-  return { ...state, hirelingStates: states, log };
+  let working: ActionState = { ...state, hirelingStates: states, log };
+  // Phase 6 buff-event bus: every buffHireling call fires the
+  // reactive hook for each OTHER active ally (skipping the buffed
+  // target so it doesn't react to its own gain). Pass `reentrant=true`
+  // on recursive calls so reactive cards that themselves call
+  // buffHireling (e.g. Court Scribe's amplification) don't trigger
+  // ANOTHER round of reactions and infinite-loop. Court Jester's
+  // reactions use direct hirelingState mutation to stay outside this
+  // path.
+  if (!reentrant && target) {
+    for (const ally of activeHirelings(working.board)) {
+      if (ally.id === targetId) continue;
+      working = applyOnPermanentBuffEvent(
+        working,
+        ally,
+        { casterId, targetId, stockGained, potencyGained, atSeconds },
+        atSeconds
+      );
+    }
+  }
+  return working;
+}
+
+/**
+ * Phase 6 reactive hook fired for each OTHER active ally each time a
+ * permanent buff is applied to anyone (any buffHireling call). Cards
+ * that listen for "ally gained permanent stock/potency" events live
+ * here.
+ *
+ *   - court-jester: "When any ally gains a stock buff, gain +1
+ *                    temporary stock. When any ally gains a potency
+ *                    buff, gain +1 temporary potency." (Treated as
+ *                    +1 temporary stock and +1 permanent potency
+ *                    gained this round, since there's no
+ *                    temporaryPotency tracker yet — gain still
+ *                    promotes at round end.)
+ *   - the-candy-architect: "Each time any Sugar Guild ally gains
+ *                            permanent potency this round, this
+ *                            hireling's next Quickcraft generates +2
+ *                            additional stock." Translated MVP-style
+ *                            to: +2 permanent stock gained this round
+ *                            per Sugar potency event (so the boost
+ *                            STILL benefits the player but applies
+ *                            now rather than at next-cast time).
+ */
+function applyOnPermanentBuffEvent(
+  state: ActionState,
+  reactor: HirelingInstance,
+  event: {
+    casterId: string;
+    targetId: string;
+    stockGained: number;
+    potencyGained: number;
+    atSeconds: number;
+  },
+  atSeconds: number
+): ActionState {
+  switch (reactor.card.id) {
+    case "court-jester": {
+      let working = state;
+      if (event.stockGained > 0) {
+        working = addTemporaryStock(working, reactor.id, 1);
+      }
+      if (event.potencyGained > 0) {
+        // Direct hirelingState mutation to avoid recursing through
+        // buffHireling (which would re-fire this very hook).
+        const hs = working.hirelingStates.get(reactor.id);
+        if (hs) {
+          const states = new Map(working.hirelingStates);
+          states.set(reactor.id, {
+            ...hs,
+            permanentPotencyGainedThisRound: hs.permanentPotencyGainedThisRound + 1,
+          });
+          working = { ...working, hirelingStates: states };
+        }
+      }
+      return working;
+    }
+    case "the-candy-architect": {
+      // Only fires when a Sugar Guild ally is the target AND the
+      // event grants permanent potency.
+      if (event.potencyGained <= 0) return state;
+      const target = findInstance(state.board, event.targetId);
+      if (!target || target.card.kind !== "hireling" || target.card.guild !== "Sugar Guild") return state;
+      // +2 permanent stock to the architect, recorded as a normal
+      // buffHireling call (reentrant to skip the reactive cascade).
+      return buffHireling(state, reactor.id, reactor.id, 2, 0, atSeconds, true);
+    }
+    default:
+      return state;
+  }
 }
 
 /**
@@ -1055,6 +1162,25 @@ function applyPostCastAbility(
       //  off card.id "sticky-fingers" to pick lowest-cast opponent).
       //  This case wires only the +2 temp stock on the caster.
       return addTemporaryStock(state, caster.id, 2);
+    case "the-court-scribe": {
+      // "The last permanent buff any ally gained this round is
+      //  increased by +1 permanently." Walk the log for the most
+      //  recent ability-buff entry; if found, apply +1 of the same
+      //  stat (stock OR potency, matching whichever was non-zero).
+      const last = findLastAbilityBuff(state.log);
+      if (!last) return state;
+      const stockBoost = last.stockGained > 0 ? 1 : 0;
+      const potencyBoost = last.potencyGained > 0 ? 1 : 0;
+      if (stockBoost === 0 && potencyBoost === 0) return state;
+      return buffHireling(state, caster.id, last.targetId, stockBoost, potencyBoost, atSeconds, true);
+    }
+    case "the-grand-vizier": {
+      // "Copy the last permanent buff any ally received and apply it
+      //  to himself." Re-emit the same buff with Vizier as the target.
+      const last = findLastAbilityBuff(state.log);
+      if (!last) return state;
+      return buffHireling(state, caster.id, caster.id, last.stockGained, last.potencyGained, atSeconds, true);
+    }
     case "royal-advisor": {
       // "Sabotage an ally. If it is a Nobles Guild ally, that ally's
       //  next action gains +2 to all stat effects permanently."

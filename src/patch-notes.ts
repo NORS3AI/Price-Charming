@@ -13,6 +13,21 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.3.9-alpha",
+    date: "2026-04-21",
+    title: "Part-2 Phase 6 — Buff-event bus",
+    changes: [
+      "buffHireling now fires applyOnPermanentBuffEvent for every active ally (except the buffed target itself) on every permanent-buff emission. The log-entry pipeline doubles as an event bus.",
+      "A `reentrant` flag on buffHireling skips the cascade when called from inside a reactive hook so amplifying cards don't infinite-loop.",
+      "Wired hirelings:",
+      "Court Jester — +1 temporary stock per ally permanent stock buff; +1 permanent potency this round per ally permanent potency buff. Direct hirelingState mutation (bypasses the cascade).",
+      "Grand Vizier — per cast, copies the last permanent buff any ally received and re-applies it to himself. (His decreasing cast time still ticks down; once at 0 he's stopped.)",
+      "Court Scribe — per cast, looks up the most recent ability-buff entry and adds +1 to whichever stat that buff increased, applied to the original target.",
+      "Candy Architect — reactive: when any Sugar Guild ally gains permanent potency, gains +2 permanent stock this round. (MVP simplification: spec said \"next Quickcraft generates +2 additional stock\"; current implementation grants the buff at event time rather than tracking a per-cast Quickcraft modifier.)",
+      "4 new tests in buff-events.test.ts. 466 → 470 tests.",
+    ],
+  },
+  {
     version: "V0.3.8-alpha",
     date: "2026-04-21",
     title: "Part-2 Phase 5 — Dual-potion data model",
