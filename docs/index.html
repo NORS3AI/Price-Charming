@@ -515,6 +515,16 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
     <div class="sett-saves" id="save-slots"></div>
   </div>
   <div class="sett-group">
+    <h3>Developer</h3>
+    <div class="sett-row">
+      <label>Dev Mode (cheats)</label>
+      <div class="sett-toggle" id="dev-toggle" onclick="pcSetDevMode(!pcDevMode)"></div>
+    </div>
+    <div style="font-size:.7rem;color:var(--parch-d);margin-top:.25rem">
+      Enables floating buttons in-game: +10g, +10 rep, weather picker.
+    </div>
+  </div>
+  <div class="sett-group">
     <h3>Data</h3>
     <div class="sett-row"><label>Reset all data</label><button class="btn btn-sm btn-danger" onclick="resetAllData()">Reset</button></div>
   </div>
@@ -603,6 +613,14 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
       <div id="pc-target-msg"></div>
       <button class="btn btn-sm btn-ghost" onclick="pcCancelTarget()">Cancel</button>
     </div>
+  </div>
+
+  <!-- Dev-mode floating buttons (toggled in Settings) -->
+  <div id="pc-dev-panel" style="display:none">
+    <div id="pc-dev-weather-menu" style="display:none"></div>
+    <button class="pc-dev-btn" id="pc-dev-weather" title="Weather (dev)" onclick="pcDevToggleWeatherMenu(event)">⚡</button>
+    <button class="pc-dev-btn" id="pc-dev-rep" title="+10 reputation (dev)" onclick="pcDevAddRep()">⭐</button>
+    <button class="pc-dev-btn" id="pc-dev-gold" title="+10 gold (dev)" onclick="pcDevAddGold()">🪙</button>
   </div>
 </div>
 
@@ -703,6 +721,13 @@ body{font-family:Georgia,'Times New Roman',serif;background:var(--deep);color:va
 #pc-round-end h2{color:var(--gold);margin-bottom:.75rem}
 #pc-round-end-body{margin-bottom:1rem;color:var(--parch)}
 #pc-target-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding-top:4rem;pointer-events:none}
+#pc-dev-panel{position:fixed;right:.75rem;bottom:.75rem;display:flex;flex-direction:column;gap:.5rem;z-index:150}
+.pc-dev-btn{width:3rem;height:3rem;border-radius:50%;background:rgba(0,0,0,.7);border:2px solid var(--gold);color:var(--gold);font-size:1.4rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:transform .1s}
+.pc-dev-btn:hover{transform:scale(1.08)}
+.pc-dev-btn:active{transform:scale(.95)}
+#pc-dev-weather-menu{position:absolute;right:3.5rem;bottom:6.5rem;background:var(--deep);border:1px solid var(--gold);border-radius:6px;padding:.4rem;display:flex;flex-direction:column;gap:.25rem;min-width:10rem;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+#pc-dev-weather-menu button{padding:.35rem .6rem;background:var(--purple);color:var(--parch);border:none;border-radius:3px;cursor:pointer;font-size:.78rem;text-align:left}
+#pc-dev-weather-menu button:hover{background:var(--lite)}
 #pc-target-box{background:var(--deep);padding:1rem 1.5rem;border:2px solid var(--gold);border-radius:10px;color:var(--parch);max-width:26rem;text-align:center;pointer-events:auto}
 #pc-target-msg{margin-bottom:.75rem;font-size:1rem}
 .pc-slot.pc-targetable{outline:3px solid gold;cursor:pointer;position:relative;z-index:201;background:var(--parch)}
@@ -769,6 +794,19 @@ let pcStarPowerCharges = 0;        // Star Power: next N customer spawns get +1 
 let pcStarPowerCastThisShop = false; // Star Power can only be cast once per shop phase
 let pcFreeRefreshPending = false;  // Talent Scout: next refresh is free
 let pcLastSabotageIdx = 0;         // index of last sabotage log entry processed by the visual opponent state
+
+// --- Dev mode: toggleable cheats for testing ----------------------
+const PC_DEV_MODE_KEY = "pc-dev-mode-v1";
+let pcDevMode = false;
+try { pcDevMode = localStorage.getItem(PC_DEV_MODE_KEY) === "1"; } catch (_) {}
+
+function pcSetDevMode(on){
+  pcDevMode = !!on;
+  try { localStorage.setItem(PC_DEV_MODE_KEY, pcDevMode ? "1" : "0"); } catch (_) {}
+  pcRenderDevPanel();
+  pcRender();
+}
+window.pcSetDevMode = pcSetDevMode;
 
 // --- Show Off: player card collection ------------------------------
 // Persists the set of card ids the player has ever had in their hand
@@ -1549,6 +1587,99 @@ function pcRenderLog(){
   }).join("\n");
 }
 
+// --- Dev mode floating panel --------------------------------------
+function pcRenderDevPanel(){
+  const panel = document.getElementById("pc-dev-panel");
+  if (!panel) return;
+  // Only show in-game (game-screen.active). Otherwise hide entirely.
+  const inGame = document.getElementById("game-screen") &&
+                 document.getElementById("game-screen").classList.contains("active");
+  panel.style.display = (pcDevMode && inGame) ? "flex" : "none";
+  // Reflect dev toggle in Settings if visible.
+  const tog = document.getElementById("dev-toggle");
+  if (tog) tog.classList.toggle("on", pcDevMode);
+}
+
+window.pcDevAddGold = function(){
+  if (!pcGame) return;
+  if (pcGame.action) {
+    pcGame = { ...pcGame, action: { ...pcGame.action, gold: pcGame.action.gold + 10 } };
+  } else {
+    pcGame = { ...pcGame, gold: pcGame.gold + 10 };
+  }
+  pcFlash("+10 gold (dev)");
+  pcRender();
+};
+
+window.pcDevAddRep = function(){
+  if (!pcGame) return;
+  if (pcGame.action) {
+    pcGame = { ...pcGame, action: { ...pcGame.action, reputation: pcGame.action.reputation + 10 } };
+  } else {
+    pcGame = { ...pcGame, reputation: pcGame.reputation + 10 };
+  }
+  pcFlash("+10 reputation (dev)");
+  pcRender();
+};
+
+window.pcDevToggleWeatherMenu = function(ev){
+  ev && ev.stopPropagation && ev.stopPropagation();
+  const menu = document.getElementById("pc-dev-weather-menu");
+  if (!menu) return;
+  if (menu.style.display === "block") {
+    menu.style.display = "none";
+    return;
+  }
+  // Build the submenu fresh each open.
+  menu.innerHTML = "";
+  if (!E.WEATHER_CATALOG || E.WEATHER_CATALOG.length === 0) {
+    menu.innerHTML = '<div style="color:var(--parch-d);font-size:.75rem;padding:.3rem">No weather catalog.</div>';
+  } else {
+    for (const w of E.WEATHER_CATALOG) {
+      const btn = document.createElement("button");
+      btn.textContent = `⚡ ${w.name}`;
+      btn.onclick = (e) => { e.stopPropagation(); pcDevSetWeather(w.id); };
+      menu.appendChild(btn);
+    }
+    const clear = document.createElement("button");
+    clear.textContent = "✕ Clear weather";
+    clear.style.background = "var(--red)";
+    clear.onclick = (e) => { e.stopPropagation(); pcDevClearWeather(); };
+    menu.appendChild(clear);
+  }
+  menu.style.display = "block";
+};
+
+window.pcDevSetWeather = function(id){
+  if (!pcGame || !pcGame.action) {
+    pcFlash("Weather only applies during the action phase.");
+    return;
+  }
+  const w = E.spawnWeather(id);
+  if (!w) { pcFlash(`Unknown weather: ${id}`); return; }
+  pcGame = { ...pcGame, action: E.setWeather(pcGame.action, w) };
+  pcFlash(`Weather: ${w.name} (dev)`);
+  document.getElementById("pc-dev-weather-menu").style.display = "none";
+  pcRender();
+};
+
+window.pcDevClearWeather = function(){
+  if (!pcGame || !pcGame.action) return;
+  pcGame = { ...pcGame, action: { ...pcGame.action, weather: null } };
+  pcFlash("Weather cleared (dev)");
+  document.getElementById("pc-dev-weather-menu").style.display = "none";
+  pcRender();
+};
+
+// Close the weather submenu when clicking anywhere else.
+document.addEventListener("click", (e) => {
+  const menu = document.getElementById("pc-dev-weather-menu");
+  if (!menu || menu.style.display !== "block") return;
+  if (menu.contains(e.target)) return;
+  if (e.target && e.target.id === "pc-dev-weather") return; // toggle button
+  menu.style.display = "none";
+});
+
 function pcRender(){
   if (!pcGame) return;
   // Preserve scroll across the rebuild. Every sub-render zeroes its
@@ -1559,8 +1690,14 @@ function pcRender(){
   const prevScrollY = window.scrollY || window.pageYOffset || 0;
 
   $("pc-round").textContent = pcGame.round;
-  $("pc-gold").textContent = pcGame.gold;
-  $("pc-rep").textContent = pcGame.reputation;
+  // During the action phase the engine accumulates earnings on
+  // pcGame.action.gold / .reputation and rolls them up to pcGame at
+  // endRound. Display the live values so the player can see sales
+  // land immediately.
+  const liveGold = pcGame.action ? pcGame.action.gold : pcGame.gold;
+  const liveRep = pcGame.action ? pcGame.action.reputation : pcGame.reputation;
+  $("pc-gold").textContent = liveGold;
+  $("pc-rep").textContent = liveRep;
   $("pc-phase-tag").textContent = pcPhaseLabel(pcGame.phase);
   $("pc-diff-tag").textContent = pcDifficulty.charAt(0).toUpperCase() + pcDifficulty.slice(1);
 
@@ -1579,6 +1716,7 @@ function pcRender(){
   pcRenderOppSection();
   pcRenderPayday();
   pcRenderRoundEnd();
+  pcRenderDevPanel();
 
   pcRenderPlayerBoard();
   if (showShopUi) {
@@ -2298,6 +2436,12 @@ window.showScreen = function(id){
   pcOriginalShowScreen(id);
   if (id === "leader-screen") pcRenderLeaderboard();
   if (id === "showoff-screen") pcRenderShowOff();
+  if (id === "settings-screen") {
+    const tog = document.getElementById("dev-toggle");
+    if (tog) tog.classList.toggle("on", pcDevMode);
+  }
+  // Always re-evaluate dev panel visibility on screen change.
+  pcRenderDevPanel();
 };
 
 // --- Show Off -------------------------------------------------------

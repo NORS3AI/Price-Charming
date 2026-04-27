@@ -13,6 +13,20 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.4.5-alpha",
+    date: "2026-04-21",
+    title: "Dev mode + floating cheat buttons + live gold/rep display",
+    changes: [
+      "Settings → Developer: new \"Dev Mode (cheats)\" toggle, persisted in localStorage under pc-dev-mode-v1.",
+      "When dev mode is on AND the player is on the game screen, three round buttons float in the bottom-right corner:",
+      "🪙 +10 gold — bumps live gold (action.gold during a battle, top-level pcGame.gold during shop).",
+      "⭐ +10 reputation — same routing as gold.",
+      "⚡ Weather — opens a submenu listing every WEATHER_CATALOG entry plus a Clear option. Tapping one calls setWeather on the in-flight action state. Only effective during the action phase.",
+      "Submenu auto-closes on outside-click (anywhere not the menu or the ⚡ button).",
+      "Live gold/rep display: pcRender now shows pcGame.action.gold / .reputation when an action round is in flight (previously the top-bar always showed the pre-battle pcGame.gold, so sales didn't tick up the counter until endRound rolled them up). Dev cheat buttons feed the same field, so changes are visible immediately.",
+    ],
+  },
+  {
     version: "V0.4.4-alpha",
     date: "2026-04-21",
     title: "Audit fixes for Phases 4, 8, 9 + shop-scroll hardening",
