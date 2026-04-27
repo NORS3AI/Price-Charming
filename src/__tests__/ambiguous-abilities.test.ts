@@ -64,15 +64,38 @@ describe("Ambiguous abilities (Phase 9)", () => {
     expect(rg.permanentStockGainedThisRound).toBeGreaterThanOrEqual(1);
   });
 
-  test("Spare Charming: gains +3 permanent potency on a no-sale", () => {
+  test("Spare Charming: gains +3 permanent potency when a matching-type customer goes to the opponent", () => {
+    // Spare carries love AND has Haggle. Strong opponent with love
+    // potions wins the customer; Spare fires +3 because she matched
+    // the type but lost the haggle.
+    const { setOpponent } = require("../action/state");
+    const { captureSnapshot } = require("../opponent/snapshot");
     let b = createBoard();
-    b = placeAt(b, 3, "Spare Charming", "luck"); // Haggle, mismatched potion type
+    b = placeAt(b, 3, "Spare Charming", "love");
     let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
-    // Customer wants love — no matching seller → no-sale.
+    // Opponent: strong love-potion seller (Lord Chamberlain potency 6,
+    // stock 5) outclasses Spare (stock 2 / pot 2).
+    let oppBoard = createBoard();
+    oppBoard = placeAt(oppBoard, 3, "Lord Chamberlain", "love");
+    s = setOpponent(s, captureSnapshot({
+      id: "opp", round: 1, board: oppBoard,
+      prices: defaultPriceMap(ACTIVE), activePotionTypes: ACTIVE, reputation: 0,
+    }));
+    s = addCustomer(s, makeCustomer({ desiredType: "love", patienceSeconds: 6 }));
+    s = tick(s, 6, mulberry32(1));
+    const sc = s.hirelingStates.get("Spare Charming-3")!;
+    expect(s.customers[0].resolvedFor).not.toBe("player");
+    expect(sc.permanentPotencyGainedThisRound).toBe(3);
+  });
+
+  test("Spare Charming: does NOT fire when customer's type doesn't match Spare's potion", () => {
+    let b = createBoard();
+    b = placeAt(b, 3, "Spare Charming", "dragons-breath"); // mismatch
+    let s = initializeActionState(b, defaultPriceMap(ACTIVE), ACTIVE, mulberry32(1));
     s = addCustomer(s, makeCustomer({ desiredType: "love", patienceSeconds: 2 }));
     s = tick(s, 2, mulberry32(1));
     const sc = s.hirelingStates.get("Spare Charming-3")!;
-    expect(sc.permanentPotencyGainedThisRound).toBe(3);
+    expect(sc.permanentPotencyGainedThisRound).toBe(0);
   });
 
   test("Tasting Table: redirects no-sale to herself when she can fulfill", () => {

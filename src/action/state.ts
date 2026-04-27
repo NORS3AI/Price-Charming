@@ -639,10 +639,50 @@ function applyOnAllyCastAbility(
  *                  pickpocket +1 gold from them, if you have at least
  *                  2 other Thieves Guild allies in play." (Active slots.)
  */
+/**
+ * Tasting Table redirect: when a customer would resolve as no-sale AND
+ * a Tasting Table is on an active slot AND her slot 0 or slot 1 matches
+ * the customer's desired type AND that slot has stock, promote the
+ * resolution to "player" and grant +1 temp stock to every other Sugar
+ * Guild ally on an active slot. Returns both the (possibly mutated)
+ * state and the (possibly upgraded) customer state.
+ *
+ * Called from BOTH the per-tick advanceCustomers path AND the
+ * end-of-round finalizeRound force-resolve path so customers expiring
+ * mid-tick OR at finalize both benefit.
+ */
+function applyTastingTableRedirect(
+  state: ActionState,
+  cs: CustomerState
+): { state: ActionState; customerState: CustomerState } {
+  if (cs.resolvedFor !== "no-sale") return { state, customerState: cs };
+  const tasting = activeHirelings(state.board).find(
+    (h) => h.card.id === "tasting-table"
+  );
+  if (!tasting) return { state, customerState: cs };
+  const tastingHs = state.hirelingStates.get(tasting.id);
+  if (!tastingHs) return { state, customerState: cs };
+  const slot: 0 | 1 =
+    tasting.potionType === cs.customer.desiredType ? 0 :
+    tasting.potionType2 === cs.customer.desiredType ? 1 : -1 as 0 | 1;
+  if (slot === (-1 as 0 | 1)) return { state, customerState: cs };
+  if (effectiveStock(tasting, tastingHs, slot) <= 0) return { state, customerState: cs };
+
+  const upgraded: CustomerState = { ...cs, resolvedFor: "player" };
+  let working = state;
+  for (const ally of activeHirelings(working.board)) {
+    if (ally.id === tasting.id) continue;
+    if (ally.card.guild !== "Sugar Guild") continue;
+    working = addTemporaryStock(working, ally.id, 1);
+  }
+  return { state: working, customerState: upgraded };
+}
+
 function applyOnNoPlayerSaleAbility(
   state: ActionState,
   reactor: HirelingInstance,
-  atSeconds: number
+  atSeconds: number,
+  customer?: Customer
 ): ActionState {
   switch (reactor.card.id) {
     case "nimble-ned": {
@@ -656,10 +696,17 @@ function applyOnNoPlayerSaleAbility(
       return { ...state, gold: state.gold + 1 };
     }
     case "spare-charming": {
-      // "If Haggled sale fails, gain +3 permanent potency." MVP:
-      // every no-player-sale resolution counts as a "haggled sale
-      // failed" since Spare Charming carries Haggle and would have
-      // been the haggle source. +3 permanent potency.
+      // "If Haggled sale fails, gain +3 permanent potency." Only fires
+      // when the customer's desired type matches Spare Charming's
+      // own potion(s) AND Spare Charming carries the Haggle keyword
+      // — i.e. the no-sale really WAS Spare's failed haggle, not a
+      // walk-away from a different stall.
+      if (!customer) return state;
+      const matches =
+        reactor.potionType === customer.desiredType ||
+        reactor.potionType2 === customer.desiredType;
+      if (!matches) return state;
+      if (!reactor.card.keywords.some((k) => k.name === "Haggle")) return state;
       return buffHireling(state, reactor.id, reactor.id, 0, 3, atSeconds, true);
     }
     default:
@@ -1089,6 +1136,7 @@ function applyOnOwnSabotageSuccess(
       const states = new Map(state.hirelingStates);
       let dirty = false;
       for (const ally of activeHirelings(state.board)) {
+        if (ally.id === caster.id) continue; // exclude self — "Thieves allies" = others
         if (ally.card.guild !== "Thieves Guild") continue;
         const hs = state.hirelingStates.get(ally.id);
         if (!hs || hs.nextCastIn === null) continue;
@@ -1371,11 +1419,14 @@ function applyPostCastAbility(
       //  from opponent's lowest potency hireling." We don't mutate
       //  opponent state (snapshot), so the steal manifests as a self
       //  +1 permanent stock when conditions are met:
-      //    - Robbin's effective potency on slot 0 < 5.
+      //    - Robbin's effective potency on EITHER slot < 5
+      //      (dual-potion cards: lowest of the two potencies counts).
       //    - Opponent has at least one active hireling.
       const hs = state.hirelingStates.get(caster.id);
       if (!hs) return state;
-      if (effectivePotency(caster, hs, 0) >= 5) return state;
+      const pot0 = effectivePotency(caster, hs, 0);
+      const pot1 = caster.potionType2 !== null ? effectivePotency(caster, hs, 1) : Infinity;
+      if (Math.min(pot0, pot1) >= 5) return state;
       if (!state.opponent) return state;
       if (activeHirelings(state.opponent.board).length === 0) return state;
       return buffHireling(state, caster.id, caster.id, 1, 0, atSeconds, true);
@@ -1426,6 +1477,7 @@ function applyPostCastAbility(
         working = addTemporaryStock(working, caster.id, otherCount * 2);
       }
       for (const ally of knockoffThieves) {
+        if (ally.id === caster.id) continue; // "all Thieves allies" = others
         const allyHs = working.hirelingStates.get(ally.id);
         if (!allyHs) continue;
         if (effectivePotency(ally, allyHs, 0) >= 10) continue;
@@ -1442,7 +1494,14 @@ function applyPostCastAbility(
       //  per-card cast-time-delta accumulator across reschedules is
       //  out of scope; this captures the flavor without the
       //  bookkeeping.
-      const sales = state.log.filter((e) => e.kind === "sale").length;
+      // Count THIS hireling's own sales (spec: "Each sale this round
+      // reduces cast time" — read as Peddler's own sales, not the
+      // whole board's). hs.unitsSoldThisRound treats batched sales
+      // as sales of N units; for the cast-time reduction we want
+      // sale-events, not units, so filter the log by instanceId.
+      const sales = state.log.filter(
+        (e) => e.kind === "sale" && e.instanceId === caster.id
+      ).length;
       if (sales === 0) return state;
       const reduction = sales * 0.5;
       const hs = state.hirelingStates.get(caster.id);
@@ -1794,6 +1853,12 @@ export function finalizeRound(state: ActionState): ActionState {
         next = { ...next, resolvedFor: "no-sale" };
       }
     }
+    // Tasting Table redirect: same path as advanceCustomers.
+    {
+      const redirected = applyTastingTableRedirect(working, next);
+      working = redirected.state;
+      next = redirected.customerState;
+    }
     working = {
       ...working,
       log: [
@@ -1813,7 +1878,7 @@ export function finalizeRound(state: ActionState): ActionState {
       working = executeSale(working, next, priceByType, deterministicMinRng);
     } else {
       for (const ally of activeHirelings(working.board)) {
-        working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+        working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds, next.customer);
       }
     }
     resolvedCustomers.push(next);
@@ -2043,32 +2108,10 @@ function advanceCustomers(
           next = { ...next, resolvedFor: "no-sale" };
         }
       }
-      // Tasting Table redirect: when a customer resolves as no-sale,
-      // check if a Tasting Table is on an active slot and CAN fulfill
-      // (matching type + stock). If so, promote no-sale → player and
-      // fire +1 temp stock to all Sugar Guild allies.
-      if (next.resolvedFor === "no-sale") {
-        const tasting = activeHirelings(working.board).find((h) => h.card.id === "tasting-table");
-        if (tasting) {
-          const tastingHs = working.hirelingStates.get(tasting.id);
-          // Tasting Table only redirects if her own slot type matches.
-          const matches =
-            tasting.potionType === next.customer.desiredType ||
-            tasting.potionType2 === next.customer.desiredType;
-          const slot: 0 | 1 = tasting.potionType === next.customer.desiredType ? 0 : 1;
-          if (matches && tastingHs && effectiveStock(tasting, tastingHs, slot) > 0) {
-            next = { ...next, resolvedFor: "player" };
-            // Apply Tasting Table's bonus: +1 temp stock to every
-            // Sugar Guild ally on an active slot (excluding self by
-            // convention — self gets the sale instead).
-            for (const ally of activeHirelings(working.board)) {
-              if (ally.id === tasting.id) continue;
-              if (ally.card.guild !== "Sugar Guild") continue;
-              working = addTemporaryStock(working, ally.id, 1);
-            }
-          }
-        }
-      }
+      // Tasting Table redirect: see applyTastingTableRedirect.
+      const redirected = applyTastingTableRedirect(working, next);
+      working = redirected.state;
+      next = redirected.customerState;
       working = {
         ...working,
         log: [
@@ -2087,7 +2130,7 @@ function advanceCustomers(
         // Non-player resolution → fire reactive hooks (e.g. Nimble Ned
         // pickpockets +1 gold from a walk-away).
         for (const ally of activeHirelings(working.board)) {
-          working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+          working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds, next.customer);
         }
       }
     }

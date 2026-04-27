@@ -2064,7 +2064,27 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return state;
     }
   }
-  function applyOnNoPlayerSaleAbility(state, reactor, atSeconds) {
+  function applyTastingTableRedirect(state, cs) {
+    if (cs.resolvedFor !== "no-sale") return { state, customerState: cs };
+    const tasting = activeHirelings(state.board).find(
+      (h) => h.card.id === "tasting-table"
+    );
+    if (!tasting) return { state, customerState: cs };
+    const tastingHs = state.hirelingStates.get(tasting.id);
+    if (!tastingHs) return { state, customerState: cs };
+    const slot = tasting.potionType === cs.customer.desiredType ? 0 : tasting.potionType2 === cs.customer.desiredType ? 1 : -1;
+    if (slot === -1) return { state, customerState: cs };
+    if (effectiveStock(tasting, tastingHs, slot) <= 0) return { state, customerState: cs };
+    const upgraded = { ...cs, resolvedFor: "player" };
+    let working = state;
+    for (const ally of activeHirelings(working.board)) {
+      if (ally.id === tasting.id) continue;
+      if (ally.card.guild !== "Sugar Guild") continue;
+      working = addTemporaryStock(working, ally.id, 1);
+    }
+    return { state: working, customerState: upgraded };
+  }
+  function applyOnNoPlayerSaleAbility(state, reactor, atSeconds, customer) {
     switch (reactor.card.id) {
       case "nimble-ned": {
         const otherThieves = activeHirelings(state.board).filter(
@@ -2074,6 +2094,10 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return { ...state, gold: state.gold + 1 };
       }
       case "spare-charming": {
+        if (!customer) return state;
+        const matches = reactor.potionType === customer.desiredType || reactor.potionType2 === customer.desiredType;
+        if (!matches) return state;
+        if (!reactor.card.keywords.some((k) => k.name === "Haggle")) return state;
         return buffHireling(state, reactor.id, reactor.id, 0, 3, atSeconds, true);
       }
       default:
@@ -2314,6 +2338,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         const states = new Map(state.hirelingStates);
         let dirty = false;
         for (const ally of activeHirelings(state.board)) {
+          if (ally.id === caster.id) continue;
           if (ally.card.guild !== "Thieves Guild") continue;
           const hs = state.hirelingStates.get(ally.id);
           if (!hs || hs.nextCastIn === null) continue;
@@ -2510,7 +2535,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
       case "robbin-goblin": {
         const hs = state.hirelingStates.get(caster.id);
         if (!hs) return state;
-        if (effectivePotency(caster, hs, 0) >= 5) return state;
+        const pot0 = effectivePotency(caster, hs, 0);
+        const pot1 = caster.potionType2 !== null ? effectivePotency(caster, hs, 1) : Infinity;
+        if (Math.min(pot0, pot1) >= 5) return state;
         if (!state.opponent) return state;
         if (activeHirelings(state.opponent.board).length === 0) return state;
         return buffHireling(state, caster.id, caster.id, 1, 0, atSeconds, true);
@@ -2549,6 +2576,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           working = addTemporaryStock(working, caster.id, otherCount * 2);
         }
         for (const ally of knockoffThieves) {
+          if (ally.id === caster.id) continue;
           const allyHs = working.hirelingStates.get(ally.id);
           if (!allyHs) continue;
           if (effectivePotency(ally, allyHs, 0) >= 10) continue;
@@ -2557,7 +2585,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         return working;
       }
       case "sugar-rush-peddler": {
-        const sales = state.log.filter((e) => e.kind === "sale").length;
+        const sales = state.log.filter(
+          (e) => e.kind === "sale" && e.instanceId === caster.id
+        ).length;
         if (sales === 0) return state;
         const reduction = sales * 0.5;
         const hs = state.hirelingStates.get(caster.id);
@@ -2792,6 +2822,11 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           next = { ...next, resolvedFor: "no-sale" };
         }
       }
+      {
+        const redirected = applyTastingTableRedirect(working, next);
+        working = redirected.state;
+        next = redirected.customerState;
+      }
       working = {
         ...working,
         log: [
@@ -2808,7 +2843,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
         working = executeSale(working, next, priceByType, deterministicMinRng);
       } else {
         for (const ally of activeHirelings(working.board)) {
-          working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+          working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds, next.customer);
         }
       }
       resolvedCustomers.push(next);
@@ -2948,22 +2983,9 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
             next = { ...next, resolvedFor: "no-sale" };
           }
         }
-        if (next.resolvedFor === "no-sale") {
-          const tasting = activeHirelings(working.board).find((h) => h.card.id === "tasting-table");
-          if (tasting) {
-            const tastingHs = working.hirelingStates.get(tasting.id);
-            const matches = tasting.potionType === next.customer.desiredType || tasting.potionType2 === next.customer.desiredType;
-            const slot = tasting.potionType === next.customer.desiredType ? 0 : 1;
-            if (matches && tastingHs && effectiveStock(tasting, tastingHs, slot) > 0) {
-              next = { ...next, resolvedFor: "player" };
-              for (const ally of activeHirelings(working.board)) {
-                if (ally.id === tasting.id) continue;
-                if (ally.card.guild !== "Sugar Guild") continue;
-                working = addTemporaryStock(working, ally.id, 1);
-              }
-            }
-          }
-        }
+        const redirected = applyTastingTableRedirect(working, next);
+        working = redirected.state;
+        next = redirected.customerState;
         working = {
           ...working,
           log: [
@@ -2980,7 +3002,7 @@ Spell,Lucky Charm,,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Charm,Give a friendly hirelin
           working = executeSale(working, next, priceByType, rng);
         } else {
           for (const ally of activeHirelings(working.board)) {
-            working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds);
+            working = applyOnNoPlayerSaleAbility(working, ally, state.elapsedSeconds, next.customer);
           }
         }
       }

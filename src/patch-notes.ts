@@ -13,6 +13,22 @@ export interface PatchNote {
  */
 export const PATCH_NOTES: PatchNote[] = [
   {
+    version: "V0.4.4-alpha",
+    date: "2026-04-21",
+    title: "Audit fixes for Phases 4, 8, 9 + shop-scroll hardening",
+    changes: [
+      "Shop scroll: occasional snap-back during shop interactions persisted past the last fix. pcRender now restores scrollY both synchronously AND on the next animation frame, with a 4px tolerance check to avoid double-jumping when the browser already settled. Covers cases where reflow hadn't completed by the time the synchronous restore fired.",
+      "Phase 4 — The Saboteur self-buff: his own nextCastIn was being trimmed by 0.5s on every successful Sabotage along with his Thieves allies. Spec says \"all Thieves allies\" (= others). Caster now excluded from the loop.",
+      "Phase 8 — Robbin Goblin's potency check: only slot 0 potency was inspected, so dual-potion Robbin instances missed the < 5 trigger when only slot 1 was below threshold. Now checks min(slot0, slot1) potency.",
+      "Phase 9 — Spare Charming over-trigger: the +3 perm pot fired on EVERY no-player-sale regardless of potion type or Haggle keyword. Now requires Spare's own potion type to match the walk-away customer AND Spare to carry Haggle (the spec's \"haggled sale fails\" requires both).",
+      "Phase 9 — Tasting Table missed in finalizeRound: the redirect block lived only in the per-tick advanceCustomers path, so customers force-resolved at end-of-round patience cleanup never benefited. Extracted into applyTastingTableRedirect helper and wired into BOTH paths.",
+      "Phase 9 — Grand Thief includes self: the \"all Thieves allies trigger Knockoff x1\" loop iterated knockoffThieves without filtering self. Self now excluded ('allies' = others).",
+      "Phase 9 — Sugar Rush Peddler counted ALL sales by ALL hirelings for its cast-time reduction. Now counts only Peddler's OWN sale-log entries, matching spec's per-card scope.",
+      "applyOnNoPlayerSaleAbility signature gained an optional `customer` param so reactive cards can gate on the customer's desired type.",
+      "1 new test (Spare-mismatched no-fire), 1 updated test (Spare matched-type via opponent win). 488 → 489 tests.",
+    ],
+  },
+  {
     version: "V0.4.3-alpha",
     date: "2026-04-21",
     title: "Part-2 Phase 10 — Weather effects",
